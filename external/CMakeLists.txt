@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(external_libs)
 
-add_library(doctest INTERFACE)
-add_library(doctest::doctest ALIAS doctest)
-target_include_directories(doctest INTERFACE doctest/)
+function(add_header_only_library name)
+    add_library(${name} INTERFACE)
+    add_library(${name}::${name} ALIAS ${name})
+    target_include_directories(${name} INTERFACE ${name}/)
+endfunction()
 
-add_subdirectory(gl3w)
-add_subdirectory(imgui)
+add_header_only_library(doctest)
+add_header_only_library(cxxopts)
+add_header_only_library(json)
+
+add_subdirectory(imgui_sfml)

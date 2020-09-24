@@ -13,8 +13,18 @@ endif()
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_17)
 
+if(NOT MSVC)
+	option(WITH_LIBCXX "Use libc++" OFF)
+	if(WITH_LIBCXX)
+		target_compile_options(project_options INTERFACE -stdlib=libc++)
+		target_link_options(project_options INTERFACE -lc++)
+	else()
+		target_link_libraries(project_options INTERFACE stdc++fs)
+	endif()
+endif()
+
 add_library(project_warnings INTERFACE)
-option(WITH_WARNINGS "Enable compiler warnings" OFF)
+option(WITH_WARNINGS "Enable compiler warnings" ON)
 if(WITH_WARNINGS)
     set_project_warnings(project_warnings)
 endif()
@@ -30,12 +40,19 @@ if(ENABLE_PCH)
             <array> <vector> <string> <unordered_map> <utility>)
 endif()
 
+find_package(fmt CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
 add_subdirectory(external)
 
 add_executable(gameboiadvance main.cpp)
-target_link_libraries(gameboiadvance PRIVATE SDL2::SDL2 imgui::sdl gl3w::gl3w)
+target_link_libraries(gameboiadvance PRIVATE
+        cxxopts::cxxopts
+        SDL2::SDL2
+        imgui::sfml)
+
 target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 
 option(ENABLE_TESTING "Enable Tests" OFF)
