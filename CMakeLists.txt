@@ -32,8 +32,10 @@ endif()
 
 find_package(SDL2 CONFIG REQUIRED)
 
+add_subdirectory(external)
+
 add_executable(gameboiadvance main.cpp)
-target_link_libraries(gameboiadvance PRIVATE SDL2::SDL2)
+target_link_libraries(gameboiadvance PRIVATE SDL2::SDL2 imgui::sdl gl3w::gl3w)
 target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 
 option(ENABLE_TESTING "Enable Tests" OFF)
