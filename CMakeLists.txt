@@ -46,12 +46,16 @@ find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
 add_subdirectory(external)
+add_subdirectory(gba)
 
 add_executable(gameboiadvance main.cpp)
 target_link_libraries(gameboiadvance PRIVATE
+		gba::gba
         cxxopts::cxxopts
         SDL2::SDL2
-        imgui::sfml)
+        imgui::sfml
+		project_warnings
+		project_options)
 
 target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 

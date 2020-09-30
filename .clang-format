@@ -26,7 +26,7 @@ BinPackParameters: true
 BraceWrapping:
   AfterCaseLabel: false
   AfterClass: false
-  AfterControlStatement: false
+  AfterControlStatement: "false"
   AfterEnum: false
   AfterFunction: true
   AfterNamespace: false
@@ -60,7 +60,7 @@ IncludeCategories:
     Priority:        2
   - Regex:           '^<.*'           # system dependencies
     Priority:        1
-  - Regex:           '.*'             # internal dependencies
+  - Regex:           '^<gba.*'             # internal dependencies
     Priority:        3
 IncludeIsMainRegex: '([-_](test|unittest))?$'
 IncludeIsMainSourceRegex: ''
