@@ -56,29 +56,29 @@ template<typename Integer>
 class integer {
     static_assert(detail::is_integer_v<Integer>, "Integer must be an integer type");
 
-    Integer value_;
+    Integer value_{0};
 
 public:
     using type = Integer;
 
-    FORCEINLINE constexpr integer() noexcept : value_{0} {}
+    FORCEINLINE constexpr integer() noexcept = default;
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE constexpr integer(const T& value) noexcept : value_{value} {}
+    FORCEINLINE constexpr integer(const T value) noexcept : value_{value} {} // NOLINT
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE constexpr integer(const integer<T>& value) noexcept
-        : value_(static_cast<Integer>(value)) {}
+    FORCEINLINE constexpr integer(const integer<T> value) noexcept  // NOLINT
+        : value_(static_cast<T>(value)) {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE integer& operator=(const T& value) noexcept
+    FORCEINLINE integer& operator=(const T value) noexcept
     {
         value_ = value;
         return *this;
     }
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE integer& operator=(const integer<T>& value) noexcept
+    FORCEINLINE integer& operator=(const integer<T> value) noexcept
     {
         value_ = static_cast<Integer>(value);
         return *this;
