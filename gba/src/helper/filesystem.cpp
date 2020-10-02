@@ -2,11 +2,10 @@
 
 #include <array>
 #include <fstream>
-#include <iterator>
 
 namespace gba {
 
-std::vector<u8> read_file(const filesystem::path& path)
+std::vector<u8> read_file(const fs::path& path)
 {
     std::ifstream stream{path, std::ios::binary | std::ios::in};
     stream.unsetf(std::ios::skipws);
@@ -25,7 +24,7 @@ std::vector<u8> read_file(const filesystem::path& path)
     return bytes;
 }
 
-void write_file(const filesystem::path& path, const std::vector<u8>& data)
+void write_file(const fs::path& path, const std::vector<u8>& data)
 {
     std::ofstream stream{path, std::ios::binary | std::ios::out};
     stream.unsetf(std::ios::skipws);

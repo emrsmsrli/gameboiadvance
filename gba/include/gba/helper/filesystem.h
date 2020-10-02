@@ -8,10 +8,10 @@
 
 namespace gba {
 
-namespace filesystem = std::filesystem;
+namespace fs = std::filesystem;
 
-std::vector<u8> read_file(const filesystem::path& path);
-void write_file(const filesystem::path& path, const std::vector<u8>& data);
+std::vector<u8> read_file(const fs::path& path);
+void write_file(const fs::path& path, const std::vector<u8>& data);
 
 } // namespace gba
 
