@@ -5,7 +5,7 @@
 
 namespace gba {
 
-std::vector<u8> read_file(const fs::path& path)
+vector<u8> read_file(const fs::path& path)
 {
     std::ifstream stream{path, std::ios::binary | std::ios::in};
     stream.unsetf(std::ios::skipws);
@@ -14,17 +14,17 @@ std::vector<u8> read_file(const fs::path& path)
     }
 
     constexpr auto buffer_size = 1024u;
-    std::array<u8, buffer_size> buffer;
-    std::vector<u8> bytes;
+    array<u8, buffer_size> buffer;
+    vector<u8> bytes;
 
     while(stream.read(reinterpret_cast<char*>(buffer.data()), buffer_size)) { // NOLINT
-        std::copy_n(buffer.begin(), stream.gcount(), std::back_inserter(bytes));
+        std::copy_n(buffer.begin(), stream.gcount(), std::back_inserter(bytes.underlying_data()));
     }
 
     return bytes;
 }
 
-void write_file(const fs::path& path, const std::vector<u8>& data)
+void write_file(const fs::path& path, const vector<u8>& data)
 {
     std::ofstream stream{path, std::ios::binary | std::ios::out};
     stream.unsetf(std::ios::skipws);
@@ -32,7 +32,7 @@ void write_file(const fs::path& path, const std::vector<u8>& data)
         std::terminate();
     }
 
-    stream.write(reinterpret_cast<const char*>(data.data()), data.size()); // NOLINT
+    stream.write(reinterpret_cast<const char*>(data.data()), data.size().get()); // NOLINT
 }
 
 } // namespace gba
