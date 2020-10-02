@@ -18,7 +18,8 @@ public:
     void clear_delegates() noexcept { delegates.clear(); }
 
     template<typename... TArgs>
-    void operator()(TArgs&&... args) const {
+    void operator()(TArgs&&... args) const
+    {
         for(auto& d : delegates) {
             d(std::forward<TArgs>(args)...);
         }
