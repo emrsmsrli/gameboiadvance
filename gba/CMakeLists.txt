@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.12.4)
 project(gba CXX)
 
-add_library(${PROJECT_NAME}
+add_library(${PROJECT_NAME} STATIC
         src/helper/filesystem.cpp)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
