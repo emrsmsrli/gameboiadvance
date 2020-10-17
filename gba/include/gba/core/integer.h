@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <type_traits>
 
-#include <gba/helper/forceinline.h>
+#include <gba/helper/macros.h>
 
 namespace gba {
 
