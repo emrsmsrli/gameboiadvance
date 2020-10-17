@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+    <Type Name="gba::integer&lt;*&gt;">
+        <DisplayString>{value_}</DisplayString>
+    </Type>
+    <Type Name="gba::vector&lt;*&gt;">
+        <DisplayString>{data_}</DisplayString>
+        <Expand><ExpandedItem>data_</ExpandedItem></Expand>
+    </Type>
+    <Type Name="gba::array&lt;*&gt;">
+        <DisplayString>{data_}</DisplayString>
+        <Expand><ExpandedItem>data_</ExpandedItem></Expand>
+    </Type>
+</AutoVisualizer>
