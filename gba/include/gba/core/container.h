@@ -10,21 +10,23 @@ namespace gba {
 
 template<typename T, std::size_t N>
 class array {
+    using size_type = integer<std::size_t>;
+
     std::array<T, N> data_;
 
 public:
     array() = default;
     explicit array(std::array<T, N> data) : data_(data) {}
 
-    [[nodiscard]] T& operator[](const u64 idx) noexcept { return data_[idx.get()]; }
-    [[nodiscard]] T operator[](const u64 idx) const noexcept { return data_[idx.get()]; }
-    [[nodiscard]] T* ptr(const u64 idx) noexcept { return &data_[idx.get()]; }
-    [[nodiscard]] T& at(const u64 idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] T& operator[](const size_type idx) noexcept { return data_[idx.get()]; }
+    [[nodiscard]] T operator[](const size_type idx) const noexcept { return data_[idx.get()]; }
+    [[nodiscard]] T* ptr(const size_type idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] T& at(const size_type idx) noexcept { return &data_[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return data_.data(); }
     [[nodiscard]] const T* data() const noexcept { return data_.data(); }
 
     [[nodiscard]] bool empty() const noexcept { return data_.empty(); }
-    [[nodiscard]] u64 size() const noexcept { return u64(data_.size()); }
+    [[nodiscard]] size_type size() const noexcept { return size_type(data_.size()); }
 
     auto begin() const noexcept { return data_.begin(); }
     auto end() const noexcept { return data_.end(); }
@@ -37,17 +39,19 @@ public:
 
 template<typename T>
 class vector {
+    using size_type = integer<std::size_t>;
+
     std::vector<T> data_;
 
 public:
     vector() = default;
-    explicit vector(const u64 size) : data_(size.get()) {}
+    explicit vector(const size_type size) : data_(size.get()) {}
     explicit vector(std::vector<T> data) : data_(std::move(data)) {}
 
-    [[nodiscard]] T& operator[](const u64 idx) noexcept { return data_[idx.get()]; }
-    [[nodiscard]] T operator[](const u64 idx) const noexcept { return data_[idx.get()]; }
-    [[nodiscard]] T* ptr(const u64 idx) noexcept { return &data_[idx.get()]; }
-    [[nodiscard]] T& at(const u64 idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] T& operator[](const size_type idx) noexcept { return data_[idx.get()]; }
+    [[nodiscard]] T operator[](const size_type idx) const noexcept { return data_[idx.get()]; }
+    [[nodiscard]] T* ptr(const size_type idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] T& at(const size_type idx) noexcept { return &data_[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return data_.data(); }
     [[nodiscard]] const T* data() const noexcept { return data_.data(); }
 
@@ -56,7 +60,7 @@ public:
     void push_back(T t) { data_.push_back(std::move(t)); }
 
     [[nodiscard]] bool empty() const noexcept { return data_.empty(); }
-    [[nodiscard]] u64 size() const noexcept { return u64(data_.size()); }
+    [[nodiscard]] size_type size() const noexcept { return size_type(data_.size()); }
 
     void clear() noexcept { data_.clear(); }
     auto erase(typename std::vector<T>::iterator pos) { return data_.erase(pos); }
