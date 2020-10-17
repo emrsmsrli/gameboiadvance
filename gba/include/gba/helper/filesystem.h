@@ -4,7 +4,7 @@
 #include <filesystem>
 
 #include <gba/core/integer.h>
-#include <gba/core/memory.h>
+#include <gba/core/container.h>
 
 namespace gba {
 

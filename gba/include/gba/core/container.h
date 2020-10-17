@@ -1,5 +1,5 @@
-#ifndef GAMEBOIADVANCE_MEMORY_H
-#define GAMEBOIADVANCE_MEMORY_H
+#ifndef GAMEBOIADVANCE_CONTAINER_H
+#define GAMEBOIADVANCE_CONTAINER_H
 
 #include <array>
 #include <vector>
@@ -76,4 +76,4 @@ public:
 
 } // namespace gba
 
-#endif //GAMEBOIADVANCE_MEMORY_H
+#endif //GAMEBOIADVANCE_CONTAINER_H
