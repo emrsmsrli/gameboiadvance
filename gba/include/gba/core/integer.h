@@ -351,7 +351,12 @@ FORCEINLINE constexpr uint16_t operator""_u16(unsigned long long v) noexcept { r
 FORCEINLINE constexpr int32_t operator""_i32(unsigned long long v) noexcept { return static_cast<int32_t>(v); }
 FORCEINLINE constexpr uint32_t operator""_u32(unsigned long long v) noexcept { return static_cast<uint32_t>(v); }
 FORCEINLINE constexpr int64_t operator""_i64(unsigned long long v) noexcept { return static_cast<int64_t>(v); }
-FORCEINLINE constexpr uint64_t operator""_u64(unsigned long long v) noexcept { return static_cast<uint64_t>(v); }
+FORCEINLINE constexpr uint64_t operator""_u64(unsigned long long v) noexcept { return v; }
+
+FORCEINLINE constexpr auto operator""_kb(unsigned long long v) noexcept
+{
+    return gba::integer<std::size_t>(static_cast<std::size_t>(v) * 1024u);
+}
 
 template<typename Integer>
 struct std::hash<gba::integer<Integer>> {
