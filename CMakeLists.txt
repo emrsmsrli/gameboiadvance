@@ -52,7 +52,7 @@ add_executable(gameboiadvance main.cpp)
 target_link_libraries(gameboiadvance PRIVATE
 		gba::gba
         cxxopts::cxxopts
-        SDL2::SDL2
+		$<IF:$<BOOL:${BUILDING_FOR_RPI3}>,SDL2,SDL2::SDL2>
         imgui::sfml
 		project_warnings
 		project_options)
