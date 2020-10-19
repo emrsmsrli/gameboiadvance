@@ -96,26 +96,26 @@ public:
         return integer{value_ * Integer{-1}};
     }
 
-    FORCEINLINE integer& operator++() noexcept
+    FORCEINLINE constexpr integer& operator++() noexcept
     {
         value_ = value_ + Integer{1};
         return *this;
     }
 
-    FORCEINLINE integer operator++(int) const noexcept
+    FORCEINLINE constexpr integer operator++(int) const noexcept
     {
         auto res = *this;
         ++*this;
         return res;
     }
 
-    FORCEINLINE integer& operator--() noexcept
+    FORCEINLINE constexpr integer& operator--() noexcept
     {
         value_ = value_ - Integer{1};
         return *this;
     }
 
-    FORCEINLINE integer operator--(int) const noexcept
+    FORCEINLINE constexpr integer operator--(int) const noexcept
     {
         auto res = *this;
         --*this;
@@ -123,14 +123,14 @@ public:
     }
 
     template<typename T, typename = detail::enable_integer<T>>
-    FORCEINLINE integer& operator+=(const integer<T> other) noexcept
+    FORCEINLINE constexpr integer& operator+=(const integer<T> other) noexcept
     {
         value_ += static_cast<T>(other);
         return *this;
     }
 
     template<typename T, typename = detail::enable_integer<T>>
-    FORCEINLINE integer& operator+=(const T other) noexcept
+    FORCEINLINE constexpr integer& operator+=(const T other) noexcept
     {
         value_ += other;
         return *this;
@@ -138,13 +138,13 @@ public:
 
 #define MAKE_OP(Op)                                                                                 \
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>             \
-    FORCEINLINE integer& operator Op(const integer<T> other) noexcept                               \
+    FORCEINLINE constexpr integer& operator Op(const integer<T> other) noexcept                     \
     {                                                                                               \
         value_ Op static_cast<T>(other);                                                            \
         return *this;                                                                               \
     }                                                                                               \
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>             \
-    FORCEINLINE integer& operator Op(const T other) noexcept                                        \
+    FORCEINLINE constexpr integer& operator Op(const T other) noexcept                              \
     {                                                                                               \
         *this Op integer<T>(other);                                                                 \
         return *this;                                                                               \
@@ -159,7 +159,7 @@ public:
 
     // bitwise ops
 
-    FORCEINLINE integer operator~() const noexcept
+    FORCEINLINE constexpr integer operator~() const noexcept
     {
         static_assert(std::is_unsigned_v<Integer>, "Integer must be unsigned");
         return integer(~value_);
@@ -167,13 +167,13 @@ public:
 
 #define MAKE_OP(Op)                                                                                 \
     template<typename T, typename = detail::enable_safe_unsigned_operation<T, Integer>>             \
-    FORCEINLINE integer& operator Op(const integer<T> other) noexcept                               \
+    FORCEINLINE constexpr integer& operator Op(const integer<T> other) noexcept                     \
     {                                                                                               \
         value_ Op static_cast<T>(other);                                                            \
         return *this;                                                                               \
     }                                                                                               \
     template<typename T, typename = detail::enable_safe_unsigned_operation<T, Integer>>             \
-    FORCEINLINE integer& operator Op(const T other) noexcept                                        \
+    FORCEINLINE constexpr integer& operator Op(const T other) noexcept                              \
     {                                                                                               \
         *this Op integer<T>(other);                                                                 \
         return *this;                                                                               \
