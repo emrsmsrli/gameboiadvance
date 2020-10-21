@@ -2,10 +2,24 @@
 #define GAMEBOIADVANCE_CONTAINER_H
 
 #include <vector>
+#include <type_traits>
 
 #include <gba/core/integer.h>
 
 namespace gba {
+
+namespace detail {
+
+// taken from MSVC's STL
+template<typename First, typename... Rest>
+struct array_enforce_same {
+    static_assert(std::conjunction_v<std::is_same<First, Rest>...>,
+    "N4687 26.3.7.2 [array.cons]/2: "
+    "Requires: (is_same_v<T, U> && ...) is true. Otherwise the program is ill-formed.");
+    using type = First;
+};
+
+} // namespace detail
 
 template<typename T, usize::type N>
 struct array {
@@ -25,6 +39,9 @@ struct array {
     constexpr auto cbegin() const noexcept { return std::cbegin(_data); }
     constexpr auto cend() const noexcept { return std::cend(_data); }
 };
+
+template <class First, class... Rest>
+array(First, Rest...)->array<typename detail::array_enforce_same<First, Rest...>::type, 1 + sizeof...(Rest)>;
 
 template<typename T>
 class vector {
