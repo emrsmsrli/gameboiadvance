@@ -33,7 +33,7 @@ std::string_view get_condition_mnemonic(const u32 instr) noexcept
 
 /* arm disassemble */
 
-std::string data_processing_reg(const u32 addr, const u32 instr) noexcept
+std::string data_processing_reg(const u32 /*addr*/, const u32 instr) noexcept
 {
     static constexpr array op_mnemonics{
         "AND"sv, "EOR"sv, "SUB"sv, "RSB"sv, "ADD"sv, "ADC"sv, "SBC"sv, "RSC"sv,
@@ -66,22 +66,22 @@ std::string data_processing_reg(const u32 addr, const u32 instr) noexcept
     };
 
     switch(opcode.get()) {
-        case 0x0: return fmt::format("AND{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x1: return fmt::format("EOR{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x2: return fmt::format("SUB{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x3: return fmt::format("RSB{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x4: return fmt::format("ADD{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x5: return fmt::format("ADC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x6: return fmt::format("SBC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x7: return fmt::format("RSC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x0: return fmt::format("AND{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x1: return fmt::format("EOR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x2: return fmt::format("SUB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x3: return fmt::format("RSB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x4: return fmt::format("ADD{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x5: return fmt::format("ADC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x6: return fmt::format("SBC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x7: return fmt::format("RSC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
         case 0x8: return fmt::format("TST{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0x9: return fmt::format("TEQ{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0xA: return fmt::format("CMP{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0xB: return fmt::format("CMN{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
-        case 0xC: return fmt::format("ORR{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0xD: return fmt::format("MOV{}{} {},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], op2(instr));
-        case 0xE: return fmt::format("BIC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0xF: return fmt::format("MVN{}{} {},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], op2(instr));
+        case 0xC: return fmt::format("ORR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0xD: return fmt::format("MOV{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
+        case 0xE: return fmt::format("BIC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0xF: return fmt::format("MVN{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
         default:
             UNREACHABLE();
     }
