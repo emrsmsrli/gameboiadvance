@@ -202,7 +202,7 @@ disassembler::disassembler() noexcept
         {"000xxxxxxxxx", connect_arg<&data_processing_reg>},
         {"001xxxxxxxxx", connect_arg<&data_processing_imm>},
         {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
-        {"00110xx00000", connect_arg<&psr_transfer_reg>},
+        {"00010xx00000", connect_arg<&psr_transfer_reg>},
         {"000100100001", connect_arg<&branch_exchange>},
         {"000000xx1001", connect_arg<&multiply>},
         {"00001xxx1001", connect_arg<&multiply_long>},
