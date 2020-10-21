@@ -341,6 +341,8 @@ using u32 = integer<uint32_t>;
 using i64 = integer<int64_t>;
 using u64 = integer<uint64_t>;
 
+using usize = integer<std::size_t>;
+
 } // namespace gba
 
 // make sure these are in the global namespace
