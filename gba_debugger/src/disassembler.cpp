@@ -27,7 +27,7 @@ std::string_view get_condition_mnemonic(const u32 instr) noexcept
         "HI"sv, "LS"sv,
         "GE"sv, "LT"sv,
         "GT"sv, "LE"sv,
-        ""sv, ""sv, // AL (ignored)
+        ""sv, /*AL*/ "NV"sv,
     };
 
     return mnemonics[instr >> 28_u32];
@@ -117,7 +117,7 @@ std::string branch_link(const u32 addr, const u32 instr) noexcept
 
 std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return fmt::format("SWI 0x{:0>8X}", instr & 0xFFFFFF_u32);
+    return fmt::format("SWI{} 0x{:0>8X}", get_condition_mnemonic(instr), instr & 0xFFFFFF_u32);
 }
 
 /* arm disassemble end */
@@ -127,26 +127,6 @@ std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 } // namespace
 
 namespace gba::debugger {
-
-/**
- * Code     Suffix  Flags                       Meaning
- * --------------------------------------------------------------
- * 0000     EQ      Z set                       equal
- * 0001     NE      Z clear                     not equal
- * 0010     CS      C set                       unsigned higher or same
- * 0011     CC      C clear                     unsigned lower
- * 0100     MI      N set                       negative
- * 0101     PL      N clear                     positive or zero
- * 0110     VS      V set                       overflow
- * 0111     VC      V clear                     no overflow
- * 1000     HI      C set and Z clear           unsigned higher
- * 1001     LS      C clear or Z set            unsigned lower or same
- * 1010     GE      N equals V                  greater or equal
- * 1011     LT      N not equal to V            less than
- * 1100     GT      Z clear AND (N equals V)    greater than
- * 1101     LE      Z set OR (N not equal to V) less than or equal
- * 1110     AL      (ignored)                   always
-*/
 
 /*
  * Mnemonic Instruction                     Action                          See Section:
