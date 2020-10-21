@@ -32,7 +32,7 @@ template<typename T>
 [[nodiscard]] FORCEINLINE constexpr u32 bit(const T b) noexcept { return 1_u32 << b; }
 
 template<typename T, typename TBit>
-[[nodiscard]] FORCEINLINE constexpr bool test(const T t, const TBit b) noexcept { return (t & bit(b)) == 1u; }
+[[nodiscard]] FORCEINLINE constexpr bool test(const T t, const TBit b) noexcept { return (t & bit(b)) != 0u; }
 
 template<typename T, typename TBit>
 [[nodiscard]] FORCEINLINE constexpr bool set(const T t, const TBit b) noexcept { return t | bit(b); }
