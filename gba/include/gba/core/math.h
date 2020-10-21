@@ -8,6 +8,14 @@ namespace gba {
 
 namespace math {
 
+template<u32::type B, typename T>
+FORCEINLINE constexpr make_signed_t<T> sign_extend(const T x) noexcept
+{
+    struct { typename make_signed_t<T>::type x : B; } extender; // NOLINT
+    extender.x = x.get();
+    return extender.x;
+}
+
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T min(T f, T s) noexcept { return f < s ? f : s; }
 
