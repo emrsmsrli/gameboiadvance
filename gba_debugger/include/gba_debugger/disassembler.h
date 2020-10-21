@@ -25,6 +25,6 @@ public:
     void update(const vector<u8>& data);
 };
 
-} // namespace gba
+} // namespace gba::debugger
 
 #endif //GAMEBOIADVANCE_DISASSEMBLER_H

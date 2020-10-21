@@ -15,21 +15,19 @@
 namespace {
 
 using namespace gba;
+using namespace std::string_view_literals;
+
+constexpr array register_mnemonics{
+    "r0"sv, "r1"sv, "r2"sv, "r3"sv, "r4"sv, "r5"sv, "r6"sv, "r7"sv, "r8"sv, "r9"sv,
+    "r10"sv, "r11"sv, "r12"sv, "r13"sv, "r14"sv, "r15"sv, "cpsr"sv, "spsr"sv
+};
 
 std::string_view get_condition_mnemonic(const u32 instr) noexcept
 {
-    using namespace std::string_view_literals;
     static constexpr array mnemonics{
-        "EQ"sv, "NE"sv,
-        "CS"sv, "CC"sv,
-        "MI"sv, "PL"sv,
-        "VS"sv, "VC"sv,
-        "HI"sv, "LS"sv,
-        "GE"sv, "LT"sv,
-        "GT"sv, "LE"sv,
-        ""sv, /*AL*/ "NV"sv,
+        "EQ"sv, "NE"sv, "CS"sv, "CC"sv, "MI"sv, "PL"sv, "VS"sv, "VC"sv,
+        "HI"sv, "LS"sv, "GE"sv, "LT"sv, "GT"sv, "LE"sv, ""sv, /*AL*/ "NV"sv,
     };
-
     return mnemonics[instr >> 28_u32];
 }
 
@@ -37,7 +35,56 @@ std::string_view get_condition_mnemonic(const u32 instr) noexcept
 
 std::string data_processing_reg(const u32 addr, const u32 instr) noexcept
 {
-    return "data_processing_reg";
+    static constexpr array op_mnemonics{
+        "AND"sv, "EOR"sv, "SUB"sv, "RSB"sv, "ADD"sv, "ADC"sv, "SBC"sv, "RSC"sv,
+        "TST"sv, "TEQ"sv, "CMP"sv, "CMN"sv, "ORR"sv, "MOV"sv, "BIC"sv, "MVN"sv,
+    };
+
+    const auto cond_mnemonic = get_condition_mnemonic(instr);
+    const auto cond_set_mnemonic = bit::test(instr, 20_u32) ? "S"sv : ""sv;
+    const u32 opcode = (instr >> 21_u32) & 0xF_u32;
+    const u32 rn = (instr >> 16_u32) & 0xF_u32;
+    const u32 rd = (instr >> 12_u32) & 0xF_u32;
+
+    static constexpr auto op2 = [](const u32 instr) -> std::string {
+        static constexpr array shift_mnemonics{ "LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv };
+
+        const u32 r2 = instr & 0xF_u32;
+        const u32 shift_type = (instr >> 5_u32) & 0x3_u32;
+
+        if(bit::test(instr, 4_u32)) {
+            const u32 rshift = (instr >> 8_u32) & 0xF_u32;
+            return fmt::format("{},{} {}", register_mnemonics[r2], shift_mnemonics[shift_type], register_mnemonics[rshift]);
+        }
+
+        u32 shift_amount = (instr >> 7_u32) & 0x1F_u32;
+        if(shift_type == 0_u32 && shift_amount == 0_u32) {
+            return std::string(register_mnemonics[r2]);
+        }
+
+        return fmt::format("{},{} 0x{:X}", register_mnemonics[r2], shift_mnemonics[shift_type], shift_amount);
+    };
+
+    switch(opcode.get()) {
+        case 0x0: return fmt::format("AND{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x1: return fmt::format("EOR{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x2: return fmt::format("SUB{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x3: return fmt::format("RSB{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x4: return fmt::format("ADD{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x5: return fmt::format("ADC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x6: return fmt::format("SBC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x7: return fmt::format("RSC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x8: return fmt::format("TST{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
+        case 0x9: return fmt::format("TEQ{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
+        case 0xA: return fmt::format("CMP{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
+        case 0xB: return fmt::format("CMN{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
+        case 0xC: return fmt::format("ORR{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0xD: return fmt::format("MOV{}{} {},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], op2(instr));
+        case 0xE: return fmt::format("BIC{}{} {},{},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0xF: return fmt::format("MVN{}{} {},{}", cond_mnemonic, cond_set_mnemonic, register_mnemonics[rd], op2(instr));
+        default:
+            UNREACHABLE();
+    }
 }
 
 std::string data_processing_imm(const u32 addr, const u32 instr) noexcept
@@ -57,7 +104,7 @@ std::string psr_transfer_reg(const u32 addr, const u32 instr) noexcept
 
 std::string branch_exchange(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return fmt::format("BX r{}", instr & 0xF_u32);
+    return fmt::format("BX {}", register_mnemonics[instr & 0xF_u32]);
 }
 
 std::string multiply(const u32 addr, const u32 instr) noexcept
@@ -122,7 +169,10 @@ std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 
 /* arm disassemble end */
 /* thumb disassemble */
+
 // todo
+
+/* thumb disassemble end */
 
 } // namespace
 
@@ -131,17 +181,17 @@ namespace gba::debugger {
 /*
  * Mnemonic Instruction                     Action                          See Section:
  * ----------------------------------------------------------------------------------------
- * ADC      Add with carry                  Rd := Rn + Op2 + Carry          4.5
- * ADD      Add                             Rd := Rn + Op                   24.5
- * AND      AND                             Rd := Rn AND Op                 24.5
- * B        Branch                          R15 := address                  4.4             x   B{L}{cond} <expression>
- * BIC      Bit Clear                       Rd := Rn AND NOT Op             24.5
- * BL       Branch with Link                R14 := R15, R15 := address      4.4             x   B{L}{cond} <expression>
+ * ADC      Add with carry                  Rd := Rn + Op2 + Carry          4.5             x
+ * ADD      Add                             Rd := Rn + Op                   24.5            x
+ * AND      AND                             Rd := Rn AND Op                 24.5            x
+ * B        Branch                          R15 := address                  4.4             x
+ * BIC      Bit Clear                       Rd := Rn AND NOT Op             24.5            x
+ * BL       Branch with Link                R14 := R15, R15 := address      4.4             x
  * BX       Branch and Exchange             R15 := Rn,T bit := Rn[0]        4.3             x
  * CDP      Coprocesor Data Processing      (Coprocessor-specific)          4.14
- * CMN      Compare Negative                CPSR flags := Rn + Op           24.5
- * CMP      Compare                         CPSR flags := Rn - Op           24.5
- * EOR      Exclusive OR                    Rd := (Rn AND NOT Op2)          4.5
+ * CMN      Compare Negative                CPSR flags := Rn + Op           24.5            x
+ * CMP      Compare                         CPSR flags := Rn - Op           24.5            x
+ * EOR      Exclusive OR                    Rd := (Rn AND NOT Op2)          4.5             x
                                             OR (op2 AND NOT Rn)
  * LDC      Load coprocessor from memory    Coprocessor load                4.15
  * LDM      Load multiple registers         Stack manipulation (Pop)        4.11
@@ -149,7 +199,7 @@ namespace gba::debugger {
  * MCR      Move CPU register to            cRn := rRn {<op>cRm}            4.16
             coprocessor register
  * MLA      Multiply Accumulate             Rd := (Rm * Rs) + Rn            4.7, 4.8
- * MOV      Move register or constant       Rd : = Op                       24.5
+ * MOV      Move register or constant       Rd : = Op                       24.5            x
  * MRC      Move from coprocessor           Rn := cRn {<op>cRm}             4.16
             register to CPU register
  * MRS      Move PSR status/flags to        Rn := PSR                       4.6
@@ -157,20 +207,20 @@ namespace gba::debugger {
  * MSR      Move register to PSR            PSR := Rm                       4.6
             status/flags
  * MUL      Multiply                        Rd := Rm * Rs                   4.7, 4.8
- * MVN      Move negative register          Rd := 0xFFFFFFFF EOR Op         24.5
- * ORR      OR                              Rd := Rn OR Op                  24.5
- * RSB      Reverse Subtract                Rd := Op2 - Rn                  4.5
- * RSC      Reverse Subtract with Carry     Rd := Op2 - Rn - 1 + Carry      4.5
- * SBC      Subtract with Carry             Rd := Rn - Op2 - 1 + Carry      4.5
+ * MVN      Move negative register          Rd := 0xFFFFFFFF EOR Op         24.5            x
+ * ORR      OR                              Rd := Rn OR Op                  24.5            x
+ * RSB      Reverse Subtract                Rd := Op2 - Rn                  4.5             x
+ * RSC      Reverse Subtract with Carry     Rd := Op2 - Rn - 1 + Carry      4.5             x
+ * SBC      Subtract with Carry             Rd := Rn - Op2 - 1 + Carry      4.5             x
  * STC      Store coprocessor register to   address := CRn                  4.15
             memory
  * STM      Store Multiple                  Stack manipulation (Push)       4.11
  * STR      Store register to memory        <address> := Rd                 4.9, 4.10
- * SUB      Subtract                        Rd := Rn - Op                   24.5
+ * SUB      Subtract                        Rd := Rn - Op                   24.5            x
  * SWI      Software Interrupt              OS call                         4.13            x
  * SWP      Swap register with memory       Rd := [Rn], [Rn] := Rm          4.12
- * TEQ      Test bitwise equality           CPSR flags := Rn EOR Op         24.5
- * TST      Test bits                       CPSR flags := Rn AND Op         24.5
+ * TEQ      Test bitwise equality           CPSR flags := Rn EOR Op         24.5            x
+ * TST      Test bits                       CPSR flags := Rn AND Op         24.5            x
  */
 
 /**
