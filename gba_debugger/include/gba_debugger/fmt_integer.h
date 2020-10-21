@@ -5,9 +5,11 @@
 
 #include <gba/core/integer.h>
 
-template<typename T> struct fmt::formatter<gba::integer<T>> : formatter<T> {
-    template <typename FormatContext>
-    auto format(gba::integer<T> i, FormatContext& ctx) {
+template<typename T>
+struct fmt::formatter<gba::integer<T>> : formatter<T> {
+    template<typename FormatContext>
+    auto format(gba::integer<T> i, FormatContext& ctx)
+    {
         return formatter<T>::format(i.get(), ctx);
     }
 };
