@@ -204,7 +204,7 @@ struct make_signed<integer<T>>
 template<typename T>
 struct make_unsigned
 {
-    using type = std::make_unsigned<T>;
+    using type = std::make_unsigned_t<T>;
 };
 
 template<typename T>
