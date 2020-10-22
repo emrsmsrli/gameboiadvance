@@ -35,11 +35,6 @@ std::string_view get_condition_mnemonic(const u32 instr) noexcept
 
 std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
 {
-    static constexpr array op_mnemonics{
-        "AND"sv, "EOR"sv, "SUB"sv, "RSB"sv, "ADD"sv, "ADC"sv, "SBC"sv, "RSC"sv,
-        "TST"sv, "TEQ"sv, "CMP"sv, "CMN"sv, "ORR"sv, "MOV"sv, "BIC"sv, "MVN"sv,
-    };
-
     const auto cond_mnemonic = get_condition_mnemonic(instr);
     const auto cond_set_mnemonic = bit::test(instr, 20_u32) ? "S"sv : ""sv;
     const u32 opcode = (instr >> 21_u32) & 0xF_u32;
@@ -110,9 +105,32 @@ std::string branch_exchange(const u32 /*addr*/, const u32 instr) noexcept
     return fmt::format("BX {}", register_mnemonics[instr & 0xF_u32]);
 }
 
-std::string multiply(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string multiply(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return "multiply";
+    const auto cond_mnemonic = get_condition_mnemonic(instr);
+    const auto cond_set_mnemonic = bit::test(instr, 20_u32) ? "S"sv : ""sv;
+    const u32 opcode = (instr >> 21_u32) & 0xF_u32;
+    const u32 rd = (instr >> 16_u32) & 0xF_u32;
+    const u32 rn = (instr >> 12_u32) & 0xF_u32;
+    const u32 rs = (instr >> 8_u32) & 0xF_u32;
+    const u32 rm = instr & 0xF_u32;
+
+    switch(opcode.get()) {
+        case 0b0000: return fmt::format("MUL{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0001: return fmt::format("MLA{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs], register_mnemonics[rn]);
+        case 0b0100: return fmt::format("UMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0101: return fmt::format("UMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0110: return fmt::format("SMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0x0111: return fmt::format("SMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        default:
+            UNREACHABLE();
+    }
 }
 
 std::string multiply_long(const u32 /*addr*/, const u32 /*instr*/) noexcept
@@ -252,15 +270,17 @@ namespace gba::debugger {
 */
 disassembler::disassembler() noexcept
     : arm_table_{
-        {"000xxxxxxxxx", connect_arg<&data_processing>},
-        {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
-        {"00010xx00000", connect_arg<&psr_transfer_reg>},
+        {"000xxxxxxxx0", connect_arg<&data_processing>},
+        {"000xxxxx0xx1", connect_arg<&data_processing>},
+        {"001xxxxxxxxx", connect_arg<&data_processing>},
         {"000100100001", connect_arg<&branch_exchange>},
-        {"000000xx1001", connect_arg<&multiply>},
-        {"00001xxx1001", connect_arg<&multiply_long>},
-        {"00010x001001", connect_arg<&single_data_swap>},
         {"000xx0xx1xx1", connect_arg<&halfword_data_transfer_reg>},
         {"000xx1xx1xx1", connect_arg<&halfword_data_transfer_imm>},
+        {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
+        {"00010xx00000", connect_arg<&psr_transfer_reg>},
+        {"000000xx1001", connect_arg<&multiply>},
+        {"00001xxx1001", connect_arg<&multiply>},
+        {"00010x001001", connect_arg<&single_data_swap>},
         {"010xxxxxxxxx", connect_arg<&single_data_transfer_imm>},
         {"011xxxxxxxx0", connect_arg<&single_data_transfer_reg>},
         {"011xxxxxxxx1", connect_arg<&undefined>},
