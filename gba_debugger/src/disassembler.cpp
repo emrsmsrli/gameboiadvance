@@ -33,7 +33,7 @@ std::string_view get_condition_mnemonic(const u32 instr) noexcept
 
 /* arm disassemble */
 
-std::string data_processing_reg(const u32 /*addr*/, const u32 instr) noexcept
+std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
 {
     static constexpr array op_mnemonics{
         "AND"sv, "EOR"sv, "SUB"sv, "RSB"sv, "ADD"sv, "ADC"sv, "SBC"sv, "RSC"sv,
@@ -49,6 +49,14 @@ std::string data_processing_reg(const u32 /*addr*/, const u32 instr) noexcept
     static constexpr auto op2 = [](const u32 instr) -> std::string {
         static constexpr array shift_mnemonics{ "LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv };
 
+        // immediate as 2nd operand
+        if(bit::test(instr, 25_u32)) {
+            const auto imm = instr & 0xFF_u32;
+            const auto shift_amount = (instr >> 8_u32) & 0xF_u32;
+            return fmt::format("0x{:X}", math::logical_rotate_right(imm, shift_amount * 2_u32).result);
+        }
+
+        // register as 2nd operand
         const u32 r2 = instr & 0xF_u32;
         const u32 shift_type = (instr >> 5_u32) & 0x3_u32;
 
@@ -87,17 +95,12 @@ std::string data_processing_reg(const u32 /*addr*/, const u32 instr) noexcept
     }
 }
 
-std::string data_processing_imm(const u32 addr, const u32 instr) noexcept
-{
-    return "data_processing_imm";
-}
-
-std::string psr_transfer_imm(const u32 addr, const u32 instr) noexcept
+std::string psr_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "psr_transfer_imm";
 }
 
-std::string psr_transfer_reg(const u32 addr, const u32 instr) noexcept
+std::string psr_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "psr_transfer_reg";
 }
@@ -107,47 +110,47 @@ std::string branch_exchange(const u32 /*addr*/, const u32 instr) noexcept
     return fmt::format("BX {}", register_mnemonics[instr & 0xF_u32]);
 }
 
-std::string multiply(const u32 addr, const u32 instr) noexcept
+std::string multiply(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "multiply";
 }
 
-std::string multiply_long(const u32 addr, const u32 instr) noexcept
+std::string multiply_long(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "multiply_long";
 }
 
-std::string single_data_swap(const u32 addr, const u32 instr) noexcept
+std::string single_data_swap(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "single_data_swap";
 }
 
-std::string halfword_data_transfer_reg(const u32 addr, const u32 instr) noexcept
+std::string halfword_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "halfword_data_transfer_reg";
 }
 
-std::string halfword_data_transfer_imm(const u32 addr, const u32 instr) noexcept
+std::string halfword_data_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "halfword_data_transfer_imm";
 }
 
-std::string single_data_transfer_imm(const u32 addr, const u32 instr) noexcept
+std::string single_data_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "single_data_transfer_imm";
 }
 
-std::string single_data_transfer_reg(const u32 addr, const u32 instr) noexcept
+std::string single_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "single_data_transfer_reg";
 }
 
-std::string undefined(const u32 addr, const u32 instr) noexcept
+std::string undefined(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "undefined";
 }
 
-std::string block_data_transfer(const u32 addr, const u32 instr) noexcept
+std::string block_data_transfer(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "block_data_transfer";
 }
@@ -249,8 +252,7 @@ namespace gba::debugger {
 */
 disassembler::disassembler() noexcept
     : arm_table_{
-        {"000xxxxxxxxx", connect_arg<&data_processing_reg>},
-        {"001xxxxxxxxx", connect_arg<&data_processing_imm>},
+        {"000xxxxxxxxx", connect_arg<&data_processing>},
         {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
         {"00010xx00000", connect_arg<&psr_transfer_reg>},
         {"000100100001", connect_arg<&branch_exchange>},
