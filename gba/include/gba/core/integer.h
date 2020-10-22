@@ -343,6 +343,9 @@ using u64 = integer<uint64_t>;
 
 using usize = integer<std::size_t>;
 
+template<typename T>
+using numeric_limits = std::numeric_limits<typename T::type>;
+
 } // namespace gba
 
 // make sure these are in the global namespace
