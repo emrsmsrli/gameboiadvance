@@ -190,6 +190,9 @@ public:
 
 namespace detail {
 
+template<typename Integer>
+using underlying_int_type = typename Integer::type;
+
 template<typename T>
 struct make_signed {
     using type = typename std::make_signed<T>::type;
@@ -214,6 +217,11 @@ struct make_unsigned<integer<T>>
 };
 
 } // namespace detail
+
+template<typename To, typename From, typename = std::enable_if_t<
+        detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>
+        && sizeof(To) < sizeof(From)>>
+FORCEINLINE constexpr To narrow(const From from) noexcept { return static_cast<typename To::type>(from.get()); }
 
 // sign ops
 
