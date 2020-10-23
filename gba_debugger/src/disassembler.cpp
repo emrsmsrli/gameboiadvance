@@ -134,9 +134,14 @@ std::string multiply(const u32 /*addr*/, const u32 instr) noexcept
     }
 }
 
-std::string single_data_swap(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string single_data_swap(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return "single_data_swap";
+    return fmt::format("SWP{}{} {},{},[{}]",
+                       bit::test(instr, 22_u32) ? "B" : "",
+                       get_condition_mnemonic(instr),
+                       register_mnemonics[(instr >> 12_u32) & 0xF_u32],
+                       register_mnemonics[instr & 0xF_u32],
+                       register_mnemonics[(instr >> 16_u32) & 0xF_u32]);
 }
 
 std::string halfword_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
@@ -164,7 +169,7 @@ std::string undefined(const u32 /*addr*/, const u32 /*instr*/) noexcept
     return "undefined";
 }
 
-std::string block_data_transfer(const u32 addr, const u32 instr) noexcept
+std::string block_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 {
     const auto get_target_reg_list = [](const u32 inst) -> std::string {
         const auto print_range = [](std::stringstream& stream, auto count, auto start, auto i) {
@@ -280,7 +285,7 @@ namespace gba::debugger {
  * STR      Store register to memory        <address> := Rd                 4.9, 4.10
  * SUB      Subtract                        Rd := Rn - Op                   24.5            x
  * SWI      Software Interrupt              OS call                         4.13            x
- * SWP      Swap register with memory       Rd := [Rn], [Rn] := Rm          4.12
+ * SWP      Swap register with memory       Rd := [Rn], [Rn] := Rm          4.12            x
  * TEQ      Test bitwise equality           CPSR flags := Rn EOR Op         24.5            x
  * TST      Test bits                       CPSR flags := Rn AND Op         24.5            x
  */
