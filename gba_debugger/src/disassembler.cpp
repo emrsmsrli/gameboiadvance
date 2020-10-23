@@ -1,6 +1,7 @@
 #include <gba_debugger/disassembler.h>
 
 #include <string_view>
+#include <sstream>
 
 #include <fmt/format.h>
 #include <imgui-SFML.h>
@@ -133,11 +134,6 @@ std::string multiply(const u32 /*addr*/, const u32 instr) noexcept
     }
 }
 
-std::string multiply_long(const u32 /*addr*/, const u32 /*instr*/) noexcept
-{
-    return "multiply_long";
-}
-
 std::string single_data_swap(const u32 /*addr*/, const u32 /*instr*/) noexcept
 {
     return "single_data_swap";
@@ -168,9 +164,54 @@ std::string undefined(const u32 /*addr*/, const u32 /*instr*/) noexcept
     return "undefined";
 }
 
-std::string block_data_transfer(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string block_data_transfer(const u32 addr, const u32 instr) noexcept
 {
-    return "block_data_transfer";
+    const auto get_target_reg_list = [](const u32 inst) -> std::string {
+        const auto print_range = [](std::stringstream& stream, auto count, auto start, auto i) {
+            if(count == 1_u32) {
+                stream << register_mnemonics[start] << ',';
+            } else if(count == 2_u32) {
+                stream << register_mnemonics[start] << ',' << register_mnemonics[start + 1] << ',';
+            } else if(count > 2_u32) {
+                stream << register_mnemonics[start] << '-' << register_mnemonics[i - 1_u32] << ',';
+            }
+        };
+
+        std::stringstream stream;
+        u32 range_count = 0_u32;
+        u32 range_start = 0_u32;
+        for(u32 i = 0_u32; i < 16_u32; ++i) {
+            if(bit::test(inst, i)) {
+                if(range_count == 0_u32) { range_start = i; }
+                ++range_count;
+            } else {
+                print_range(stream, range_count, range_start, i);
+                range_count = 0_u32;
+            }
+        }
+
+        print_range(stream, range_count, range_start, 16_u32);
+        auto str = stream.str();
+        if(!str.empty() && str.back() == ',') { str.pop_back(); }
+        return str;
+    };
+
+    const u32 op = ((instr >> 23_u32) & 0b11_u32) | bit::extract(instr, 20) << 2_u32;
+    const u32 reg = (instr >> 16_u32) & 0xF_u32;
+    static constexpr array op_mnemonics{
+        "STMDA"sv, "STMIA"sv, "STMDB"sv, "STMIB"sv,
+        "LDMDA"sv, "LDMIA"sv, "LDMDB"sv, "LDMIB"sv,
+    };
+    static constexpr array op_mnemonics_r13{
+        "STMED"sv, "STMEA"sv, "STMFD"sv, "STMFA"sv,
+        "LDMFA"sv, "LDMFD"sv, "LDMEA"sv, "LDMED"sv,
+    };
+    return fmt::format("{}{} [{}]{},{{{}}}{}",
+                       reg == 13_u32 ? op_mnemonics_r13[op] : op_mnemonics[op],
+                       get_condition_mnemonic(instr),
+                       register_mnemonics[reg],
+                       bit::test(instr, 21_u32) ? "!" : "", // write back
+                       get_target_reg_list(instr), bit::test(instr, 22_u32) ? "^" : "");
 }
 
 std::string branch_link(const u32 addr, const u32 instr) noexcept
@@ -215,11 +256,11 @@ namespace gba::debugger {
  * EOR      Exclusive OR                    Rd := (Rn AND NOT Op2)          4.5             x
                                             OR (op2 AND NOT Rn)
  * LDC      Load coprocessor from memory    Coprocessor load                4.15
- * LDM      Load multiple registers         Stack manipulation (Pop)        4.11
+ * LDM      Load multiple registers         Stack manipulation (Pop)        4.11            x
  * LDR      Load register from memory       Rd := (address)                 4.9, 4.10
  * MCR      Move CPU register to            cRn := rRn {<op>cRm}            4.16
             coprocessor register
- * MLA      Multiply Accumulate             Rd := (Rm * Rs) + Rn            4.7, 4.8
+ * MLA      Multiply Accumulate             Rd := (Rm * Rs) + Rn            4.7, 4.8        x
  * MOV      Move register or constant       Rd : = Op                       24.5            x
  * MRC      Move from coprocessor           Rn := cRn {<op>cRm}             4.16
             register to CPU register
@@ -227,7 +268,7 @@ namespace gba::debugger {
             register
  * MSR      Move register to PSR            PSR := Rm                       4.6
             status/flags
- * MUL      Multiply                        Rd := Rm * Rs                   4.7, 4.8
+ * MUL      Multiply                        Rd := Rm * Rs                   4.7, 4.8        x
  * MVN      Move negative register          Rd := 0xFFFFFFFF EOR Op         24.5            x
  * ORR      OR                              Rd := Rn OR Op                  24.5            x
  * RSB      Reverse Subtract                Rd := Op2 - Rn                  4.5             x
@@ -235,7 +276,7 @@ namespace gba::debugger {
  * SBC      Subtract with Carry             Rd := Rn - Op2 - 1 + Carry      4.5             x
  * STC      Store coprocessor register to   address := CRn                  4.15
             memory
- * STM      Store Multiple                  Stack manipulation (Push)       4.11
+ * STM      Store Multiple                  Stack manipulation (Push)       4.11            x
  * STR      Store register to memory        <address> := Rd                 4.9, 4.10
  * SUB      Subtract                        Rd := Rn - Op                   24.5            x
  * SWI      Software Interrupt              OS call                         4.13            x
