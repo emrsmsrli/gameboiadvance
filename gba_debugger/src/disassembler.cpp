@@ -18,16 +18,17 @@ namespace {
 using namespace gba;
 using namespace std::string_view_literals;
 
+constexpr array shift_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv};
 constexpr array register_mnemonics{
-    "r0"sv, "r1"sv, "r2"sv, "r3"sv, "r4"sv, "r5"sv, "r6"sv, "r7"sv, "r8"sv, "r9"sv,
-    "r10"sv, "r11"sv, "r12"sv, "r13"sv, "r14"sv, "r15"sv, "cpsr"sv, "spsr"sv
+  "r0"sv, "r1"sv, "r2"sv, "r3"sv, "r4"sv, "r5"sv, "r6"sv, "r7"sv, "r8"sv, "r9"sv,
+  "r10"sv, "r11"sv, "r12"sv, "r13"sv, "r14"sv, "r15"sv, "cpsr"sv, "spsr"sv
 };
 
 std::string_view get_condition_mnemonic(const u32 instr) noexcept
 {
     static constexpr array mnemonics{
-        "EQ"sv, "NE"sv, "CS"sv, "CC"sv, "MI"sv, "PL"sv, "VS"sv, "VC"sv,
-        "HI"sv, "LS"sv, "GE"sv, "LT"sv, "GT"sv, "LE"sv, ""sv, /*AL*/ "NV"sv,
+      "EQ"sv, "NE"sv, "CS"sv, "CC"sv, "MI"sv, "PL"sv, "VS"sv, "VC"sv,
+      "HI"sv, "LS"sv, "GE"sv, "LT"sv, "GT"sv, "LE"sv, ""sv, /*AL*/ "NV"sv,
     };
     return mnemonics[instr >> 28_u32];
 }
@@ -43,8 +44,6 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
     const u32 rd = (instr >> 12_u32) & 0xF_u32;
 
     static constexpr auto op2 = [](const u32 instr) -> std::string {
-        static constexpr array shift_mnemonics{ "LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv };
-
         // immediate as 2nd operand
         if(bit::test(instr, 25_u32)) {
             const auto imm = instr & 0xFF_u32;
@@ -58,7 +57,8 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
 
         if(bit::test(instr, 4_u32)) {
             const u32 rshift = (instr >> 8_u32) & 0xF_u32;
-            return fmt::format("{},{} {}", register_mnemonics[r2], shift_mnemonics[shift_type], register_mnemonics[rshift]);
+            return fmt::format("{},{} {}",
+              register_mnemonics[r2], shift_mnemonics[shift_type], register_mnemonics[rshift]);
         }
 
         u32 shift_amount = (instr >> 7_u32) & 0x1F_u32;
@@ -70,24 +70,45 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
     };
 
     switch(opcode.get()) {
-        case 0x0: return fmt::format("AND{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x1: return fmt::format("EOR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x2: return fmt::format("SUB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x3: return fmt::format("RSB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x4: return fmt::format("ADD{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x5: return fmt::format("ADC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x6: return fmt::format("SBC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0x7: return fmt::format("RSC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
+        case 0x0:
+            return fmt::format("AND{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x1:
+            return fmt::format("EOR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x2:
+            return fmt::format("SUB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x3:
+            return fmt::format("RSB{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x4:
+            return fmt::format("ADD{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x5:
+            return fmt::format("ADC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x6:
+            return fmt::format("SBC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0x7:
+            return fmt::format("RSC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
         case 0x8: return fmt::format("TST{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0x9: return fmt::format("TEQ{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0xA: return fmt::format("CMP{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
         case 0xB: return fmt::format("CMN{} {},{}", cond_mnemonic, register_mnemonics[rn], op2(instr));
-        case 0xC: return fmt::format("ORR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0xD: return fmt::format("MOV{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
-        case 0xE: return fmt::format("BIC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], register_mnemonics[rn], op2(instr));
-        case 0xF: return fmt::format("MVN{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
-        default:
-            UNREACHABLE();
+        case 0xC:
+            return fmt::format("ORR{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0xD:
+            return fmt::format("MOV{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
+        case 0xE:
+            return fmt::format("BIC{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd],
+              register_mnemonics[rn], op2(instr));
+        case 0xF:
+            return fmt::format("MVN{}{} {},{}", cond_set_mnemonic, cond_mnemonic, register_mnemonics[rd], op2(instr));
+        default: UNREACHABLE();
     }
 }
 
@@ -117,31 +138,36 @@ std::string multiply(const u32 /*addr*/, const u32 instr) noexcept
     const u32 rm = instr & 0xF_u32;
 
     switch(opcode.get()) {
-        case 0b0000: return fmt::format("MUL{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        case 0b0001: return fmt::format("MLA{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs], register_mnemonics[rn]);
-        case 0b0100: return fmt::format("UMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        case 0b0101: return fmt::format("UMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        case 0b0110: return fmt::format("SMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        case 0x0111: return fmt::format("SMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
-                                        register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        default:
-            UNREACHABLE();
+        case 0b0000:
+            return fmt::format("MUL{}{} {},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0001:
+            return fmt::format("MLA{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs], register_mnemonics[rn]);
+        case 0b0100:
+            return fmt::format("UMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0101:
+            return fmt::format("UMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0b0110:
+            return fmt::format("SMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        case 0x0111:
+            return fmt::format("SMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
+              register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
+        default: UNREACHABLE();
     }
 }
 
 std::string single_data_swap(const u32 /*addr*/, const u32 instr) noexcept
 {
     return fmt::format("SWP{}{} {},{},[{}]",
-                       bit::test(instr, 22_u32) ? "B" : "",
-                       get_condition_mnemonic(instr),
-                       register_mnemonics[(instr >> 12_u32) & 0xF_u32],
-                       register_mnemonics[instr & 0xF_u32],
-                       register_mnemonics[(instr >> 16_u32) & 0xF_u32]);
+      bit::test(instr, 22_u32) ? "B" : "",
+      get_condition_mnemonic(instr),
+      register_mnemonics[(instr >> 12_u32) & 0xF_u32],
+      register_mnemonics[instr & 0xF_u32],
+      register_mnemonics[(instr >> 16_u32) & 0xF_u32]);
 }
 
 std::string halfword_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
@@ -154,14 +180,71 @@ std::string halfword_data_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) 
     return "halfword_data_transfer_imm";
 }
 
-std::string single_data_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return "single_data_transfer_imm";
-}
+    const auto get_addr = [](const u32 i) -> std::string {
+        const auto rn = register_mnemonics[(i >> 16_u32) & 0xF_u32];
+        const auto updown = bit::test(i, 23_u32) ? ""sv : "-"sv;
+        const u32 offset = i & 0xFFF_u32;
 
-std::string single_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
-{
-    return "single_data_transfer_reg";
+        // pre indexing
+        if(bit::test(i, 24_u32)) {
+            const auto write_back = bit::test(i, 21_u32) ? "!"sv : ""sv;
+
+            if(offset == 0_u32) {
+                return fmt::format("[{}]", rn);
+            }
+
+            // imm src
+            if(!bit::test(i, 25_u32)) {
+                return fmt::format("[{},{}0x{:02X}]{}", rn, updown, offset, write_back);
+            }
+
+            // reg src
+            const u32 rm = offset & 0xF_u32;
+            const u32 shift_amount = (offset >> 7_u32) & 0xF_u32;
+            const u32 shift_type = (offset >> 5_u32) & 0x2_u32;
+
+            if(shift_type == 0_u32 && shift_amount == 0_u32) {
+                return fmt::format("[{},{}{}]{}", rn, updown, register_mnemonics[rm], write_back);
+            }
+
+            return fmt::format("[{},{}{},{} 0x{:X}]{}", rn, updown, register_mnemonics[rm],
+              shift_mnemonics[shift_type], shift_amount, write_back);
+        }
+
+        // pre indexing
+
+        // imm src
+        if(!bit::test(i, 25_u32)) {
+            return fmt::format("[{}],{}0x{:02X}", rn, updown, offset);
+        }
+
+        // reg src
+        const u32 rm = offset & 0xF_u32;
+        const u32 shift_amount = (offset >> 7_u32) & 0xF_u32;
+        const u32 shift_type = (offset >> 5_u32) & 0x2_u32;
+
+        if(shift_type == 0_u32 && shift_amount == 0_u32) {
+            return fmt::format("[{}],{}{}", rn, updown, register_mnemonics[rm]);
+        }
+
+        return fmt::format("[{}],{}{},{} 0x{:X}", rn, updown, register_mnemonics[rm],
+          shift_mnemonics[shift_type], shift_amount);
+    };
+
+    static constexpr array op_mnemonics{
+      "STR"sv, "LDR"sv, "STRB"sv, "LDRB"sv,
+      "STRT"sv, "LDRT"sv, "STRBT"sv, "LDRBT"sv,
+    };
+
+    const bool is_load = bit::test(instr, 20_u32);
+    const u32 op = bit::from_bool(is_load)
+      | (bit::extract(instr, 22_u32) << 1_u32)
+      | (bit::from_bool(!bit::test(instr, 24_u32) && bit::test(instr, 21_u32)) << 2_u32);
+
+    return fmt::format("{}{} {},{}", op_mnemonics[op], get_condition_mnemonic(instr),
+      register_mnemonics[(instr >> 12_u32) & 0xF_u32], get_addr(instr));
 }
 
 std::string undefined(const u32 /*addr*/, const u32 /*instr*/) noexcept
@@ -204,19 +287,19 @@ std::string block_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
     const u32 op = ((instr >> 23_u32) & 0b11_u32) | bit::extract(instr, 20) << 2_u32;
     const u32 reg = (instr >> 16_u32) & 0xF_u32;
     static constexpr array op_mnemonics{
-        "STMDA"sv, "STMIA"sv, "STMDB"sv, "STMIB"sv,
-        "LDMDA"sv, "LDMIA"sv, "LDMDB"sv, "LDMIB"sv,
+      "STMDA"sv, "STMIA"sv, "STMDB"sv, "STMIB"sv,
+      "LDMDA"sv, "LDMIA"sv, "LDMDB"sv, "LDMIB"sv,
     };
     static constexpr array op_mnemonics_r13{
-        "STMED"sv, "STMEA"sv, "STMFD"sv, "STMFA"sv,
-        "LDMFA"sv, "LDMFD"sv, "LDMEA"sv, "LDMED"sv,
+      "STMED"sv, "STMEA"sv, "STMFD"sv, "STMFA"sv,
+      "LDMFA"sv, "LDMFD"sv, "LDMEA"sv, "LDMED"sv,
     };
     return fmt::format("{}{} [{}]{},{{{}}}{}",
-                       reg == 13_u32 ? op_mnemonics_r13[op] : op_mnemonics[op],
-                       get_condition_mnemonic(instr),
-                       register_mnemonics[reg],
-                       bit::test(instr, 21_u32) ? "!" : "", // write back
-                       get_target_reg_list(instr), bit::test(instr, 22_u32) ? "^" : "");
+      reg == 13_u32 ? op_mnemonics_r13[op] : op_mnemonics[op],
+      get_condition_mnemonic(instr),
+      register_mnemonics[reg],
+      bit::test(instr, 21_u32) ? "!" : "", // write back
+      get_target_reg_list(instr), bit::test(instr, 22_u32) ? "^" : "");
 }
 
 std::string branch_link(const u32 addr, const u32 instr) noexcept
@@ -224,9 +307,9 @@ std::string branch_link(const u32 addr, const u32 instr) noexcept
     const i32 sign_extended_offset = math::sign_extend<26>((instr & 0xFFFFFF_u32) << 2_u32);
 
     return fmt::format("B{}{} 0x{:0>8X}",
-                       bit::test(instr, 24_u32)  ? "L" : "",
-                       get_condition_mnemonic(instr),
-                       addr + sign_extended_offset + 8_u32);
+      bit::test(instr, 24_u32) ? "L" : "",
+      get_condition_mnemonic(instr),
+      addr + sign_extended_offset + 8_u32);
 }
 
 std::string swi(const u32 /*addr*/, const u32 instr) noexcept
@@ -262,7 +345,7 @@ namespace gba::debugger {
                                             OR (op2 AND NOT Rn)
  * LDC      Load coprocessor from memory    Coprocessor load                4.15
  * LDM      Load multiple registers         Stack manipulation (Pop)        4.11            x
- * LDR      Load register from memory       Rd := (address)                 4.9, 4.10
+ * LDR      Load register from memory       Rd := (address)                 4.9, 4.10       x
  * MCR      Move CPU register to            cRn := rRn {<op>cRm}            4.16
             coprocessor register
  * MLA      Multiply Accumulate             Rd := (Rm * Rs) + Rn            4.7, 4.8        x
@@ -282,7 +365,7 @@ namespace gba::debugger {
  * STC      Store coprocessor register to   address := CRn                  4.15
             memory
  * STM      Store Multiple                  Stack manipulation (Push)       4.11            x
- * STR      Store register to memory        <address> := Rd                 4.9, 4.10
+ * STR      Store register to memory        <address> := Rd                 4.9, 4.10       x
  * SUB      Subtract                        Rd := Rn - Op                   24.5            x
  * SWI      Software Interrupt              OS call                         4.13            x
  * SWP      Swap register with memory       Rd := [Rn], [Rn] := Rm          4.12            x
@@ -315,29 +398,29 @@ namespace gba::debugger {
   |_Cond__|1_1_1_1|_____________Ignored_by_Processor______________| SWI             x
 */
 disassembler::disassembler() noexcept
-    : arm_table_{
-        {"000xxxxxxxx0", connect_arg<&data_processing>},
-        {"000xxxxx0xx1", connect_arg<&data_processing>},
-        {"001xxxxxxxxx", connect_arg<&data_processing>},
-        {"000100100001", connect_arg<&branch_exchange>},
-        {"000xx0xx1xx1", connect_arg<&halfword_data_transfer_reg>},
-        {"000xx1xx1xx1", connect_arg<&halfword_data_transfer_imm>},
-        {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
-        {"00010xx00000", connect_arg<&psr_transfer_reg>},
-        {"000000xx1001", connect_arg<&multiply>},
-        {"00001xxx1001", connect_arg<&multiply>},
-        {"00010x001001", connect_arg<&single_data_swap>},
-        {"010xxxxxxxxx", connect_arg<&single_data_transfer_imm>},
-        {"011xxxxxxxx0", connect_arg<&single_data_transfer_reg>},
-        {"011xxxxxxxx1", connect_arg<&undefined>},
-        {"100xxxxxxxxx", connect_arg<&block_data_transfer>},
-        {"101xxxxxxxxx", connect_arg<&branch_link>},
-        {"1111xxxxxxxx", connect_arg<&swi>},
-      },
-      thumb_table_{
+  : arm_table_{
+      {"000xxxxxxxx0", connect_arg<&data_processing>},
+      {"000xxxxx0xx1", connect_arg<&data_processing>},
+      {"001xxxxxxxxx", connect_arg<&data_processing>},
+      {"000100100001", connect_arg<&branch_exchange>},
+      {"000xx0xx1xx1", connect_arg<&halfword_data_transfer_reg>},
+      {"000xx1xx1xx1", connect_arg<&halfword_data_transfer_imm>},
+      {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
+      {"00010xx00000", connect_arg<&psr_transfer_reg>},
+      {"000000xx1001", connect_arg<&multiply>},
+      {"00001xxx1001", connect_arg<&multiply>},
+      {"00010x001001", connect_arg<&single_data_swap>},
+      {"010xxxxxxxxx", connect_arg<&single_data_transfer>},
+      {"011xxxxxxxx0", connect_arg<&single_data_transfer>},
+      {"011xxxxxxxx1", connect_arg<&undefined>},
+      {"100xxxxxxxxx", connect_arg<&block_data_transfer>},
+      {"101xxxxxxxxx", connect_arg<&branch_link>},
+      {"1111xxxxxxxx", connect_arg<&swi>},
+    },
+    thumb_table_{
 
-      },
-      window_{sf::VideoMode(500, 500), "GBA Debugger"}
+    },
+    window_{sf::VideoMode(500, 500), "GBA Debugger"}
 {
     window_.resetGLStates();
     window_.setFramerateLimit(60);
