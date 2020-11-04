@@ -354,22 +354,26 @@ using usize = integer<std::size_t>;
 template<typename T>
 using numeric_limits = std::numeric_limits<typename T::type>;
 
-} // namespace gba
+inline namespace integer_literals {
 
-// make sure these are in the global namespace
-FORCEINLINE constexpr int8_t operator""_i8(unsigned long long v) noexcept { return static_cast<int8_t>(v); }
-FORCEINLINE constexpr uint8_t operator""_u8(unsigned long long v) noexcept { return static_cast<uint8_t>(v); }
-FORCEINLINE constexpr int16_t operator""_i16(unsigned long long v) noexcept { return static_cast<int16_t>(v); }
-FORCEINLINE constexpr uint16_t operator""_u16(unsigned long long v) noexcept { return static_cast<uint16_t>(v); }
-FORCEINLINE constexpr int32_t operator""_i32(unsigned long long v) noexcept { return static_cast<int32_t>(v); }
-FORCEINLINE constexpr uint32_t operator""_u32(unsigned long long v) noexcept { return static_cast<uint32_t>(v); }
-FORCEINLINE constexpr int64_t operator""_i64(unsigned long long v) noexcept { return static_cast<int64_t>(v); }
-FORCEINLINE constexpr uint64_t operator""_u64(unsigned long long v) noexcept { return v; }
+FORCEINLINE constexpr i8::type operator""_i8(unsigned long long v) noexcept { return static_cast<i8::type>(v); }
+FORCEINLINE constexpr u8::type operator""_u8(unsigned long long v) noexcept { return static_cast<u8::type>(v); }
+FORCEINLINE constexpr i16::type operator""_i16(unsigned long long v) noexcept { return static_cast<i16::type>(v); }
+FORCEINLINE constexpr u16::type operator""_u16(unsigned long long v) noexcept { return static_cast<u16::type>(v); }
+FORCEINLINE constexpr i32::type operator""_i32(unsigned long long v) noexcept { return static_cast<i32::type>(v); }
+FORCEINLINE constexpr u32::type operator""_u32(unsigned long long v) noexcept { return static_cast<u32::type>(v); }
+FORCEINLINE constexpr i64::type operator""_i64(unsigned long long v) noexcept { return static_cast<i64::type>(v); }
+FORCEINLINE constexpr u64::type operator""_u64(unsigned long long v) noexcept { return v; }
+FORCEINLINE constexpr usize::type operator""_usize(unsigned long long v) noexcept { return static_cast<usize::type>(v); }
 
-FORCEINLINE constexpr auto operator""_kb(unsigned long long v) noexcept
+FORCEINLINE constexpr usize operator ""_kb(unsigned long long v) noexcept
 {
-    return gba::integer<std::size_t>(static_cast<std::size_t>(v) * 1024u);
+    return static_cast<usize::type>(v) * 1024_u32;
 }
+
+} // inline namespace integer_literals
+
+} // namespace gba
 
 template<typename Integer>
 struct std::hash<gba::integer<Integer>> {
