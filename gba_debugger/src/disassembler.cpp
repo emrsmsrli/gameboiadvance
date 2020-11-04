@@ -13,9 +13,10 @@
 
 // https://www.reddit.com/r/EmuDev/comments/8gltfq/gbaarm_instruction_decoding_methods/
 
+namespace gba::debugger {
+
 namespace {
 
-using namespace gba;
 using namespace std::string_view_literals;
 
 constexpr array shift_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv};
@@ -325,8 +326,6 @@ std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 /* thumb disassemble end */
 
 } // namespace
-
-namespace gba::debugger {
 
 /*
  * Mnemonic Instruction                     Action                          See Section:
