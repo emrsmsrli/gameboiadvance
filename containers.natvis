@@ -8,7 +8,7 @@
         <Expand><ExpandedItem>data_</ExpandedItem></Expand>
     </Type>
     <Type Name="gba::array&lt;*&gt;">
-        <DisplayString>{data_}</DisplayString>
-        <Expand><ExpandedItem>data_</ExpandedItem></Expand>
+        <DisplayString>{_data}</DisplayString>
+        <Expand><ExpandedItem>_data</ExpandedItem></Expand>
     </Type>
 </AutoVisualizer>
