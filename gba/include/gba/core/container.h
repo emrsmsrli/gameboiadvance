@@ -14,8 +14,8 @@ namespace detail {
 template<typename First, typename... Rest>
 struct array_enforce_same {
     static_assert(std::conjunction_v<std::is_same<First, Rest>...>,
-    "N4687 26.3.7.2 [array.cons]/2: "
-    "Requires: (is_same_v<T, U> && ...) is true. Otherwise the program is ill-formed.");
+      "N4687 26.3.7.2 [array.cons]/2: "
+      "Requires: (is_same_v<T, U> && ...) is true. Otherwise the program is ill-formed.");
     using type = First;
 };
 
@@ -40,7 +40,7 @@ struct array {
     constexpr auto cend() const noexcept { return std::cend(_data); }
 };
 
-template <class First, class... Rest>
+template<class First, class... Rest>
 array(First, Rest...)->array<typename detail::array_enforce_same<First, Rest...>::type, 1 + sizeof...(Rest)>;
 
 template<typename T>
@@ -49,8 +49,10 @@ class vector {
 
 public:
     vector() = default;
-    explicit vector(const usize size) : data_(size.get()) {}
-    explicit vector(std::vector<T> data) : data_(std::move(data)) {}
+    explicit vector(const usize size)
+      : data_(size.get()) {}
+    explicit vector(std::vector<T> data)
+      : data_(std::move(data)) {}
 
     [[nodiscard]] T& operator[](const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] T operator[](const usize idx) const noexcept { return data_[idx.get()]; }
@@ -69,8 +71,10 @@ public:
     void clear() noexcept { data_.clear(); }
     auto erase(typename std::vector<T>::iterator pos) { return data_.erase(pos); }
     auto erase(typename std::vector<T>::const_iterator pos) { return data_.erase(pos); }
-    auto erase(typename std::vector<T>::iterator first, typename std::vector<T>::iterator last) noexcept { return data_.erase(first, last); }
-    auto erase(typename std::vector<T>::const_iterator first, typename std::vector<T>::const_iterator last) { return data_.erase(first, last); }
+    auto erase(typename std::vector<T>::iterator first,
+      typename std::vector<T>::iterator last) noexcept { return data_.erase(first, last); }
+    auto erase(typename std::vector<T>::const_iterator first,
+      typename std::vector<T>::const_iterator last) { return data_.erase(first, last); }
     void pop_back() noexcept { return data_.pop_back(); }
 
     auto begin() const noexcept { return data_.begin(); }

@@ -1,7 +1,3 @@
-//
-// Created by Emre on 02/10/2020.
-//
-
 #ifndef GAMEBOIADVANCE_VARIANT_VISIT_H
 #define GAMEBOIADVANCE_VARIANT_VISIT_H
 
@@ -32,8 +28,8 @@ template<size_t N, typename R, typename Variant, typename Visitor>
 
 template<class... Args, typename Visitor, typename... Visitors>
 [[nodiscard]] constexpr decltype(auto) visit_nt(
-        const std::variant<Args...>& var,
-        Visitor&& vis, Visitors&& ... visitors)
+  const std::variant<Args...>& var,
+  Visitor&& vis, Visitors&& ... visitors)
 {
     auto ol = overload{std::forward<Visitor>(vis), std::forward<Visitors>(visitors)...};
     using result_t = decltype(std::invoke(std::move(ol), std::get<0>(var)));

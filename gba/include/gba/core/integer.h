@@ -13,33 +13,33 @@ namespace gba {
 namespace detail {
 
 template<typename T> inline constexpr bool is_integer_v =
-        std::is_integral_v<T> &&
-        !std::is_same_v<T, bool> &&
-        !std::is_same_v<T, char>;
+  std::is_integral_v<T> &&
+    !std::is_same_v<T, bool> &&
+    !std::is_same_v<T, char>;
 
 template<typename T>
 using enable_integer = std::enable_if_t<is_integer_v<T>>;
 
 template<typename From, typename To>
 inline constexpr bool is_safe_integer_conversion_v =
-        is_integer_v<From> && is_integer_v<To> &&
-        ((sizeof(From) <= sizeof(To) && std::is_signed_v<From> == std::is_signed_v<To>) ||
-         (sizeof(From) < sizeof(To) && std::is_unsigned_v<From>));
+  is_integer_v<From> && is_integer_v<To> &&
+    ((sizeof(From) <= sizeof(To) && std::is_signed_v<From> == std::is_signed_v<To>) ||
+      (sizeof(From) < sizeof(To) && std::is_unsigned_v<From>));
 
 template<typename From, typename To>
 using enable_safe_integer_conversion = std::enable_if_t<is_safe_integer_conversion_v<From, To>>;
 
 template<typename From, typename To>
 inline constexpr bool is_safe_integer_comparison_v =
-        is_safe_integer_conversion_v<From, To> || is_safe_integer_conversion_v<To, From>;
+  is_safe_integer_conversion_v<From, To> || is_safe_integer_conversion_v<To, From>;
 
 template<typename A, typename B>
 using enable_safe_integer_comparison = std::enable_if_t<is_safe_integer_comparison_v<A, B>>;
 
 template<typename From, typename To>
 inline constexpr bool is_safe_integer_operation_v =
-        is_integer_v<From> && is_integer_v<To> &&
-        std::is_signed_v<From> == std::is_signed_v<To>;
+  is_integer_v<From> && is_integer_v<To> &&
+    std::is_signed_v<From> == std::is_signed_v<To>;
 
 template<typename A, typename B>
 using greater_sized_t = std::conditional_t<sizeof(A) < sizeof(B), B, A>;
@@ -48,7 +48,8 @@ template<typename A, typename B>
 using integer_result_t = std::enable_if_t<is_safe_integer_operation_v<A, B>, greater_sized_t<A, B>>;
 
 template<typename A, typename B>
-using enable_safe_unsigned_operation = std::enable_if_t<std::is_unsigned_v<A> && std::is_unsigned_v<B> && sizeof(A) >= sizeof(B)>;
+using enable_safe_unsigned_operation = std::enable_if_t<
+  std::is_unsigned_v<A> && std::is_unsigned_v<B> && sizeof(A) >= sizeof(B)>;
 
 } // namespace detail
 
@@ -64,11 +65,12 @@ public:
     FORCEINLINE constexpr integer() noexcept = default;
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE constexpr integer(const T value) noexcept : value_{value} {} // NOLINT
+    FORCEINLINE constexpr integer(const T value) noexcept  // NOLINT
+      : value_{value} {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
     FORCEINLINE constexpr integer(const integer<T> value) noexcept  // NOLINT
-        : value_(static_cast<T>(value)) {}
+      : value_(static_cast<T>(value)) {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
     FORCEINLINE integer& operator=(const T value) noexcept
@@ -85,7 +87,7 @@ public:
     }
 
     FORCEINLINE explicit constexpr operator Integer() const noexcept { return value_; }
-    FORCEINLINE constexpr Integer get() const noexcept { return value_; }
+    [[nodiscard]] FORCEINLINE constexpr Integer get() const noexcept { return value_; }
 
     // arithmetic ops
 
@@ -102,7 +104,7 @@ public:
         return *this;
     }
 
-    FORCEINLINE constexpr integer operator++(int) const noexcept
+    FORCEINLINE constexpr integer operator++(int) const noexcept  // NOLINT
     {
         auto res = *this;
         ++*this;
@@ -115,7 +117,7 @@ public:
         return *this;
     }
 
-    FORCEINLINE constexpr integer operator--(int) const noexcept
+    FORCEINLINE constexpr integer operator--(int) const noexcept  // NOLINT
     {
         auto res = *this;
         --*this;
@@ -199,28 +201,25 @@ struct make_signed {
 };
 
 template<typename T>
-struct make_signed<integer<T>>
-{
+struct make_signed<integer<T>> {
     using type = integer<std::make_signed_t<T>>;
 };
 
 template<typename T>
-struct make_unsigned
-{
+struct make_unsigned {
     using type = std::make_unsigned_t<T>;
 };
 
 template<typename T>
-struct make_unsigned<integer<T>>
-{
+struct make_unsigned<integer<T>> {
     using type = integer<std::make_unsigned_t<T>>;
 };
 
 } // namespace detail
 
 template<typename To, typename From, typename = std::enable_if_t<
-        detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>
-        && sizeof(To) < sizeof(From)>>
+  detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>
+    && sizeof(To) < sizeof(From)>>
 FORCEINLINE constexpr To narrow(const From from) noexcept { return static_cast<typename To::type>(from.get()); }
 
 // sign ops
@@ -231,12 +230,19 @@ template<class Integer> using make_unsigned_t = typename detail::make_unsigned<I
 template<typename T, typename = detail::enable_integer<T>>
 FORCEINLINE constexpr make_signed_t<T> make_signed(const T i) noexcept { return static_cast<make_signed_t<T>>(i); }
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) noexcept { return make_signed(static_cast<T>(i)); }
+FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) noexcept
+{
+    return make_signed(static_cast<T>(i));
+}
 
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<T> make_unsigned(const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
+FORCEINLINE constexpr make_unsigned_t<T> make_unsigned(
+  const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept { return make_unsigned(static_cast<T>(i)); }
+FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept
+{
+    return make_unsigned(static_cast<T>(i));
+}
 
 // arithmetic ops
 
@@ -356,15 +362,16 @@ using numeric_limits = std::numeric_limits<typename T::type>;
 
 inline namespace integer_literals {
 
-FORCEINLINE constexpr i8::type operator""_i8(unsigned long long v) noexcept { return static_cast<i8::type>(v); }
-FORCEINLINE constexpr u8::type operator""_u8(unsigned long long v) noexcept { return static_cast<u8::type>(v); }
-FORCEINLINE constexpr i16::type operator""_i16(unsigned long long v) noexcept { return static_cast<i16::type>(v); }
-FORCEINLINE constexpr u16::type operator""_u16(unsigned long long v) noexcept { return static_cast<u16::type>(v); }
-FORCEINLINE constexpr i32::type operator""_i32(unsigned long long v) noexcept { return static_cast<i32::type>(v); }
-FORCEINLINE constexpr u32::type operator""_u32(unsigned long long v) noexcept { return static_cast<u32::type>(v); }
-FORCEINLINE constexpr i64::type operator""_i64(unsigned long long v) noexcept { return static_cast<i64::type>(v); }
-FORCEINLINE constexpr u64::type operator""_u64(unsigned long long v) noexcept { return v; }
-FORCEINLINE constexpr usize::type operator""_usize(unsigned long long v) noexcept { return static_cast<usize::type>(v); }
+FORCEINLINE constexpr i8::type operator ""_i8(unsigned long long v) noexcept { return static_cast<i8::type>(v); }
+FORCEINLINE constexpr u8::type operator ""_u8(unsigned long long v) noexcept { return static_cast<u8::type>(v); }
+FORCEINLINE constexpr i16::type operator ""_i16(unsigned long long v) noexcept { return static_cast<i16::type>(v); }
+FORCEINLINE constexpr u16::type operator ""_u16(unsigned long long v) noexcept { return static_cast<u16::type>(v); }
+FORCEINLINE constexpr i32::type operator ""_i32(unsigned long long v) noexcept { return static_cast<i32::type>(v); }
+FORCEINLINE constexpr u32::type operator ""_u32(unsigned long long v) noexcept { return static_cast<u32::type>(v); }
+FORCEINLINE constexpr i64::type operator ""_i64(unsigned long long v) noexcept { return static_cast<i64::type>(v); }
+FORCEINLINE constexpr u64::type operator ""_u64(unsigned long long v) noexcept { return v; }
+FORCEINLINE constexpr usize::type operator ""_usize(
+  unsigned long long v) noexcept { return static_cast<usize::type>(v); }
 
 FORCEINLINE constexpr usize operator ""_kb(unsigned long long v) noexcept
 {
