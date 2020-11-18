@@ -322,7 +322,7 @@ MAKE_OP(>=)
     template<typename A, typename B, typename = detail::enable_safe_unsigned_operation<A, B>>       \
     FORCEINLINE constexpr integer<A> operator Op(const integer<A> a, const integer<B> b) noexcept   \
     {                                                                                               \
-        return static_cast<A>(a) Op static_cast<B>(b);                                              \
+        return static_cast<A>(static_cast<A>(a) Op static_cast<B>(b));                              \
     }                                                                                               \
     template<typename A, typename B, typename = detail::enable_safe_unsigned_operation<A, B>>       \
     FORCEINLINE constexpr integer<A> operator Op(const A a, const integer<B> b) noexcept            \
