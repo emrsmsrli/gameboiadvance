@@ -566,7 +566,7 @@ std::string disassembler::disassemble_arm(const u32 address, const u32 instructi
 
 std::string disassembler::disassemble_thumb(const u32 address, const u16 instruction) const noexcept
 {
-    if(auto func = thumb_table_[address >> 6_u32]) {
+    if(auto func = thumb_table_[instruction >> 6_u16]) {
         return func(address, instruction);
     }
 
