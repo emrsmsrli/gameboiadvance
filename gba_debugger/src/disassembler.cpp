@@ -27,16 +27,47 @@ constexpr array register_mnemonics{
   "r10"sv, "r11"sv, "r12"sv, "r13"sv, "r14"sv, "r15"sv, "cpsr"sv, "spsr"sv
 };
 
-std::string_view get_condition_mnemonic(const u32 instr) noexcept
+std::string_view get_condition_mnemonic(const u32 instr, const u32 offset = 28_u32) noexcept
 {
     static constexpr array mnemonics{
       "EQ"sv, "NE"sv, "CS"sv, "CC"sv, "MI"sv, "PL"sv, "VS"sv, "VC"sv,
       "HI"sv, "LS"sv, "GE"sv, "LT"sv, "GT"sv, "LE"sv, ""sv, /*AL*/ "NV"sv,
     };
-    return mnemonics[instr >> 28_u32];
+    return mnemonics[instr >> offset];
 }
 
-/* arm disassemble */
+std::string generate_register_list(const u32 instruction, const u32 reg_count) noexcept
+{
+    const auto print_range = [](std::stringstream& stream, auto count, auto start, auto i) {
+        if(count == 1_u32) {
+            stream << register_mnemonics[start] << ',';
+        } else if(count == 2_u32) {
+            stream << register_mnemonics[start] << ',' << register_mnemonics[start + 1] << ',';
+        } else if(count > 2_u32) {
+            stream << register_mnemonics[start] << '-' << register_mnemonics[i - 1_u32] << ',';
+        }
+    };
+
+    std::stringstream stream;
+    u32 range_count = 0_u32;
+    u32 range_start = 0_u32;
+    for(u32 i = 0_u32; i < reg_count; ++i) {
+        if(bit::test(instruction, i)) {
+            if(range_count == 0_u32) { range_start = i; }
+            ++range_count;
+        } else {
+            print_range(stream, range_count, range_start, i);
+            range_count = 0_u32;
+        }
+    }
+
+    print_range(stream, range_count, range_start, reg_count);
+    auto str = stream.str();
+    if(!str.empty() && str.back() == ',') { str.pop_back(); }
+    return str;
+}
+
+namespace arm {
 
 std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
 {
@@ -330,37 +361,7 @@ std::string undefined(const u32 /*addr*/, const u32 /*instr*/) noexcept
 
 std::string block_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 {
-    const auto get_target_reg_list = [](const u32 inst) -> std::string {
-        const auto print_range = [](std::stringstream& stream, auto count, auto start, auto i) {
-            if(count == 1_u32) {
-                stream << register_mnemonics[start] << ',';
-            } else if(count == 2_u32) {
-                stream << register_mnemonics[start] << ',' << register_mnemonics[start + 1] << ',';
-            } else if(count > 2_u32) {
-                stream << register_mnemonics[start] << '-' << register_mnemonics[i - 1_u32] << ',';
-            }
-        };
-
-        std::stringstream stream;
-        u32 range_count = 0_u32;
-        u32 range_start = 0_u32;
-        for(u32 i = 0_u32; i < 16_u32; ++i) {
-            if(bit::test(inst, i)) {
-                if(range_count == 0_u32) { range_start = i; }
-                ++range_count;
-            } else {
-                print_range(stream, range_count, range_start, i);
-                range_count = 0_u32;
-            }
-        }
-
-        print_range(stream, range_count, range_start, 16_u32);
-        auto str = stream.str();
-        if(!str.empty() && str.back() == ',') { str.pop_back(); }
-        return str;
-    };
-
-    const u32 op = ((instr >> 23_u32) & 0b11_u32) | bit::extract(instr, 20) << 2_u32;
+    const u32 op = ((instr >> 23_u32) & 0b11_u32) | bit::extract(instr, 20_u32) << 2_u32;
     const u32 reg = (instr >> 16_u32) & 0xF_u32;
     static constexpr array op_mnemonics{
       "STMDA"sv, "STMIA"sv, "STMDB"sv, "STMIB"sv,
@@ -375,7 +376,7 @@ std::string block_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
       get_condition_mnemonic(instr),
       register_mnemonics[reg],
       bit::test(instr, 21_u32) ? "!" : "", // write back
-      get_target_reg_list(instr), bit::test(instr, 22_u32) ? "^" : "");
+      generate_register_list(instr, 16_u32), bit::test(instr, 22_u32) ? "^" : "");
 }
 
 std::string branch_link(const u32 addr, const u32 instr) noexcept
@@ -393,106 +394,251 @@ std::string swi(const u32 /*addr*/, const u32 instr) noexcept
     return fmt::format("SWI{} 0x{:0>8X}", get_condition_mnemonic(instr), instr & 0xFFFFFF_u32);
 }
 
-/* arm disassemble end */
-/* thumb disassemble */
+} // namespace arm
 
-// todo
+namespace thumb {
 
-/* thumb disassemble end */
+std::string move_shifted_reg(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 op = (instr >> 11_u16) & 0b11_u16;
+    const u16 rd = instr & 0b111_u16;
+    const u16 rs = (instr >> 3_u16) & 0b111_u16;
+    u16 offset = (instr >> 6_u16) & 0x1F_u16;
+
+    if(offset == 0_u16) {
+        if(op == 0_u16) {
+            return fmt::format("MOVS {},{}", register_mnemonics[rd], register_mnemonics[rs]);
+        }
+        offset = 32_u16;
+    }
+
+    static constexpr array op_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv};
+    return fmt::format("{}S {},{},0x{:02X}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs], offset);
+}
+
+std::string add_subtract(const u32 /*addr*/, const u16 instr) noexcept
+{
+    static constexpr array op_mnemonics{"ADD"sv, "SUB"sv};
+    const u16 rd = instr & 0b111_u16;
+    const u16 rs = (instr >> 3_u16) & 0b111_u16;
+
+    // imm
+    if(bit::test(instr, 10_u16)) {
+        return fmt::format("{}S {},{},0x{:X}", op_mnemonics[bit::extract(instr, 9_u32)], register_mnemonics[rd],
+          register_mnemonics[rs], (instr >> 6_u16) & 0b111_u16);
+    }
+
+    // reg
+    return fmt::format("{}S {},{},{}", op_mnemonics[bit::extract(instr, 9_u32)], register_mnemonics[rd],
+      register_mnemonics[rs], register_mnemonics[(instr >> 6_u16) & 0b111_u16]);
+}
+
+std::string mov_cmp_add_sub_imm(const u32 /*addr*/, const u16 instr) noexcept
+{
+    static constexpr array op_mnemonics{"MOV"sv, "CMP"sv, "ADD"sv, "SUB"sv};
+    const u16 imm = instr & 0xFF_u16;
+    const u16 rd = (instr >> 8_u16) & 0b111_u16;
+    const u16 op = (instr >> 11_u16) & 0b11_u16;
+    return fmt::format("{}S {},0x{:02X}", op_mnemonics[op], register_mnemonics[rd], imm);
+}
+
+std::string alu(const u32 /*addr*/, const u16 instr) noexcept
+{
+    static constexpr array op_mnemonics{
+      "ANDS"sv, "EORS"sv, "LSLS"sv, "LSRS"sv, "ASRS"sv, "ADCS"sv, "SBCS"sv, "RORS"sv,
+      "TST"sv, "NEGS"sv, "CMP"sv, "CMN"sv, "ORRS"sv, "MULS"sv, "BICS"sv, "MVNS"sv,
+    };
+    const u16 op = (instr >> 6_u16) & 0xF_u16;
+    const u16 rs = (instr >> 3_u16) & 0b111_u16;
+    const u16 rd = instr & 0b111_u16;
+    return fmt::format("{} {},{}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs]);
+}
+
+std::string hireg_bx(const u32 /*addr*/, const u16 instr) noexcept
+{
+    if(instr == 0x46C0_u16) { return "NOP"; }
+
+    const u16 op = (instr >> 8_u16) & 0b11_u16;
+    const u16 rs = (instr >> 3_u16) & 0b111_u16;
+
+    if(op == 3_u16) {
+        return fmt::format("BX {}", register_mnemonics[rs]);
+    }
+
+    static constexpr array op_mnemonics{"ADD"sv, "CMP"sv, "MOV"sv};
+
+    const u16 rd = (bit::extract(instr, 7_u16) << 2_u16) | (instr & 0b11_u16);
+    return fmt::format("{} {},{}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs]);
+}
+
+std::string pc_rel_load(const u32 addr, const u16 instr) noexcept
+{
+    const u16 rd = (instr >> 8_u16) & 0b111_u16;
+    const u32 jump_addr = ((instr & 0xFF_u16) << 2_u16) + bit::clear(addr + 4_u16, 1_u32);
+    return fmt::format("LDR {},0x{:08X}", register_mnemonics[rd], jump_addr);
+}
+
+std::string ld_str_reg(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = instr & 0b111_u16;
+    const u16 rb = (instr >> 3_u16) & 0b111_u16;
+    const u16 ro = (instr >> 6_u16) & 0b111_u16;
+    const u16 op = (instr >> 10_u16) & 0b11_u16;
+
+    static constexpr array op_mnemonics{"STR"sv, "STRB"sv, "LDR"sv, "LDRB"sv};
+    return fmt::format("{} {},[{},{}]", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rb],
+      register_mnemonics[ro]);
+}
+
+std::string ld_str_sign_extended_byte_hword(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = instr & 0b111_u16;
+    const u16 rb = (instr >> 3_u16) & 0b111_u16;
+    const u16 ro = (instr >> 6_u16) & 0b111_u16;
+    const u16 op = (instr >> 10_u16) & 0b11_u16;
+
+    static constexpr array op_mnemonics{"STRH"sv, "LDSB"sv, "LDRH"sv, "LDSH"sv};
+    return fmt::format("{} {},[{},{}]", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rb],
+      register_mnemonics[ro]);
+}
+
+std::string ld_str_imm(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = instr & 0b111_u16;
+    const u16 rb = (instr >> 3_u16) & 0b111_u16;
+    u16 imm = (instr >> 6_u16) & 0x1F_u16;
+    const u16 op = (instr >> 11_u16) & 0b11_u16;
+
+    if(!bit::test(op, 1_u16)) {
+        imm <<= 2_u16;
+    }
+
+    static constexpr array op_mnemonics{"STR"sv, "LDR"sv, "STRB"sv, "LDRB"sv};
+    return fmt::format("{} {},[{},0x{:02X}]", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rb], imm);
+}
+
+std::string ld_str_hword(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = instr & 0b111_u16;
+    const u16 rb = (instr >> 3_u16) & 0b111_u16;
+    const u16 imm = ((instr >> 6_u16) & 0x1F_u16) << 1_u16;
+    static constexpr array op_mnemonics{"STRH"sv, "LDRH"sv};
+    return fmt::format("{} {},[{},0x{:02X}]", op_mnemonics[bit::extract(instr, 11_u16)], register_mnemonics[rd],
+      register_mnemonics[rb], imm);
+}
+
+std::string ld_str_sp_relative(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = (instr >> 8_u16) & 0b111_u16;
+    const u16 offset = (instr & 0xFF_u16) << 2_u16;
+    static constexpr array op_mnemonics{"STR"sv, "LDR"sv};
+    return fmt::format("{} {},[SP,0x{:02X}]", op_mnemonics[bit::extract(instr, 11_u16)], register_mnemonics[rd],
+      offset);
+}
+
+std::string ld_addr(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 rd = (instr >> 8_u16) & 0b111_u16;
+    const u16 offset = (instr & 0xFF_u16) << 2_u16;
+    return fmt::format("ADD {},{},0x{:02X}", register_mnemonics[rd], bit::test(instr, 11_u16) ? "sp" : "pc", offset);
+}
+
+std::string add_offset_to_sp(const u32 /*addr*/, const u16 instr) noexcept
+{
+    return fmt::format("ADD SP, {}0x{:02X}", bit::test(instr, 7_u16) ? "-" : "", (instr & 0x7F_u16) << 2_u16);
+}
+
+std::string push_pop(const u32 /*addr*/, const u16 instr) noexcept
+{
+    const u16 op = bit::extract(instr, 11_u16);
+    auto reg_list = generate_register_list(instr, 8_u32);
+
+    if(bit::test(instr, 8_u16)) {
+        if(!reg_list.empty()) { reg_list.push_back(','); }
+        reg_list += register_mnemonics[14_u32 + op];
+    }
+
+    static constexpr array op_mnemonics{"PUSH"sv, "POP"sv};
+    return fmt::format("{} {{{}}}", op_mnemonics[op], reg_list);
+}
+
+std::string ld_str_multiple(const u32 /*addr*/, const u16 instr) noexcept
+{
+    auto reg_list = generate_register_list(instr, 8_u32);
+    if(reg_list.empty()) { reg_list = register_mnemonics[15_u32]; }
+
+    static constexpr array op_mnemonics{"STMIA"sv, "LDMIA"sv};
+    return fmt::format("{} {}!,{{{}}}", op_mnemonics[bit::extract(instr, 11_u16)],
+      register_mnemonics[(instr >> 8_u16) & 0b111_u16], reg_list);
+}
+
+std::string branch_cond(const u32 addr, const u16 instr) noexcept
+{
+    return fmt::format("B{} 0x{:08X}", get_condition_mnemonic(instr & 0xFFF_u16, 8_u32),
+      addr + 4_u32 + make_signed(instr & 0xFF_u16) * 2_i16);
+}
+
+std::string swi(const u32 /*addr*/, const u16 instr) noexcept
+{
+    return fmt::format("SWI {:02X}", instr & 0xFF_u16);
+}
+
+std::string branch(const u32 addr, const u16 instr) noexcept
+{
+    return fmt::format("B 0x{:08X}", addr + 4_u32 + make_signed(instr & 0x7FF_u16) * 2_i16);
+}
+
+std::string long_branch_link(const u32 addr, const u16 instr) noexcept
+{
+    // first part of instruction has no mnemonic
+    if(!bit::test(instr, 11_u16)) { return std::string{unknown_instruction}; }
+    return fmt::format("BL lr+0x{:03X}", math::logical_shift_left(instr & 0x7FF_u16, u16(1_u16)).result);
+}
+
+} // namespace thumb
 
 } // namespace
 
-/*
- * Mnemonic Instruction                     Action                          See Section:
- * ----------------------------------------------------------------------------------------
- * ADC      Add with carry                  Rd := Rn + Op2 + Carry          4.5             x
- * ADD      Add                             Rd := Rn + Op                   24.5            x
- * AND      AND                             Rd := Rn AND Op                 24.5            x
- * B        Branch                          R15 := address                  4.4             x
- * BIC      Bit Clear                       Rd := Rn AND NOT Op             24.5            x
- * BL       Branch with Link                R14 := R15, R15 := address      4.4             x
- * BX       Branch and Exchange             R15 := Rn,T bit := Rn[0]        4.3             x
- * CDP      Coprocesor Data Processing      (Coprocessor-specific)          4.14
- * CMN      Compare Negative                CPSR flags := Rn + Op           24.5            x
- * CMP      Compare                         CPSR flags := Rn - Op           24.5            x
- * EOR      Exclusive OR                    Rd := (Rn AND NOT Op2)          4.5             x
-                                            OR (op2 AND NOT Rn)
- * LDC      Load coprocessor from memory    Coprocessor load                4.15
- * LDM      Load multiple registers         Stack manipulation (Pop)        4.11            x
- * LDR      Load register from memory       Rd := (address)                 4.9, 4.10       x
- * MCR      Move CPU register to            cRn := rRn {<op>cRm}            4.16
-            coprocessor register
- * MLA      Multiply Accumulate             Rd := (Rm * Rs) + Rn            4.7, 4.8        x
- * MOV      Move register or constant       Rd : = Op                       24.5            x
- * MRC      Move from coprocessor           Rn := cRn {<op>cRm}             4.16
-            register to CPU register
- * MRS      Move PSR status/flags to        Rn := PSR                       4.6
-            register
- * MSR      Move register to PSR            PSR := Rm                       4.6
-            status/flags
- * MUL      Multiply                        Rd := Rm * Rs                   4.7, 4.8        x
- * MVN      Move negative register          Rd := 0xFFFFFFFF EOR Op         24.5            x
- * ORR      OR                              Rd := Rn OR Op                  24.5            x
- * RSB      Reverse Subtract                Rd := Op2 - Rn                  4.5             x
- * RSC      Reverse Subtract with Carry     Rd := Op2 - Rn - 1 + Carry      4.5             x
- * SBC      Subtract with Carry             Rd := Rn - Op2 - 1 + Carry      4.5             x
- * STC      Store coprocessor register to   address := CRn                  4.15
-            memory
- * STM      Store Multiple                  Stack manipulation (Push)       4.11            x
- * STR      Store register to memory        <address> := Rd                 4.9, 4.10       x
- * SUB      Subtract                        Rd := Rn - Op                   24.5            x
- * SWI      Software Interrupt              OS call                         4.13            x
- * SWP      Swap register with memory       Rd := [Rn], [Rn] := Rm          4.12            x
- * TEQ      Test bitwise equality           CPSR flags := Rn EOR Op         24.5            x
- * TST      Test bits                       CPSR flags := Rn AND Op         24.5            x
- */
-
-/**
-  |..3 ..................2 ..................1 ..................0|
-  |1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0_9_8_7_6_5_4_3_2_1_0|
-  |_Cond__|0_0_0|___Op__|S|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| DataProc        x
-  |_Cond__|0_0_0|___Op__|S|__Rn___|__Rd___|__Rs___|0|Typ|1|__Rm___| DataProc        x
-  |_Cond__|0_0_1|___Op__|S|__Rn___|__Rd___|_Shift_|___Immediate___| DataProc        x
-  |_Cond__|0_0_1_1_0|P|1|0|_Field_|__Rd___|_Shift_|___Immediate___| PSR Imm         x
-  |_Cond__|0_0_0_1_0|P|L|0|_Field_|__Rd___|0_0_0_0|0_0_0_0|__Rm___| PSR Reg         x
-  |_Cond__|0_0_0_1_0_0_1_0_1_1_1_1_1_1_1_1_1_1_1_1_0_0_0_1|__Rn___| BX              x
-  |_Cond__|0_0_0_0_0_0|A|S|__Rd___|__Rn___|__Rs___|1_0_0_1|__Rm___| Multiply        x
-  |_Cond__|0_0_0_0_1|U|A|S|_RdHi__|_RdLo__|__Rs___|1_0_0_1|__Rm___| MulLong         x
-  |_Cond__|0_0_0_1_0|B|0_0|__Rn___|__Rd___|0_0_0_0|1_0_0_1|__Rm___| TransSwp12      x
-  |_Cond__|0_0_0|P|U|0|W|L|__Rn___|__Rd___|0_0_0_0|1|S|H|1|__Rm___| TransReg10      x   // Halfword Data Transfer: register offset
-  |_Cond__|0_0_0|P|U|1|W|L|__Rn___|__Rd___|OffsetH|1|S|H|1|OffsetL| TransImm10      x   // Halfword Data Transfer: immediate offset
-  |_Cond__|0_1_0|P|U|B|W|L|__Rn___|__Rd___|_________Offset________| TransImm9       x   // single data transfer (imm)
-  |_Cond__|0_1_1|P|U|B|W|L|__Rn___|__Rd___|__Shift__|Typ|0|__Rm___| TransReg9       x   // single data transfer (reg)
-  |_Cond__|0_1_1|________________xxx____________________|1|__xxx__| Undefined       x
-  |_Cond__|1_0_0|P|U|S|W|L|__Rn___|__________Register_List________| BlockTrans      x
-  |_Cond__|1_0_1|L|___________________Offset______________________| B,BL,BLX        x
-  |_Cond__|1_1_0|P|U|N|W|L|__Rn___|__CRd__|__CP#__|____Offset_____| CoDataTrans
-  |_Cond__|1_1_1_0|_CPopc_|__CRn__|__CRd__|__CP#__|_CP__|0|__CRm__| CoDataOp
-  |_Cond__|1_1_1_0|CPopc|L|__CRn__|__Rd___|__CP#__|_CP__|1|__CRm__| CoRegTrans
-  |_Cond__|1_1_1_1|_____________Ignored_by_Processor______________| SWI             x
-*/
 disassembler::disassembler() noexcept
   : arm_table_{
-      {"000xxxxxxxx0", function_ptr{&data_processing}},
-      {"000xxxxx0xx1", function_ptr{&data_processing}},
-      {"001xxxxxxxxx", function_ptr{&data_processing}},
-      {"000100100001", function_ptr{&branch_exchange}},
-      {"000xx0xx1xx1", function_ptr{&halfword_data_transfer}},
-      {"000xx1xx1xx1", function_ptr{&halfword_data_transfer}},
-      {"00110x10xxxx", function_ptr{&psr_transfer}},
-      {"00010xx00000", function_ptr{&psr_transfer}},
-      {"000000xx1001", function_ptr{&multiply}},
-      {"00001xxx1001", function_ptr{&multiply}},
-      {"00010x001001", function_ptr{&single_data_swap}},
-      {"010xxxxxxxxx", function_ptr{&single_data_transfer}},
-      {"011xxxxxxxx0", function_ptr{&single_data_transfer}},
-      {"011xxxxxxxx1", function_ptr{&undefined}},
-      {"100xxxxxxxxx", function_ptr{&block_data_transfer}},
-      {"101xxxxxxxxx", function_ptr{&branch_link}},
-      {"1111xxxxxxxx", function_ptr{&swi}},
+      {"000xxxxxxxx0", function_ptr{&arm::data_processing}},
+      {"000xxxxx0xx1", function_ptr{&arm::data_processing}},
+      {"001xxxxxxxxx", function_ptr{&arm::data_processing}},
+      {"000100100001", function_ptr{&arm::branch_exchange}},
+      {"000xx0xx1xx1", function_ptr{&arm::halfword_data_transfer}},
+      {"000xx1xx1xx1", function_ptr{&arm::halfword_data_transfer}},
+      {"00110x10xxxx", function_ptr{&arm::psr_transfer}},
+      {"00010xx00000", function_ptr{&arm::psr_transfer}},
+      {"000000xx1001", function_ptr{&arm::multiply}},
+      {"00001xxx1001", function_ptr{&arm::multiply}},
+      {"00010x001001", function_ptr{&arm::single_data_swap}},
+      {"010xxxxxxxxx", function_ptr{&arm::single_data_transfer}},
+      {"011xxxxxxxx0", function_ptr{&arm::single_data_transfer}},
+      {"011xxxxxxxx1", function_ptr{&arm::undefined}},
+      {"100xxxxxxxxx", function_ptr{&arm::block_data_transfer}},
+      {"101xxxxxxxxx", function_ptr{&arm::branch_link}},
+      {"1111xxxxxxxx", function_ptr{&arm::swi}},
     },
     thumb_table_{
-
+      {"000xxxxxxx", function_ptr{&thumb::move_shifted_reg}},
+      {"00011xxxxx", function_ptr{&thumb::add_subtract}},
+      {"001xxxxxxx", function_ptr{&thumb::mov_cmp_add_sub_imm}},
+      {"010000xxxx", function_ptr{&thumb::alu}},
+      {"010001xxxx", function_ptr{&thumb::hireg_bx}},
+      {"01001xxxxx", function_ptr{&thumb::pc_rel_load}},
+      {"0101xx0xxx", function_ptr{&thumb::ld_str_reg}},
+      {"0101xx1xxx", function_ptr{&thumb::ld_str_sign_extended_byte_hword}},
+      {"011xxxxxxx", function_ptr{&thumb::ld_str_imm}},
+      {"1000xxxxxx", function_ptr{&thumb::ld_str_hword}},
+      {"1001xxxxxx", function_ptr{&thumb::ld_str_sp_relative}},
+      {"1010xxxxxx", function_ptr{&thumb::ld_addr}},
+      {"10110000xx", function_ptr{&thumb::add_offset_to_sp}},
+      {"1011x10xxx", function_ptr{&thumb::push_pop}},
+      {"1100xxxxxx", function_ptr{&thumb::ld_str_multiple}},
+      {"1101xxxxxx", function_ptr{&thumb::branch_cond}},
+      {"11011111xx", function_ptr{&thumb::swi}},
+      {"11100xxxxx", function_ptr{&thumb::branch}},
+      {"1111xxxxxx", function_ptr{&thumb::long_branch_link}},
     },
     window_{sf::VideoMode(500, 500), "GBA Debugger"}
 {
@@ -544,9 +690,9 @@ void disassembler::update(const vector<u8>& data)
     ImGui::End();
 
     if(ImGui::Begin("Single Disassembly")) {
-        const u32::type i = 0x0329F107u;
-        const u32::type a = 0x0329F107u;
-        ImGui::Text("0x%08X|0x%08X %s", a, i, disassemble_arm(a, i).c_str());
+        const u32::type a = 0x3b4u;
+        const u16::type i = 0x65bcu;
+        ImGui::Text("0x%08X|0x%08X %s", a, i, disassemble_thumb(a, i).c_str());
     }
     ImGui::End();
 
