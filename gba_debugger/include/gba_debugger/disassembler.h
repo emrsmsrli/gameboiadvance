@@ -23,6 +23,9 @@ public:
     disassembler() noexcept;
 
     void update(const vector<u8>& data);
+
+    std::string disassemble_arm(u32 address, u32 instruction) const noexcept;
+    std::string disassemble_thumb(u32 address, u16 instruction) const noexcept;
 };
 
 } // namespace gba::debugger

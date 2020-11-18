@@ -19,6 +19,8 @@ namespace {
 
 using namespace std::string_view_literals;
 
+constexpr std::string_view unknown_instruction = "???"sv;
+
 constexpr array shift_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv};
 constexpr array register_mnemonics{
   "r0"sv, "r1"sv, "r2"sv, "r3"sv, "r4"sv, "r5"sv, "r6"sv, "r7"sv, "r8"sv, "r9"sv,
@@ -113,14 +115,42 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
     }
 }
 
-std::string psr_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string psr_transfer(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return "psr_transfer_imm";
-}
+    const auto psr = register_mnemonics[bit::extract(instr, 22_u32) + 16_u32];
 
-std::string psr_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
-{
-    return "psr_transfer_reg";
+    // mrs
+    if(!bit::test(instr, 21_u32)) {
+        return fmt::format("MOV{} {},{}", get_condition_mnemonic(instr),
+          register_mnemonics[(instr >> 12_u32) & 0xF_u32], psr);
+    }
+
+    // msr
+    std::string flags;
+    if(((instr >> 16_u32) & 0b1111_u32) == 0b1111_u32) {
+        flags = "all";
+    } else {
+        static constexpr array flag_mnemonics{"c"sv, "x"sv, "s"sv, "f"sv};
+
+        for(u32 bit = 19_u32; bit >= 16_u32; --bit) {
+            if(bit::test(instr, bit)) {
+                flags += flag_mnemonics[bit - 16_u32];
+            }
+        }
+    }
+
+    // imm src
+    if(bit::test(instr, 25_u32)) {
+        const u32 imm = instr & 0xFF_u32;
+        const u32 shift_amount = (instr >> 8_u32) & 0xF_u32;
+
+        return fmt::format("MOV{} {}_{},0x{:08X}", get_condition_mnemonic(instr), psr, flags,
+          math::logical_rotate_right(imm, shift_amount << 1_u32).result);
+    }
+
+    // reg src
+    return fmt::format("MOV{} {}_{},{}", get_condition_mnemonic(instr), psr, flags,
+      register_mnemonics[instr & 0xF_u32]);
 }
 
 std::string branch_exchange(const u32 /*addr*/, const u32 instr) noexcept
@@ -433,34 +463,69 @@ void disassembler::update(const vector<u8>& data)
 {
     sf::Event e; // NOLINT
     while(window_.pollEvent(e)) {
-        if(e.type == sf::Event::Closed) { std::terminate(); }
+        if(e.type == sf::Event::Closed) { std::exit(0); }
         ImGui::SFML::ProcessEvent(e);
     }
 
     ImGui::SFML::Update(window_, dt.restart());
 
-    if(ImGui::Begin("#asda")) {
-        ImGuiListClipper clipper(data.size().get() / 4);
-        while(clipper.Step()) {
-            for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                const auto offset = 4_u32 * i;
-                u32 inst;
-                std::memcpy(&inst, data.data() + offset, 4_u32);
+    if(ImGui::Begin("Disassembly")) {
+        static bool arm = true;
+        ImGui::Checkbox("disassemble arm", &arm);
 
-                if(auto f =  arm_table_[((inst >> 16_u32) & 0xFF0_u32) | (inst >> 4_u32) & 0xF_u32]; !f) {
-                    ImGui::TextColored(ImVec4{sf::Color::Red}, "unknown");
+        if(ImGui::BeginChild("#ididid")) {
+            ImGuiListClipper clipper(data.size().get() / (arm ? 4 : 2));
+            while(clipper.Step()) {
+                if(arm) {
+                    for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        const auto address = 4_u32 * i;
+                        u32 inst;
+                        std::memcpy(&inst, data.data() + address, sizeof(inst));
+                        ImGui::Text("0x%08X|0x%08X %s", address, inst.get(), disassemble_arm(address, inst).c_str());
+                    }
                 } else {
-                    ImGui::Text("0x%08X %s", offset, f(offset, inst).c_str());
+                    for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                        const auto address = 2_u32 * i;
+                        u16 inst;
+                        std::memcpy(&inst, data.data() + address, sizeof(inst));
+                        ImGui::Text("0x%08X|0x%04X %s", address, inst.get(), disassemble_thumb(address, inst).c_str());
+                    }
                 }
             }
         }
 
-        ImGui::End();
+        ImGui::EndChild();
     }
+    ImGui::End();
+
+    if(ImGui::Begin("Single Disassembly")) {
+        const u32::type i = 0x0329F107u;
+        const u32::type a = 0x0329F107u;
+        ImGui::Text("0x%08X|0x%08X %s", a, i, disassemble_arm(a, i).c_str());
+    }
+    ImGui::End();
 
     window_.clear(sf::Color::Black);
     ImGui::SFML::Render();
     window_.display();
+}
+
+std::string disassembler::disassemble_arm(const u32 address, const u32 instruction) const noexcept
+{
+    if(auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | (instruction >> 4_u32) & 0xF_u32]) {
+        return func(address, instruction);
+    }
+
+    return std::string{unknown_instruction};
+}
+
+std::string disassembler::disassemble_thumb(const u32 address, const u16 instruction) const noexcept
+{
+    if(auto func = thumb_table_[address >> 6_u32]) {
+        return func(address, instruction);
+    }
+
+    return std::string{unknown_instruction};
 }
 
 } // namespace gba::debugger
