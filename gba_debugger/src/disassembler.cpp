@@ -3,8 +3,6 @@
 #include <string_view>
 #include <sstream>
 
-#include <fmt/format.h>
-
 #include <gba/core/math.h>
 #include <gba_debugger/fmt_integer.h>
 
@@ -79,7 +77,7 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
         if(bit::test(instr, 25_u32)) {
             const auto imm = instr & 0xFF_u32;
             const auto shift_amount = (instr >> 8_u32) & 0xF_u32;
-            return fmt::format("0x{:X}", math::logical_rotate_right(imm, shift_amount * 2_u32).result);
+            return fmt::format("0x{:02X}", math::logical_rotate_right(imm, shift_amount << 1_u32).result);
         }
 
         // register as 2nd operand
@@ -94,7 +92,7 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
 
         u32 shift_amount = (instr >> 7_u32) & 0x1F_u32;
         if(shift_type == 0_u32 && shift_amount == 0_u32) {
-            return std::string(register_mnemonics[r2]);
+            return std::string{register_mnemonics[r2]};
         }
 
         return fmt::format("{},{} 0x{:X}", register_mnemonics[r2], shift_mnemonics[shift_type], shift_amount);
@@ -155,7 +153,7 @@ std::string psr_transfer(const u32 /*addr*/, const u32 instr) noexcept
 
     // msr
     std::string flags;
-    if(((instr >> 16_u32) & 0b1111_u32) == 0b1111_u32) {
+    if(((instr >> 16_u32) & 0xF_u32) == 0xF_u32) {
         flags = "all";
     } else {
         static constexpr array flag_mnemonics{"c"sv, "x"sv, "s"sv, "f"sv};
@@ -585,7 +583,7 @@ std::string branch(const u32 addr, const u16 instr) noexcept
     return fmt::format("B 0x{:08X}", addr + 4_u32 + make_signed(instr & 0x7FF_u16) * 2_i16);
 }
 
-std::string long_branch_link(const u32 addr, const u16 instr) noexcept
+std::string long_branch_link(const u32 /*addr*/, const u16 instr) noexcept
 {
     // first part of instruction has no mnemonic
     if(!bit::test(instr, 11_u16)) { return std::string{unknown_instruction}; }
@@ -636,10 +634,7 @@ disassembler::disassembler() noexcept
       {"11011111xx", function_ptr{&thumb::swi}},
       {"11100xxxxx", function_ptr{&thumb::branch}},
       {"1111xxxxxx", function_ptr{&thumb::long_branch_link}},
-    }
-{
-
-}
+    } {}
 
 std::string disassembler::disassemble_arm(const u32 address, const u32 instruction) const noexcept
 {
