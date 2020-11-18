@@ -8,24 +8,25 @@ namespace gba {
 
 namespace bit {
 
-[[nodiscard]] FORCEINLINE constexpr u32 from_bool(const bool b) noexcept { return static_cast<u32::type>(b); }
+template<typename T = u32>
+[[nodiscard]] FORCEINLINE constexpr T from_bool(const bool b) noexcept { return static_cast<typename T::type>(b); }
+
+template<typename T = u32>
+[[nodiscard]] FORCEINLINE constexpr T bit(const u32 b) noexcept { return narrow<T>(1_u32 << b); }
 
 template<typename T>
-[[nodiscard]] FORCEINLINE constexpr u32 bit(const T b) noexcept { return 1_u32 << b; }
+[[nodiscard]] FORCEINLINE constexpr bool test(const T t, const u32 b) noexcept { return (t & bit<T>(b)) != 0_u8; }
 
-template<typename T, typename TBit>
-[[nodiscard]] FORCEINLINE constexpr bool test(const T t, const TBit b) noexcept { return (t & bit(b)) != 0_u32; }
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T set(const T t, const u32 b) noexcept { return t | bit<T>(b); }
 
-template<typename T, typename TBit>
-[[nodiscard]] FORCEINLINE constexpr bool set(const T t, const TBit b) noexcept { return t | bit(b); }
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T clear(const T t, const u32 b) noexcept { return t & ~bit<T>(b); }
 
-template<typename T, typename TBit>
-[[nodiscard]] FORCEINLINE constexpr bool clear(const T t, const TBit b) noexcept { return t & ~bit(b); }
-
-template<typename T, typename TBit>
-[[nodiscard]] FORCEINLINE constexpr u32 extract(const T value, const TBit bit) noexcept
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T extract(const T value, const u32 bit) noexcept
 {
-    return bit::from_bool(bit::test(value, bit));
+    return bit::from_bool<T>(bit::test(value, bit));
 }
 
 } // namespace bit

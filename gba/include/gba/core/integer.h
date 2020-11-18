@@ -274,7 +274,8 @@ FORCEINLINE constexpr integer<detail::greater_sized_t<A, B>> operator+(const int
     template<typename A, typename B>                                                                                            \
     FORCEINLINE constexpr integer<detail::integer_result_t<A, B>> operator Op(const integer<A> a, const integer<B> b) noexcept  \
     {                                                                                                                           \
-        return integer<detail::integer_result_t<A, B>>(static_cast<A>(a) Op static_cast<B>(b));                                 \
+        using result_type = detail::integer_result_t<A, B>;                                                                     \
+        return integer<result_type>(static_cast<result_type>(static_cast<A>(a) Op static_cast<B>(b)));                          \
     }                                                                                                                           \
     template<typename A, typename B>                                                                                            \
     FORCEINLINE constexpr integer<detail::integer_result_t<A, B>> operator Op(const A a, const integer<B> b) noexcept           \
