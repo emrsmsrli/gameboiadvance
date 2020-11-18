@@ -201,14 +201,59 @@ std::string single_data_swap(const u32 /*addr*/, const u32 instr) noexcept
       register_mnemonics[(instr >> 16_u32) & 0xF_u32]);
 }
 
-std::string halfword_data_transfer_reg(const u32 /*addr*/, const u32 /*instr*/) noexcept
+std::string halfword_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return "halfword_data_transfer_reg";
-}
+    const auto get_addr = [](const u32 i) -> std::string {
+        const auto get_imm_offset = [](const u32 i) { return (i & 0xF_u32) | ((i >> 4_u32) & 0xF0_u32); };
 
-std::string halfword_data_transfer_imm(const u32 /*addr*/, const u32 /*instr*/) noexcept
-{
-    return "halfword_data_transfer_imm";
+        const auto rn = register_mnemonics[(i >> 16_u32) & 0xF_u32];
+        const auto updown = bit::test(i, 23_u32) ? ""sv : "-"sv;
+
+        // pre indexing
+        if(bit::test(i, 24_u32)) {
+            const auto write_back = bit::test(i, 21_u32) ? "!"sv : ""sv;
+
+            // imm src
+            if(bit::test(i, 22_u32)) {
+                if(const u32 offset = get_imm_offset(i); offset != 0_u32) {
+                    return fmt::format("[{},{}0x{:02X}]{}", rn, updown, offset, write_back);
+                }
+
+                return fmt::format("[{}]", rn);
+            }
+
+            // reg src
+            return fmt::format("[{},{}{}]{}", rn, updown, register_mnemonics[i & 0xF_u32], write_back);
+        }
+
+        // post indexing
+
+        // imm src
+        if(bit::test(i, 22_u32)) {
+            return fmt::format("[{}],{}0x{:02X}", rn, updown, get_imm_offset(i));
+        }
+
+        // reg src
+        return fmt::format("[{}],{}{}", rn, updown, register_mnemonics[i & 0xF_u32]);
+    };
+
+    static constexpr array op_mnemonics{
+      "STRH"sv, "LDRH"sv, unknown_instruction,
+      "LDRSB"sv, unknown_instruction, "LDRSH"sv
+    };
+
+    const u32 opcode = (instr >> 5_u32) & 0b11_u32;
+    if(opcode == 0_u32) {
+        return std::string{unknown_instruction};
+    }
+
+    const u32 op = bit::extract(instr, 20_u32) | (opcode - 1_u32);
+    if(const auto mnemonic = op_mnemonics[op]; mnemonic != unknown_instruction) {
+        return fmt::format("{}{} {},{}", mnemonic, get_condition_mnemonic(instr),
+          register_mnemonics[(instr >> 12_u32) & 0xF_u32], get_addr(instr));
+    }
+
+    return std::string{unknown_instruction};
 }
 
 std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
@@ -244,7 +289,7 @@ std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
               shift_mnemonics[shift_type], shift_amount, write_back);
         }
 
-        // pre indexing
+        // post indexing
 
         // imm src
         if(!bit::test(i, 25_u32)) {
@@ -432,8 +477,8 @@ disassembler::disassembler() noexcept
       {"000xxxxx0xx1", function_ptr{&data_processing}},
       {"001xxxxxxxxx", function_ptr{&data_processing}},
       {"000100100001", function_ptr{&branch_exchange}},
-      {"000xx0xx1xx1", function_ptr{&halfword_data_transfer_reg}},
-      {"000xx1xx1xx1", function_ptr{&halfword_data_transfer_imm}},
+      {"000xx0xx1xx1", function_ptr{&halfword_data_transfer}},
+      {"000xx1xx1xx1", function_ptr{&halfword_data_transfer}},
       {"00110x10xxxx", function_ptr{&psr_transfer}},
       {"00010xx00000", function_ptr{&psr_transfer}},
       {"000000xx1001", function_ptr{&multiply}},
