@@ -398,23 +398,23 @@ std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 */
 disassembler::disassembler() noexcept
   : arm_table_{
-      {"000xxxxxxxx0", connect_arg<&data_processing>},
-      {"000xxxxx0xx1", connect_arg<&data_processing>},
-      {"001xxxxxxxxx", connect_arg<&data_processing>},
-      {"000100100001", connect_arg<&branch_exchange>},
-      {"000xx0xx1xx1", connect_arg<&halfword_data_transfer_reg>},
-      {"000xx1xx1xx1", connect_arg<&halfword_data_transfer_imm>},
-      {"00110x10xxxx", connect_arg<&psr_transfer_imm>},
-      {"00010xx00000", connect_arg<&psr_transfer_reg>},
-      {"000000xx1001", connect_arg<&multiply>},
-      {"00001xxx1001", connect_arg<&multiply>},
-      {"00010x001001", connect_arg<&single_data_swap>},
-      {"010xxxxxxxxx", connect_arg<&single_data_transfer>},
-      {"011xxxxxxxx0", connect_arg<&single_data_transfer>},
-      {"011xxxxxxxx1", connect_arg<&undefined>},
-      {"100xxxxxxxxx", connect_arg<&block_data_transfer>},
-      {"101xxxxxxxxx", connect_arg<&branch_link>},
-      {"1111xxxxxxxx", connect_arg<&swi>},
+      {"000xxxxxxxx0", function_ptr{&data_processing}},
+      {"000xxxxx0xx1", function_ptr{&data_processing}},
+      {"001xxxxxxxxx", function_ptr{&data_processing}},
+      {"000100100001", function_ptr{&branch_exchange}},
+      {"000xx0xx1xx1", function_ptr{&halfword_data_transfer_reg}},
+      {"000xx1xx1xx1", function_ptr{&halfword_data_transfer_imm}},
+      {"00110x10xxxx", function_ptr{&psr_transfer}},
+      {"00010xx00000", function_ptr{&psr_transfer}},
+      {"000000xx1001", function_ptr{&multiply}},
+      {"00001xxx1001", function_ptr{&multiply}},
+      {"00010x001001", function_ptr{&single_data_swap}},
+      {"010xxxxxxxxx", function_ptr{&single_data_transfer}},
+      {"011xxxxxxxx0", function_ptr{&single_data_transfer}},
+      {"011xxxxxxxx1", function_ptr{&undefined}},
+      {"100xxxxxxxxx", function_ptr{&block_data_transfer}},
+      {"101xxxxxxxxx", function_ptr{&branch_link}},
+      {"1111xxxxxxxx", function_ptr{&swi}},
     },
     thumb_table_{
 
@@ -424,6 +424,9 @@ disassembler::disassembler() noexcept
     window_.resetGLStates();
     window_.setFramerateLimit(60);
     ImGui::SFML::Init(window_);
+
+    LOG_INFO("arm table size: {}", sizeof(arm_table_));
+    LOG_INFO("thumb table size: {}", sizeof(thumb_table_));
 }
 
 void disassembler::update(const vector<u8>& data)

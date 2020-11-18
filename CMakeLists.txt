@@ -14,13 +14,13 @@ add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_17)
 
 if(NOT MSVC)
-	option(WITH_LIBCXX "Use libc++" OFF)
-	if(WITH_LIBCXX)
-		target_compile_options(project_options INTERFACE -stdlib=libc++)
-		target_link_options(project_options INTERFACE -lc++)
-	else()
-		target_link_libraries(project_options INTERFACE stdc++fs)
-	endif()
+    option(WITH_LIBCXX "Use libc++" OFF)
+    if(WITH_LIBCXX)
+        target_compile_options(project_options INTERFACE -stdlib=libc++)
+        target_link_options(project_options INTERFACE -lc++)
+    else()
+        target_link_libraries(project_options INTERFACE stdc++fs)
+    endif()
 endif()
 
 add_library(project_warnings INTERFACE)
@@ -48,14 +48,20 @@ find_package(SDL2 CONFIG REQUIRED)
 add_subdirectory(external)
 add_subdirectory(gba)
 
+option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
+if(ENABLE_DEBUGGER)
+    add_subdirectory(gba_debugger)
+endif()
+
 add_executable(gameboiadvance main.cpp)
 target_link_libraries(gameboiadvance PRIVATE
-		gba::gba
+        gba::gba
+        $<$<BOOL:${ENABLE_DEBUGGER}>:gba::debugger>
         cxxopts::cxxopts
-		$<IF:$<BOOL:${BUILDING_FOR_RPI3}>,SDL2,SDL2::SDL2>
+        $<IF:$<BOOL:${BUILDING_FOR_RPI3}>,SDL2,SDL2::SDL2>
         imgui::sfml
-		project_warnings
-		project_options)
+        project_warnings
+        project_options)
 
 target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 
