@@ -4,9 +4,6 @@
 #include <sstream>
 
 #include <fmt/format.h>
-#include <imgui-SFML.h>
-#include <imgui.h>
-#include <SFML/Window/Event.hpp>
 
 #include <gba/core/math.h>
 #include <gba_debugger/fmt_integer.h>
@@ -639,66 +636,9 @@ disassembler::disassembler() noexcept
       {"11011111xx", function_ptr{&thumb::swi}},
       {"11100xxxxx", function_ptr{&thumb::branch}},
       {"1111xxxxxx", function_ptr{&thumb::long_branch_link}},
-    },
-    window_{sf::VideoMode(500, 500), "GBA Debugger"}
+    }
 {
-    window_.resetGLStates();
-    window_.setFramerateLimit(60);
-    ImGui::SFML::Init(window_);
 
-    LOG_INFO("arm table size: {}", sizeof(arm_table_));
-    LOG_INFO("thumb table size: {}", sizeof(thumb_table_));
-}
-
-void disassembler::update(const vector<u8>& data)
-{
-    sf::Event e; // NOLINT
-    while(window_.pollEvent(e)) {
-        if(e.type == sf::Event::Closed) { std::exit(0); }
-        ImGui::SFML::ProcessEvent(e);
-    }
-
-    ImGui::SFML::Update(window_, dt.restart());
-
-    if(ImGui::Begin("Disassembly")) {
-        static bool arm = true;
-        ImGui::Checkbox("disassemble arm", &arm);
-
-        if(ImGui::BeginChild("#ididid")) {
-            ImGuiListClipper clipper(data.size().get() / (arm ? 4 : 2));
-            while(clipper.Step()) {
-                if(arm) {
-                    for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                        const auto address = 4_u32 * i;
-                        u32 inst;
-                        std::memcpy(&inst, data.data() + address, sizeof(inst));
-                        ImGui::Text("0x%08X|0x%08X %s", address, inst.get(), disassemble_arm(address, inst).c_str());
-                    }
-                } else {
-                    for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                        const auto address = 2_u32 * i;
-                        u16 inst;
-                        std::memcpy(&inst, data.data() + address, sizeof(inst));
-                        ImGui::Text("0x%08X|0x%04X %s", address, inst.get(), disassemble_thumb(address, inst).c_str());
-                    }
-                }
-            }
-        }
-
-        ImGui::EndChild();
-    }
-    ImGui::End();
-
-    if(ImGui::Begin("Single Disassembly")) {
-        const u32::type a = 0x3b4u;
-        const u16::type i = 0x65bcu;
-        ImGui::Text("0x%08X|0x%08X %s", a, i, disassemble_thumb(a, i).c_str());
-    }
-    ImGui::End();
-
-    window_.clear(sf::Color::Black);
-    ImGui::SFML::Render();
-    window_.display();
 }
 
 std::string disassembler::disassemble_arm(const u32 address, const u32 instruction) const noexcept
