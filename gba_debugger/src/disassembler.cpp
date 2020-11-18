@@ -154,7 +154,7 @@ std::string multiply(const u32 /*addr*/, const u32 instr) noexcept
         case 0b0110:
             return fmt::format("SMULL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
               register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
-        case 0x0111:
+        case 0b0111:
             return fmt::format("SMLAL{}{} {},{},{},{}", cond_set_mnemonic, cond_mnemonic,
               register_mnemonics[rn], register_mnemonics[rd], register_mnemonics[rm], register_mnemonics[rs]);
         default: UNREACHABLE();
