@@ -218,9 +218,15 @@ struct make_unsigned<integer<T>> {
 } // namespace detail
 
 template<typename To, typename From, typename = std::enable_if_t<
-  detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>
-    && sizeof(To) < sizeof(From)>>
-FORCEINLINE constexpr To narrow(const From from) noexcept { return static_cast<typename To::type>(from.get()); }
+  detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>>>
+FORCEINLINE constexpr To narrow(const From from) noexcept
+{
+    if constexpr(sizeof(To) < sizeof(From)) {
+        return static_cast<typename To::type>(from.get());
+    } else {
+        return from;
+    }
+}
 
 // sign ops
 
