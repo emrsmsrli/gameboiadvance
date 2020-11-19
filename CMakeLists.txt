@@ -10,8 +10,16 @@ if(MSVC)
     include(cmake/StaticLink.cmake)
 endif()
 
+option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
+option(ENABLE_TESTING "Enable Tests" OFF)
+option(ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(WITH_WARNINGS "Enable compiler warnings" ON)
+
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_17)
+target_compile_definitions(project_options INTERFACE
+        DEBUG=$<CONFIG:Debug>
+        WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>)
 
 if(NOT MSVC)
     option(WITH_LIBCXX "Use libc++" OFF)
@@ -24,7 +32,6 @@ if(NOT MSVC)
 endif()
 
 add_library(project_warnings INTERFACE)
-option(WITH_WARNINGS "Enable compiler warnings" ON)
 if(WITH_WARNINGS)
     set_project_warnings(project_warnings)
 endif()
@@ -32,7 +39,6 @@ endif()
 enable_sanitizers(project_options)
 enable_doxygen()
 
-option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 if(ENABLE_PCH)
     # This sets a global PCH parameter, each project will build its own PCH, which
     # is a good idea if any #define's change
@@ -48,7 +54,6 @@ find_package(SDL2 CONFIG REQUIRED)
 add_subdirectory(external)
 add_subdirectory(gba)
 
-option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 if(ENABLE_DEBUGGER)
     add_subdirectory(gba_debugger)
 endif()
@@ -65,7 +70,6 @@ target_link_libraries(gameboiadvance PRIVATE
 
 target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 
-option(ENABLE_TESTING "Enable Tests" OFF)
 if(ENABLE_TESTING)
     enable_testing()
     add_subdirectory(test)
