@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <type_traits>
+#include <limits>
 
 #include <gba/helper/macros.h>
 
@@ -82,7 +83,7 @@ public:
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
     FORCEINLINE integer& operator=(const integer<T> value) noexcept
     {
-        value_ = static_cast<Integer>(value);
+        value_ = static_cast<T>(value);
         return *this;
     }
 
@@ -234,7 +235,7 @@ template<class Integer> using make_signed_t = typename detail::make_signed<Integ
 template<class Integer> using make_unsigned_t = typename detail::make_unsigned<Integer>::type;
 
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_signed_t<T> make_signed(const T i) noexcept { return static_cast<make_signed_t<T>>(i); }
+FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const T i) noexcept { return static_cast<make_signed_t<T>>(i); }
 template<typename T, typename = detail::enable_integer<T>>
 FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) noexcept
 {
@@ -242,7 +243,7 @@ FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) 
 }
 
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<T> make_unsigned(
+FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(
   const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
 template<typename T, typename = detail::enable_integer<T>>
 FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept
