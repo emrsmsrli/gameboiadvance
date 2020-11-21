@@ -36,10 +36,10 @@ struct logical_op_result {
     T carry;
 };
 
-template<u32::type B, typename T>
-[[nodiscard]] FORCEINLINE constexpr make_signed_t<T> sign_extend(const T x) noexcept
+template<u8::type B, typename T>
+[[nodiscard]] FORCEINLINE constexpr integer<make_signed_t<T>> sign_extend(const integer<T> x) noexcept
 {
-    struct { typename make_signed_t<T>::type x: B; } extender; // NOLINT
+    struct { make_signed_t<T> x: B; } extender; // NOLINT
     extender.x = x.get();
     return extender.x;
 }
@@ -67,7 +67,8 @@ template<typename T>
 
     // not portable, GCC produces correct code though
     return logical_op_result<T>{
-      make_unsigned(static_cast<underlying_stype>(make_signed(t)) >> static_cast<underlying_type>(shift)),
+      make_unsigned(
+        static_cast<underlying_type>(static_cast<underlying_stype>(make_signed(t)) >> static_cast<u8::type>(shift))),
       bit::extract(t, shift - 1_u8)
     };
 }
@@ -76,7 +77,7 @@ template<typename T>
 [[nodiscard]] constexpr logical_op_result<T> logical_rotate_right(const T t, const u8 rotate) noexcept
 {
     return logical_op_result<T>{
-      (t >> rotate) | (t << (make_unsigned(numeric_limits<T>::digits) - rotate)),
+      (t >> rotate) | (t << narrow<T>(make_unsigned(numeric_limits<T>::digits) - rotate)),
       bit::extract(t, rotate - 1_u8)
     };
 }
@@ -85,7 +86,7 @@ template<typename T>
 [[nodiscard]] constexpr logical_op_result<T> logical_rotate_right_extended(const T t, const T in_carry) noexcept
 {
     return logical_op_result<T>{
-      (t >> 1_u32) | (in_carry << make_unsigned(numeric_limits<T>::digits - 1_i32)),
+      (t >> 1_u8) | (in_carry << narrow<T>(make_unsigned(numeric_limits<T>::digits - 1_i32))),
       bit::extract(t, 0_u8)
     };
 }

@@ -165,17 +165,17 @@ public:
     FORCEINLINE constexpr integer operator~() const noexcept
     {
         static_assert(std::is_unsigned_v<Integer>, "Integer must be unsigned");
-        return integer(~value_);
+        return integer(static_cast<Integer>(~value_));
     }
 
 #define MAKE_OP(Op)                                                                                 \
-    template<typename T, typename = detail::enable_safe_unsigned_operation<T, Integer>>             \
+    template<typename T, typename = detail::enable_safe_unsigned_operation<Integer, T>>             \
     FORCEINLINE constexpr integer& operator Op(const integer<T> other) noexcept                     \
     {                                                                                               \
         value_ Op static_cast<T>(other);                                                            \
         return *this;                                                                               \
     }                                                                                               \
-    template<typename T, typename = detail::enable_safe_unsigned_operation<T, Integer>>             \
+    template<typename T, typename = detail::enable_safe_unsigned_operation<Integer, T>>             \
     FORCEINLINE constexpr integer& operator Op(const T other) noexcept                              \
     {                                                                                               \
         *this Op integer<T>(other);                                                                 \
@@ -225,6 +225,7 @@ FORCEINLINE constexpr To narrow(const From from) noexcept
     if constexpr(sizeof(To) < sizeof(From)) {
         return static_cast<typename To::type>(from.get());
     } else {
+        static_assert(sizeof(To) == sizeof(From), "narrow() shouldn't widen integers");
         return from;
     }
 }
