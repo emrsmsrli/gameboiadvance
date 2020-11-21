@@ -1,0 +1,47 @@
+name: gameboiadvance-cmake
+
+on:
+  push:
+    tags:
+      - '*'
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Configure vcpkg
+      shell: bash
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+        ./vcpkg/vcpkg integrate install
+        ./vcpkg/vcpkg install spdlog fmt
+
+    - name: Create build environment
+      run: cmake -E make_directory ${{runner.workspace}}/build
+
+    - name: Configure CMake
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DENABLE_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=${{runner.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+
+    - name: Build
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake --build . --config $BUILD_TYPE --target gba -- -j $(nproc)
+
+    - name: Test
+      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: ctest -C $BUILD_TYPE
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2.2.1
+      with:
+        name: gameboi
+        path: ${{runner.workspace}}/build/gameboiadvance
