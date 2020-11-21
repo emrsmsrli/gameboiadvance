@@ -1,4 +1,4 @@
-name: gameboiadvance-cmake
+name: Build
 
 on:
   push:
