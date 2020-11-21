@@ -1,0 +1,16 @@
+#ifndef GAMEBOIADVANCE_VERSION_H
+#define GAMEBOIADVANCE_VERSION_H
+
+#include <string_view>
+
+namespace gba {
+
+[[maybe_unused]] constexpr auto version_major = @gba_VERSION_MAJOR@;
+[[maybe_unused]] constexpr auto version_minor = @gba_VERSION_MINOR@;
+[[maybe_unused]] constexpr auto version_patch = @gba_VERSION_PATCH@;
+
+[[maybe_unused]] constexpr std::string_view version = "@gba_VERSION@";
+
+} // namespace gba
+
+#endif //GAMEBOIADVANCE_VERSION_H

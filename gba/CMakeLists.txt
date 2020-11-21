@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.12.4)
-project(gba CXX)
+project(gba VERSION 0.0.1 LANGUAGES CXX)
+
+configure_file(cmake/version.h.in
+        ${CMAKE_CURRENT_SOURCE_DIR}/include/gba/version.h)
 
 add_library(${PROJECT_NAME} STATIC
         src/helper/filesystem.cpp)
