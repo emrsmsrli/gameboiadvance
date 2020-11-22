@@ -7,6 +7,8 @@
 #include <type_traits>
 #include <limits>
 
+#include <fmt/core.h>
+
 #include <gba/helper/macros.h>
 
 namespace gba {
@@ -396,6 +398,15 @@ struct std::hash<gba::integer<Integer>> {
     std::size_t operator()(const gba::integer<Integer>& i) const noexcept
     {
         return std::hash<Integer>()(static_cast<Integer>(i));
+    }
+};
+
+template<typename T>
+struct fmt::formatter<gba::integer<T>> : formatter<T> {
+    template<typename FormatContext>
+    auto format(gba::integer<T> i, FormatContext& ctx)
+    {
+        return formatter<T>::format(i.get(), ctx);
     }
 };
 

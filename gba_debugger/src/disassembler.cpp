@@ -4,7 +4,6 @@
 #include <sstream>
 
 #include <gba/core/math.h>
-#include <gba_debugger/fmt_integer.h>
 
 namespace gba::debugger {
 
