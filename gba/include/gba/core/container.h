@@ -28,7 +28,7 @@ struct array {
     [[nodiscard]] constexpr T& operator[](const usize idx) noexcept { return _data[idx.get()]; }
     [[nodiscard]] constexpr T operator[](const usize idx) const noexcept { return _data[idx.get()]; }
     [[nodiscard]] constexpr T* ptr(const usize idx) noexcept { return &_data[idx.get()]; }
-    [[nodiscard]] constexpr T& at(const usize idx) noexcept { return &_data[idx.get()]; }
+    [[nodiscard]] constexpr T& at(const usize idx) noexcept { return _data[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return _data; }
     [[nodiscard]] const T* data() const noexcept { return _data; }
 
@@ -57,7 +57,7 @@ public:
     [[nodiscard]] T& operator[](const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] T operator[](const usize idx) const noexcept { return data_[idx.get()]; }
     [[nodiscard]] T* ptr(const usize idx) noexcept { return &data_[idx.get()]; }
-    [[nodiscard]] T& at(const usize idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] T& at(const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return data_.data(); }
     [[nodiscard]] const T* data() const noexcept { return data_.data(); }
 
