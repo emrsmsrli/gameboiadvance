@@ -28,7 +28,9 @@ struct array {
     [[nodiscard]] constexpr T& operator[](const usize idx) noexcept { return _data[idx.get()]; }
     [[nodiscard]] constexpr T operator[](const usize idx) const noexcept { return _data[idx.get()]; }
     [[nodiscard]] constexpr T* ptr(const usize idx) noexcept { return &_data[idx.get()]; }
+    [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return &_data[idx.get()]; }
     [[nodiscard]] constexpr T& at(const usize idx) noexcept { return _data[idx.get()]; }
+    [[nodiscard]] constexpr T at(const usize idx) const noexcept { return _data[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return _data; }
     [[nodiscard]] const T* data() const noexcept { return _data; }
 
@@ -57,7 +59,9 @@ public:
     [[nodiscard]] T& operator[](const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] T operator[](const usize idx) const noexcept { return data_[idx.get()]; }
     [[nodiscard]] T* ptr(const usize idx) noexcept { return &data_[idx.get()]; }
+    [[nodiscard]] const T* ptr(const usize idx) const noexcept { return &data_[idx.get()]; }
     [[nodiscard]] T& at(const usize idx) noexcept { return data_[idx.get()]; }
+    [[nodiscard]] T at(const usize idx) const noexcept { return data_[idx.get()]; }
     [[nodiscard]] T* data() noexcept { return data_.data(); }
     [[nodiscard]] const T* data() const noexcept { return data_.data(); }
 
@@ -85,6 +89,20 @@ public:
     std::vector<T>& underlying_data() noexcept { return data_; }
     const std::vector<T>& underlying_data() const noexcept { return data_; }
 };
+
+template<typename T, typename Container>
+[[nodiscard]] FORCEINLINE T memcpy(Container&& container, const usize offset) noexcept
+{
+    T value;
+    std::memcpy(&value, container.ptr(offset), sizeof(T));
+    return value;
+}
+
+template<typename T, typename Container>
+FORCEINLINE void memcpy(Container&& container, const usize offset, T& value) noexcept
+{
+    std::memcpy(container.ptr(offset), &value, sizeof(T));
+}
 
 } // namespace gba
 
