@@ -4,6 +4,8 @@
 #include <sstream>
 
 #include <gba/core/math.h>
+#include <gba/helper/function_ptr.h>
+#include <gba/helper/lookup_table.h>
 
 namespace gba::debugger {
 
@@ -589,51 +591,51 @@ std::string long_branch_link(const u32 /*addr*/, const u16 instr) noexcept
 
 } // namespace thumb
 
+constexpr lookup_table<function_ptr<std::string(u32, u32)>, 12_u32, 17_u32> arm_table_{
+  {"000xxxxxxxx0", function_ptr{&arm::data_processing}},
+  {"000xxxxx0xx1", function_ptr{&arm::data_processing}},
+  {"001xxxxxxxxx", function_ptr{&arm::data_processing}},
+  {"000100100001", function_ptr{&arm::branch_exchange}},
+  {"000xx0xx1xx1", function_ptr{&arm::halfword_data_transfer}},
+  {"000xx1xx1xx1", function_ptr{&arm::halfword_data_transfer}},
+  {"00110x10xxxx", function_ptr{&arm::psr_transfer}},
+  {"00010xx00000", function_ptr{&arm::psr_transfer}},
+  {"000000xx1001", function_ptr{&arm::multiply}},
+  {"00001xxx1001", function_ptr{&arm::multiply}},
+  {"00010x001001", function_ptr{&arm::single_data_swap}},
+  {"010xxxxxxxxx", function_ptr{&arm::single_data_transfer}},
+  {"011xxxxxxxx0", function_ptr{&arm::single_data_transfer}},
+  {"011xxxxxxxx1", function_ptr{&arm::undefined}},
+  {"100xxxxxxxxx", function_ptr{&arm::block_data_transfer}},
+  {"101xxxxxxxxx", function_ptr{&arm::branch_link}},
+  {"1111xxxxxxxx", function_ptr{&arm::swi}},
+};
+
+constexpr lookup_table<function_ptr<std::string(u32, u16)>, 10_u32, 19_u32> thumb_table_{
+  {"000xxxxxxx", function_ptr{&thumb::move_shifted_reg}},
+  {"00011xxxxx", function_ptr{&thumb::add_subtract}},
+  {"001xxxxxxx", function_ptr{&thumb::mov_cmp_add_sub_imm}},
+  {"010000xxxx", function_ptr{&thumb::alu}},
+  {"010001xxxx", function_ptr{&thumb::hireg_bx}},
+  {"01001xxxxx", function_ptr{&thumb::pc_rel_load}},
+  {"0101xx0xxx", function_ptr{&thumb::ld_str_reg}},
+  {"0101xx1xxx", function_ptr{&thumb::ld_str_sign_extended_byte_hword}},
+  {"011xxxxxxx", function_ptr{&thumb::ld_str_imm}},
+  {"1000xxxxxx", function_ptr{&thumb::ld_str_hword}},
+  {"1001xxxxxx", function_ptr{&thumb::ld_str_sp_relative}},
+  {"1010xxxxxx", function_ptr{&thumb::ld_addr}},
+  {"10110000xx", function_ptr{&thumb::add_offset_to_sp}},
+  {"1011x10xxx", function_ptr{&thumb::push_pop}},
+  {"1100xxxxxx", function_ptr{&thumb::ld_str_multiple}},
+  {"1101xxxxxx", function_ptr{&thumb::branch_cond}},
+  {"11011111xx", function_ptr{&thumb::swi}},
+  {"11100xxxxx", function_ptr{&thumb::branch}},
+  {"1111xxxxxx", function_ptr{&thumb::long_branch_link}},
+};
+
 } // namespace
 
-disassembler::disassembler() noexcept
-  : arm_table_{
-      {"000xxxxxxxx0", function_ptr{&arm::data_processing}},
-      {"000xxxxx0xx1", function_ptr{&arm::data_processing}},
-      {"001xxxxxxxxx", function_ptr{&arm::data_processing}},
-      {"000100100001", function_ptr{&arm::branch_exchange}},
-      {"000xx0xx1xx1", function_ptr{&arm::halfword_data_transfer}},
-      {"000xx1xx1xx1", function_ptr{&arm::halfword_data_transfer}},
-      {"00110x10xxxx", function_ptr{&arm::psr_transfer}},
-      {"00010xx00000", function_ptr{&arm::psr_transfer}},
-      {"000000xx1001", function_ptr{&arm::multiply}},
-      {"00001xxx1001", function_ptr{&arm::multiply}},
-      {"00010x001001", function_ptr{&arm::single_data_swap}},
-      {"010xxxxxxxxx", function_ptr{&arm::single_data_transfer}},
-      {"011xxxxxxxx0", function_ptr{&arm::single_data_transfer}},
-      {"011xxxxxxxx1", function_ptr{&arm::undefined}},
-      {"100xxxxxxxxx", function_ptr{&arm::block_data_transfer}},
-      {"101xxxxxxxxx", function_ptr{&arm::branch_link}},
-      {"1111xxxxxxxx", function_ptr{&arm::swi}},
-    },
-    thumb_table_{
-      {"000xxxxxxx", function_ptr{&thumb::move_shifted_reg}},
-      {"00011xxxxx", function_ptr{&thumb::add_subtract}},
-      {"001xxxxxxx", function_ptr{&thumb::mov_cmp_add_sub_imm}},
-      {"010000xxxx", function_ptr{&thumb::alu}},
-      {"010001xxxx", function_ptr{&thumb::hireg_bx}},
-      {"01001xxxxx", function_ptr{&thumb::pc_rel_load}},
-      {"0101xx0xxx", function_ptr{&thumb::ld_str_reg}},
-      {"0101xx1xxx", function_ptr{&thumb::ld_str_sign_extended_byte_hword}},
-      {"011xxxxxxx", function_ptr{&thumb::ld_str_imm}},
-      {"1000xxxxxx", function_ptr{&thumb::ld_str_hword}},
-      {"1001xxxxxx", function_ptr{&thumb::ld_str_sp_relative}},
-      {"1010xxxxxx", function_ptr{&thumb::ld_addr}},
-      {"10110000xx", function_ptr{&thumb::add_offset_to_sp}},
-      {"1011x10xxx", function_ptr{&thumb::push_pop}},
-      {"1100xxxxxx", function_ptr{&thumb::ld_str_multiple}},
-      {"1101xxxxxx", function_ptr{&thumb::branch_cond}},
-      {"11011111xx", function_ptr{&thumb::swi}},
-      {"11100xxxxx", function_ptr{&thumb::branch}},
-      {"1111xxxxxx", function_ptr{&thumb::long_branch_link}},
-    } {}
-
-std::string disassembler::disassemble_arm(const u32 address, const u32 instruction) const noexcept
+std::string disassembler::disassemble_arm(const u32 address, const u32 instruction) noexcept
 {
     if(auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | (instruction >> 4_u32) & 0xF_u32]) {
         return func(address, instruction);
@@ -642,7 +644,7 @@ std::string disassembler::disassemble_arm(const u32 address, const u32 instructi
     return std::string{unknown_instruction};
 }
 
-std::string disassembler::disassemble_thumb(const u32 address, const u16 instruction) const noexcept
+std::string disassembler::disassemble_thumb(const u32 address, const u16 instruction) noexcept
 {
     if(auto func = thumb_table_[instruction >> 6_u16]) {
         return func(address, instruction);

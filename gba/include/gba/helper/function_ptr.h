@@ -32,12 +32,12 @@ struct function_ptr<Ret(Args...)> {
      * @return Return value from the function
      */
     template<typename... T>
-    Ret operator()(T&&... args) const noexcept { return std::invoke(ptr, std::forward<T>(args)...); }
+    constexpr Ret operator()(T&&... args) const noexcept { return std::invoke(ptr, std::forward<T>(args)...); }
 
     /** @return if this function_ptr is bound or not */
-    [[nodiscard]] bool is_valid() const noexcept { return ptr != nullptr; }
+    [[nodiscard]] constexpr bool is_valid() const noexcept { return ptr != nullptr; }
     /** @return if this function_ptr is bound or not */
-    explicit operator bool() const noexcept { return is_valid(); }
+    explicit constexpr operator bool() const noexcept { return is_valid(); }
 };
 
 /**
@@ -60,12 +60,12 @@ struct function_ptr<Class, Ret(Args...)> {
      * @return Return value from the function
      */
     template<typename... T>
-    Ret operator()(T&&... args) const noexcept { return std::invoke(ptr, std::forward<T>(args)...); }
+    constexpr Ret operator()(T&&... args) const noexcept { return std::invoke(ptr, std::forward<T>(args)...); }
 
     /** @return if this function_ptr is bound or not */
-    [[nodiscard]] bool is_valid() const noexcept { return ptr != nullptr; }
+    [[nodiscard]] constexpr bool is_valid() const noexcept { return ptr != nullptr; }
     /** @return if this function_ptr is bound or not */
-    explicit operator bool() const noexcept { return is_valid(); }
+    explicit constexpr operator bool() const noexcept { return is_valid(); }
 };
 
 /** CTAD guide for free functions */

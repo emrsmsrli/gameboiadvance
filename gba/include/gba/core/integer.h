@@ -76,14 +76,14 @@ public:
       : value_(static_cast<T>(value)) {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE integer& operator=(const T value) noexcept
+    FORCEINLINE constexpr integer& operator=(const T value) noexcept
     {
         value_ = value;
         return *this;
     }
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE integer& operator=(const integer<T> value) noexcept
+    FORCEINLINE constexpr integer& operator=(const integer<T> value) noexcept
     {
         value_ = static_cast<T>(value);
         return *this;
