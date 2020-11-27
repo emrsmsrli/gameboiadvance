@@ -36,8 +36,8 @@ struct array {
 
     [[nodiscard]] constexpr usize size() const noexcept { return N; }
 
-    constexpr auto begin() const noexcept { return std::begin(_data); }
-    constexpr auto end() const noexcept { return std::end(_data); }
+    constexpr auto begin() noexcept { return std::begin(_data); }
+    constexpr auto end() noexcept { return std::end(_data); }
     constexpr auto cbegin() const noexcept { return std::cbegin(_data); }
     constexpr auto cend() const noexcept { return std::cend(_data); }
 };
@@ -81,8 +81,8 @@ public:
       typename std::vector<T>::const_iterator last) { return data_.erase(first, last); }
     void pop_back() noexcept { return data_.pop_back(); }
 
-    auto begin() const noexcept { return data_.begin(); }
-    auto end() const noexcept { return data_.end(); }
+    auto begin() noexcept { return data_.begin(); }
+    auto end() noexcept { return data_.end(); }
     auto cbegin() const noexcept { return data_.cbegin(); }
     auto cend() const noexcept { return data_.cend(); }
 
