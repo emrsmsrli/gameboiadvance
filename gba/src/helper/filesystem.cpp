@@ -1,11 +1,10 @@
 #include <gba/helper/filesystem.h>
 
-#include <array>
 #include <fstream>
 
-namespace gba {
+namespace gba::fs {
 
-vector<u8> read_file(const fs::path& path)
+vector<u8> read_file(const path& path)
 {
     std::ifstream stream{path, std::ios::binary | std::ios::in};
     stream.unsetf(std::ios::skipws);
@@ -26,7 +25,7 @@ vector<u8> read_file(const fs::path& path)
     return bytes;
 }
 
-void write_file(const fs::path& path, const vector<u8>& data)
+void write_file(const path& path, const vector<u8>& data)
 {
     std::ofstream stream{path, std::ios::binary | std::ios::out};
     stream.unsetf(std::ios::skipws);
@@ -39,4 +38,4 @@ void write_file(const fs::path& path, const vector<u8>& data)
     LOG_TRACE("wrote {} bytes to {}", data.size(), path.string());
 }
 
-} // namespace gba
+} // namespace gba::fs

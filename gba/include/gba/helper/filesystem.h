@@ -3,16 +3,15 @@
 
 #include <filesystem>
 
-#include <gba/core/integer.h>
 #include <gba/core/container.h>
 
-namespace gba {
+namespace gba::fs {
 
-namespace fs = std::filesystem;
+using namespace std::filesystem;
 
-vector<u8> read_file(const fs::path& path);
-void write_file(const fs::path& path, const vector<u8>& data);
+vector<u8> read_file(const path& path);
+void write_file(const path& path, const vector<u8>& data);
 
-} // namespace gba
+} // namespace gba::fs
 
 #endif //GAMEBOIADVANCE_FILESYSTEM_H

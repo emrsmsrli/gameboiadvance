@@ -18,7 +18,7 @@ void copy_pak_str(std::string& out, const vector<u8>& data, const u8 start_addr,
 
 void gamepak::load(const fs::path& path)
 {
-    rom_data_ = read_file(path);
+    rom_data_ = fs::read_file(path);
     path_ = path;
     loaded_ = true;
 
