@@ -1,4 +1,5 @@
 #include <gba/cartridge/gamepak.h>
+#include <gba/cartridge/gamepak_db.h>
 
 namespace gba {
 
@@ -17,6 +18,26 @@ std::string_view make_pak_str_zero_padded(const vector<u8>& data, const usize st
     }
 
     return make_pak_str(data, start, len);
+}
+
+std::unique_ptr<backup> make_backup_from_type(const backup::type type, const fs::path& pak_path)
+{
+    switch(type) {
+        case backup::type::none:
+            return nullptr;
+        case backup::type::eeprom_4kb:
+            return std::make_unique<backup_eeprom>(pak_path, 4_kb);
+        case backup::type::eeprom_64kb:
+            return std::make_unique<backup_eeprom>(pak_path, 64_kb);
+        case backup::type::sram:
+            return std::make_unique<backup_sram>(pak_path);
+        case backup::type::flash_64kb:
+            return std::make_unique<backup_flash>(pak_path, 64_kb);
+        case backup::type::flash_128kb:
+            return std::make_unique<backup_flash>(pak_path, 128_kb);
+        default:
+            UNREACHABLE();
+    }
 }
 
 } // namespace
@@ -55,9 +76,53 @@ void gamepak::load(const fs::path& path)
         LOG_INFO("checksum: {:02X}", calculated_checksum);
     }
 
+    detect_backup_type();
+
     LOG_INFO("---------------------");
 
     on_load_(path);
+}
+
+void gamepak::detect_backup_type() noexcept
+{
+    const std::optional<pak_db_entry> entry = query_pak_db(game_code_);
+
+    if(entry.has_value() && entry->backup_type != backup::type::detect) {
+        backup_type_ = entry->backup_type;
+        has_mirroring_ = entry->has_mirroring;
+        has_rtc_ = entry->has_rtc;
+        // todo init rtc
+
+        backup_ = make_backup_from_type(backup_type_, path_);
+        LOG_INFO("backup type found from db");
+        return;
+    }
+
+    using namespace std::string_view_literals;
+    static constexpr array backup_type_strings{
+      std::make_pair("EEPROM_V"sv, backup::type::eeprom_64kb),
+      std::make_pair("SRAM_V"sv, backup::type::sram),
+      std::make_pair("SRAM_F_V"sv, backup::type::sram),
+      std::make_pair("FLASH_V"sv, backup::type::flash_64kb),
+      std::make_pair("FLASH512_V"sv, backup::type::flash_64kb),
+      std::make_pair("FLASH1M_V"sv, backup::type::flash_128kb),
+    };
+
+    std::string_view pak_str = make_pak_str(pak_data_, 0_usize, pak_data_.size());
+    for(const auto& [name, type] : backup_type_strings) {
+        if(pak_str.find(name) != std::string_view::npos) {
+            backup_type_ = type;
+            backup_ = make_backup_from_type(backup_type_, path_);
+        }
+    }
+
+    if(backup_type_ == backup::type::detect) {
+        LOG_WARN("backup type not found, falling back to SRAM");
+        backup_type_ = backup::type::sram;
+        backup_ = std::make_unique<backup_sram>(path_);
+    } else {
+        LOG_INFO("backup type found");
+    }
 }
 
 } // namespace gba

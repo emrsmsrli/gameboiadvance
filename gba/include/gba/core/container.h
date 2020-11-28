@@ -40,6 +40,8 @@ struct array {
 
     constexpr auto begin() noexcept { return std::begin(_data); }
     constexpr auto end() noexcept { return std::end(_data); }
+    constexpr auto begin() const noexcept { return std::begin(_data); }
+    constexpr auto end() const noexcept { return std::end(_data); }
     constexpr auto cbegin() const noexcept { return std::cbegin(_data); }
     constexpr auto cend() const noexcept { return std::cend(_data); }
 };
@@ -87,6 +89,8 @@ public:
 
     auto begin() noexcept { return data_.begin(); }
     auto end() noexcept { return data_.end(); }
+    auto begin() const noexcept { return data_.begin(); }
+    auto end() const noexcept { return data_.end(); }
     auto cbegin() const noexcept { return data_.cbegin(); }
     auto cend() const noexcept { return data_.cend(); }
 

@@ -11,6 +11,8 @@ class backup {
     usize size_;
 
 public:
+    enum class type { none, detect, eeprom_4kb, eeprom_64kb, sram, flash_64kb, flash_128kb };
+
     virtual ~backup() = default;
     backup(const backup&) = default;
     backup(backup&&) = default;
@@ -38,19 +40,19 @@ public:
     [[nodiscard]] virtual u8 read(u32 address) const noexcept = 0;
 };
 
-class backup_sram_fram : public backup {
-public:
-    explicit backup_sram_fram(const fs::path& pak_path)
-      : backup(pak_path, 32_kb) {}
-
-    void write(const u32 address, const u8 value) noexcept final { data()[address & 0x7FFF_u32] = value; }
-    [[nodiscard]] u8 read(const u32 address) const noexcept final { return data()[address & 0x7FFF_u32]; }
-};
-
 class backup_eeprom : public backup {
 public:
     explicit backup_eeprom(const fs::path& pak_path, const usize size)
       : backup(pak_path, size) {}
+
+    void write(u32 address, u8 value) noexcept final;
+    [[nodiscard]] u8 read(u32 address) const noexcept final;
+};
+
+class backup_sram : public backup {
+public:
+    explicit backup_sram(const fs::path& pak_path)
+      : backup(pak_path, 32_kb) {}
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
