@@ -78,6 +78,9 @@ void gamepak::load(const fs::path& path)
 
     detect_backup_type();
 
+    LOG_INFO("rtc: {}", has_rtc_);
+    LOG_INFO("address mirroring: {}", has_mirroring_);
+
     LOG_INFO("---------------------");
 
     on_load_(path);
@@ -91,10 +94,11 @@ void gamepak::detect_backup_type() noexcept
         backup_type_ = entry->backup_type;
         has_mirroring_ = entry->has_mirroring;
         has_rtc_ = entry->has_rtc;
+
         // todo init rtc
 
         backup_ = make_backup_from_type(backup_type_, path_);
-        LOG_INFO("backup type found from db");
+        LOG_INFO("backup: {} (database entry)", to_string_view(backup_type_));
         return;
     }
 
@@ -117,11 +121,11 @@ void gamepak::detect_backup_type() noexcept
     }
 
     if(backup_type_ == backup::type::detect) {
-        LOG_WARN("backup type not found, falling back to SRAM");
         backup_type_ = backup::type::sram;
         backup_ = std::make_unique<backup_sram>(path_);
+        LOG_WARN("backup: {} (fallback)", to_string_view(backup_type_));
     } else {
-        LOG_INFO("backup type found");
+        LOG_INFO("backup: {}", to_string_view(backup_type_));
     }
 }
 

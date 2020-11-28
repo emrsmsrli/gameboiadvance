@@ -68,6 +68,19 @@ public:
     [[nodiscard]] u8 read(u32 address) const noexcept final;
 };
 
+constexpr std::string_view to_string_view(const backup::type type) noexcept
+{
+    switch(type) {
+        case backup::type::none: return "none";
+        case backup::type::detect: return "detect";
+        case backup::type::eeprom_4: return "eeprom_4";
+        case backup::type::eeprom_64: return "eeprom_64";
+        case backup::type::sram: return "sram";
+        case backup::type::flash_64: return "flash_64";
+        case backup::type::flash_128: return "flash_128";
+    }
+}
+
 } // namespace gba
 
 #endif //GAMEBOIADVANCE_BACKUP_H
