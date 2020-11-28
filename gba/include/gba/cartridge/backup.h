@@ -11,7 +11,7 @@ class backup {
     usize size_;
 
 public:
-    enum class type { none, detect, eeprom_4kb, eeprom_64kb, sram, flash_64kb, flash_128kb };
+    enum class type { none, detect, eeprom_4, eeprom_64, sram, flash_64, flash_128 };
 
     virtual ~backup() = default;
     backup(const backup&) = default;

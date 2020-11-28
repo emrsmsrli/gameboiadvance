@@ -25,15 +25,15 @@ std::unique_ptr<backup> make_backup_from_type(const backup::type type, const fs:
     switch(type) {
         case backup::type::none:
             return nullptr;
-        case backup::type::eeprom_4kb:
-            return std::make_unique<backup_eeprom>(pak_path, 4_kb);
-        case backup::type::eeprom_64kb:
-            return std::make_unique<backup_eeprom>(pak_path, 64_kb);
+        case backup::type::eeprom_4:
+            return std::make_unique<backup_eeprom>(pak_path, 512_usize);
+        case backup::type::eeprom_64:
+            return std::make_unique<backup_eeprom>(pak_path, 8_kb);
         case backup::type::sram:
             return std::make_unique<backup_sram>(pak_path);
-        case backup::type::flash_64kb:
+        case backup::type::flash_64:
             return std::make_unique<backup_flash>(pak_path, 64_kb);
-        case backup::type::flash_128kb:
+        case backup::type::flash_128:
             return std::make_unique<backup_flash>(pak_path, 128_kb);
         default:
             UNREACHABLE();
@@ -100,12 +100,12 @@ void gamepak::detect_backup_type() noexcept
 
     using namespace std::string_view_literals;
     static constexpr array backup_type_strings{
-      std::make_pair("EEPROM_V"sv, backup::type::eeprom_64kb),
+      std::make_pair("EEPROM_V"sv, backup::type::eeprom_64),
       std::make_pair("SRAM_V"sv, backup::type::sram),
       std::make_pair("SRAM_F_V"sv, backup::type::sram),
-      std::make_pair("FLASH_V"sv, backup::type::flash_64kb),
-      std::make_pair("FLASH512_V"sv, backup::type::flash_64kb),
-      std::make_pair("FLASH1M_V"sv, backup::type::flash_128kb),
+      std::make_pair("FLASH_V"sv, backup::type::flash_64),
+      std::make_pair("FLASH512_V"sv, backup::type::flash_64),
+      std::make_pair("FLASH1M_V"sv, backup::type::flash_128),
     };
 
     std::string_view pak_str = make_pak_str(pak_data_, 0_usize, pak_data_.size());

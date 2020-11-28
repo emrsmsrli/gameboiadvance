@@ -7,6 +7,7 @@ configure_file(cmake/version.h.in
 add_library(${PROJECT_NAME} STATIC
         src/cartridge/backup.cpp
         src/cartridge/gamepak.cpp
+        src/cartridge/gamepak_db.cpp
         src/helper/filesystem.cpp)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
