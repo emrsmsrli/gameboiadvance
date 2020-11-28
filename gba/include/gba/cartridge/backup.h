@@ -23,6 +23,7 @@ public:
       : path_{std::move(pak_path)},
         size_{size}
     {
+        path_.replace_extension(".sav");
         if(fs::exists(path_)) {
             data_ = fs::read_file(path_);
         } else {
