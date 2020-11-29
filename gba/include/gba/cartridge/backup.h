@@ -1,6 +1,9 @@
 #ifndef GAMEBOIADVANCE_BACKUP_H
 #define GAMEBOIADVANCE_BACKUP_H
 
+#include <algorithm>
+
+#include <gba/helper/bitflags.h>
 #include <gba/helper/filesystem.h>
 
 namespace gba {
@@ -60,13 +63,37 @@ public:
 };
 
 class backup_flash : public backup {
+    enum class state : u8::type { accept_cmd, cmd_phase1, cmd_phase2, cmd_phase3 };
+    enum class cmd : u8::type { none, device_id, erase, write_byte, select_bank };
+
+    usize current_bank_ = 0_usize;
+    array<u8, 2> device_id_;
+    state state_{state::accept_cmd};
+    cmd current_cmds_{cmd::none};
+
 public:
     explicit backup_flash(const fs::path& pak_path, const usize size)
-      : backup(pak_path, size) {}
+      : backup(pak_path, size)
+    {
+        // D4BFh  SST        64K
+        // 09C2h  Macronix   128K
+        if(size == 64_kb) {
+            device_id_ = {0xBF_u8, 0xD4_u8};
+        } else if(size == 128_kb) {
+            device_id_ = {0xC2_u8, 0x09_u8};
+        } else {
+            LOG_ERROR("incorrect flash size");
+        }
+    }
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
+
+private:
+    [[nodiscard]] usize physical_addr(const u32 addr) const noexcept { return current_bank_ * 64_kb + addr; }
 };
+
+ENABLE_BITFLAG_OPS(backup_flash::cmd);
 
 constexpr std::string_view to_string_view(const backup::type type) noexcept
 {

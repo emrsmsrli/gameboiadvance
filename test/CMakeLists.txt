@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12.4)
 project(gameboiadvance_tests CXX)
 
 add_executable(${PROJECT_NAME}
+        src/backup.cpp
         src/integer.cpp
         src/math.cpp
         src/main.cpp)
