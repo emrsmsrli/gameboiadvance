@@ -114,7 +114,7 @@ public:
         return *this;
     }
 
-    FORCEINLINE constexpr integer operator++(int) const noexcept  // NOLINT
+    FORCEINLINE constexpr integer operator++(int) noexcept  // NOLINT
     {
         auto res = *this;
         ++*this;
@@ -127,7 +127,7 @@ public:
         return *this;
     }
 
-    FORCEINLINE constexpr integer operator--(int) const noexcept  // NOLINT
+    FORCEINLINE constexpr integer operator--(int) noexcept  // NOLINT
     {
         auto res = *this;
         --*this;
