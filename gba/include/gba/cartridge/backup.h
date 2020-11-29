@@ -31,6 +31,7 @@ public:
             data_ = fs::read_file(path_);
         } else {
             data_.resize(size_);
+            std::fill(data_.begin(), data_.end(), 0xFF_u8);
         }
     }
 
