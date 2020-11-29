@@ -1,3 +1,10 @@
+/*
+ * Copyright (C) 2020  emrsmsrli
+ *
+ * Licensed under GPLv3 or any later version.
+ * Refer to the included LICENSE file.
+ */
+
 #ifndef GAMEBOIADVANCE_LOOKUP_TABLE_H
 #define GAMEBOIADVANCE_LOOKUP_TABLE_H
 
