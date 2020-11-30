@@ -1,0 +1,45 @@
+os: linux
+dist: bionic
+sudo: false
+language: cpp
+cache:
+  ccache: true
+
+branches:
+  only:
+    - master
+
+jobs:
+  include:
+    - name: "linux-gcc"
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-9
+            # sfml dependencies
+            - libx11-dev
+            - libxrandr-dev
+            - libxi-dev
+            - libudev-dev
+            - libgl1-mesa-dev
+      env:
+        - CC=/usr/bin/gcc-9
+        - CXX=/usr/bin/g++-9
+
+before_script:
+  - git clone https://github.com/Microsoft/vcpkg.git
+  - echo "vcpkg installed at $(pwd)/vcpkg"
+  - ./vcpkg/bootstrap-vcpkg.sh -disableMetrics
+  - ./vcpkg/vcpkg integrate install
+  - ./vcpkg/vcpkg install spdlog fmt sfml sdl2
+  - pip install --user cmake ninja
+
+script:
+  - mkdir build
+  - cd build
+  - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=$TRAVIS_BUILD_DIR/vcpkg/scripts/buildsystems/vcpkg.cmake $CMAKE_ARGS ..
+  - cmake --build . --config Release --target gameboiadvance_tests -- -j $(nproc)
+  - ctest -C Release
