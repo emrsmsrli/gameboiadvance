@@ -105,7 +105,7 @@ TEST_CASE("integer")
 
         auto u5 = narrow<u32>(u3);
         static_assert(std::is_same_v<decltype(u5), u32>, "u5 should've been u32");
-        CHECK(u5 == 0xFEDC'3210_u16);
+        CHECK(u5 == 0xFEDC'3210_u32);
 
         // narrow doesn't widen the integers
         // auto u = narrow<u64>(u3);
