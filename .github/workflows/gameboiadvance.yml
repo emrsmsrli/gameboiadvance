@@ -4,6 +4,8 @@ on: [push]
 
 env:
   BUILD_TYPE: Release
+  CC: gcc-10
+  CXX: g++-10
 
 jobs:
   build:
@@ -11,7 +13,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Configure ninja
+      shell: bash
+      run: sudo apt-get install ninja-build
+
     - name: Configure vcpkg
+      working-directory: $GITHUB_WORKSPACE
       shell: bash
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
@@ -20,25 +27,20 @@ jobs:
         ./vcpkg/vcpkg install spdlog fmt
 
     - name: Create build environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
+      shell: bash
+      run: cmake -E make_directory $GITHUB_WORKSPACE/build
 
     - name: Configure CMake
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       shell: bash
-      run: cmake $GITHUB_WORKSPACE -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DENABLE_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=${{runner.workspace}}/vcpkg/scripts/buildsystems/vcpkg.cmake
+      run: cmake -GNinja -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DENABLE_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=$GITHUB_WORKSPACE/vcpkg/scripts/buildsystems/vcpkg.cmake ..
 
     - name: Build
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       shell: bash
-      run: cmake --build . --config $BUILD_TYPE --target gba -- -j $(nproc)
+      run: cmake --build . --config $BUILD_TYPE --target gameboiadvance_tests -- -j $(nproc)
 
     - name: Test
-      working-directory: ${{runner.workspace}}/build
+      working-directory: $GITHUB_WORKSPACE/build
       shell: bash
       run: ctest -C $BUILD_TYPE
-
-    - name: Upload build artifact
-      uses: actions/upload-artifact@v2.2.1
-      with:
-        name: gameboi
-        path: ${{runner.workspace}}/build/gameboiadvance
