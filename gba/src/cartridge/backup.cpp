@@ -9,13 +9,95 @@
 
 namespace gba {
 
-void backup_eeprom::write(const u32 address, const u8 value) noexcept
+void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
 {
+    constexpr u64 read_request_pattern = 0b11_u64;
+    constexpr u64 write_request_pattern = 0b10_u64;
 
+    value &= 0x1_u8;
+    buffer_ = (buffer_ << 1_u8) | value;
+    ++transmission_count_;
+
+    switch(state_) {
+        case state::accepting_commands: {
+            if(transmission_count_ == 2_u8) {
+                if(buffer_ == write_request_pattern) {
+                    read_mode_ = false;
+                    state_ = state::transmitting_addr;
+                } else if(buffer_ == read_request_pattern) {
+                    read_mode_ = true;
+                    state_ = state::transmitting_addr;
+                }
+
+                reset_buffer();
+            }
+            break;
+        }
+        case state::transmitting_addr: {
+            if(transmission_count_ == bus_width_) {
+                address_ = narrow<u32>(buffer_ * 8_u32) & 0x3FF_u32;  // addressing works in 64bit units
+                reset_buffer();
+
+                // write request automatically erases 64 bits of data
+                if(!read_mode_) {
+                    memcpy(data(), address_, 0_u64);
+                    state_ = state::transmitting_data;
+                } else {
+                    state_ = state::waiting_finish_bit;
+                }
+            }
+            break;
+        }
+        case state::transmitting_data: {
+            if(!read_mode_ && transmission_count_ == 64_u8) {
+                memcpy(data(), address_, buffer_);
+                reset_buffer();
+                state_ = state::waiting_finish_bit;
+            }
+            break;
+        }
+        case state::waiting_finish_bit: {
+            if(!read_mode_) {
+                state_ = state::accepting_commands;
+            } else {
+                state_ = state::transmitting_ignored_bits;
+            }
+
+            reset_buffer();
+            break;
+        }
+        case state::transmitting_ignored_bits:
+            break;
+    }
 }
 
-u8 backup_eeprom::read(const u32 address) const noexcept
+u8 backup_eeprom::read(const u32 /*address*/) const noexcept
 {
+    if(read_mode_) {
+        if(state_ == state::transmitting_ignored_bits) {
+            ++transmission_count_;
+            if(transmission_count_ == 4) {
+                state_ = state::transmitting_data;
+                transmission_count_ = 0_u8;
+                buffer_ = memcpy<u64>(data(), address_);
+            }
+
+            return 0_u8;
+        }
+
+        if(state_ == state::transmitting_data) {
+            const u8 data = narrow<u8>((buffer_ >> (63_u64 - transmission_count_)) & 0x1_u64);
+            ++transmission_count_;
+
+            if(transmission_count_ == 64_u8) {
+                state_ = state::accepting_commands;
+                reset_buffer();
+            }
+
+            return data;
+        }
+    }
+
     return 0_u8;
 }
 

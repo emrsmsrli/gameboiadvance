@@ -53,12 +53,33 @@ public:
 };
 
 class backup_eeprom : public backup {
+    enum class state : u8::type {
+        accepting_commands,
+        transmitting_addr,
+        transmitting_data,
+        transmitting_ignored_bits,
+        waiting_finish_bit
+    };
+
+    mutable u64 buffer_;
+    u32 address_;
+    u8 bus_width_;
+    mutable u8 transmission_count_;
+    bool read_mode_ = false;
+    mutable state state_{state::accepting_commands};
+
 public:
     explicit backup_eeprom(const fs::path& pak_path, const usize size)
-      : backup(pak_path, size) {}
+      : backup(pak_path, size),
+        bus_width_{size == 8_kb ? 14_u8 : 6_u8} {}
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
+
+    [[nodiscard]] u32 get_addr() const noexcept { return address_; }
+
+private:
+    void reset_buffer() const noexcept { buffer_ = 0_u64; transmission_count_ = 0_u8; }
 };
 
 class backup_sram : public backup {
@@ -72,7 +93,13 @@ public:
 
 class backup_flash : public backup {
     enum class state : u8::type { accept_cmd, cmd_phase1, cmd_phase2, cmd_phase3 };
-    enum class cmd : u8::type { none, device_id, erase, write_byte, select_bank };
+    enum class cmd : u8::type {
+        none = 0u,
+        device_id = 1u << 0u,
+        erase = 1u << 1u,
+        write_byte = 1u << 2u,
+        select_bank = 1u << 3u
+    };
 
     usize current_bank_ = 0_usize;
     array<u8, 2> device_id_;
