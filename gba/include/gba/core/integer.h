@@ -207,7 +207,7 @@ using underlying_int_type = typename Integer::type;
 
 template<typename T>
 struct make_signed {
-    using type = typename std::make_signed<T>::type;
+    using type = std::make_signed_t<T>;
 };
 
 template<typename T>
@@ -253,8 +253,7 @@ FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) 
 }
 
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(
-  const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
+FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
 template<typename T, typename = detail::enable_integer<T>>
 FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept
 {
@@ -266,7 +265,8 @@ FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T>
 template<typename A, typename B>
 FORCEINLINE constexpr integer<detail::greater_sized_t<A, B>> operator+(const integer<A> a, const integer<B> b) noexcept
 {
-    return integer<detail::greater_sized_t<A, B>>(static_cast<A>(a) + static_cast<B>(b));
+    using result_type = detail::greater_sized_t<A, B>;
+    return static_cast<result_type>(static_cast<A>(a) + static_cast<B>(b));
 }
 
 template<typename A, typename B>
