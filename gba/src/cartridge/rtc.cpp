@@ -142,8 +142,7 @@ void rtc::read_pins() noexcept
                         process_byte();
                     }
                 } else {
-                    u8 b = pin_sck | pin_cs | (get_output_byte() << 1_u8);
-                    write_pins(b);
+                    write_pins(pin_sck | pin_cs | (get_output_byte() << 1_u8));
                     ++bits_read_;
                     if(bits_read_ == 8_u8) {
                         bits_read_ = 0_u8;
