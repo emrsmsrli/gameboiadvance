@@ -183,10 +183,8 @@ void rtc::process_byte() noexcept
             LOG_TRACE("RTC cmd: {}", to_string_view(current_cmd_.type));
 
             switch(current_cmd_.cmd_type) {
-                case rtc_command::type::reset: {
+                case rtc_command::type::reset:
                     // no-op since we update the clock based on system clock
-                    break;
-                }
                 case rtc_command::type::force_irq:
                     // TODO IRQ to cpu
                     break;
@@ -236,9 +234,8 @@ u8 rtc::get_output_byte() noexcept
         case rtc_command::type::control:
             return bit::extract(control_, bits_read_);
         case rtc_command::type::time:
-        case rtc_command::type::date_time: {
+        case rtc_command::type::date_time:
             return bit::extract(time_regs_[7_u8 - remaining_bytes_], bits_read_);
-        }
         case rtc_command::type::none:
         case rtc_command::type::reset:
         case rtc_command::type::force_irq:
