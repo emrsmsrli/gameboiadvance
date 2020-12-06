@@ -8,23 +8,23 @@
 #ifndef GAMEBOIADVANCE_KEYPAD_H
 #define GAMEBOIADVANCE_KEYPAD_H
 
-#include <gba/core/integer.h>
+#include <gba/core/math.h>
 
 namespace gba {
 
 class keypad {
 public:
-    enum class key : u16::type {
-        a = 1_u16 << 0_u16,
-        b = 1_u16 << 1_u16,
-        select = 1_u16 << 2_u16,
-        start = 1_u16 << 3_u16,
-        right = 1_u16 << 4_u16,
-        left = 1_u16 << 5_u16,
-        up = 1_u16 << 6_u16,
-        down = 1_u16 << 7_u16,
-        right_shoulder = 1_u16 << 8_u16,
-        left_shoulder = 1_u16 << 9_u16,
+    enum class key : u8::type {
+        a = 0_u8,
+        b = 1_u8,
+        select = 2_u8,
+        start = 3_u8,
+        right = 4_u8,
+        left = 5_u8,
+        up = 6_u8,
+        down = 7_u8,
+        right_shoulder = 8_u8,
+        left_shoulder = 9_u8,
     };
 
     static inline constexpr auto addr_state = 0x0400'0130_u32;
@@ -39,8 +39,8 @@ private:
     } control_;
 
 public:
-    void press(key k) noexcept { pressed_ &= ~static_cast<u16::type>(k); }
-    void release(key k) noexcept { pressed_ |= static_cast<u16::type>(k); }
+    void press(key k) noexcept { pressed_ = bit::clear(pressed_, static_cast<u8::type>(k)); }
+    void release(key k) noexcept { pressed_ = bit::set(pressed_, static_cast<u8::type>(k)); }
 
     void write(const u32 address, const u8 data) noexcept
     {
