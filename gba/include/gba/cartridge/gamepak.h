@@ -12,6 +12,7 @@
 #include <string_view>
 
 #include <gba/cartridge/backup.h>
+#include <gba/cartridge/rtc.h>
 #include <gba/core/event/event.h>
 #include <gba/helper/filesystem.h>
 
@@ -24,6 +25,8 @@ class gamepak {
 
     fs::path path_;
     vector<u8> pak_data_;
+
+    rtc rtc_;
 
     std::unique_ptr<backup> backup_;
     backup::type backup_type_{backup::type::detect};
