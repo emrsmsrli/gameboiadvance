@@ -5,6 +5,9 @@ configure_file(cmake/version.h.in
         ${CMAKE_CURRENT_SOURCE_DIR}/include/gba/version.h)
 
 add_library(${PROJECT_NAME} STATIC
+        src/arm/arm7tdmi.cpp
+        src/arm/arm7tdmi_isa_arm.cpp
+        src/arm/arm7tdmi_isa_thumb.cpp
         src/cartridge/backup.cpp
         src/cartridge/gamepak.cpp
         src/cartridge/rtc.cpp
