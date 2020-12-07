@@ -58,6 +58,21 @@ TEST_CASE("bit ops")
     }
 }
 
+TEST_CASE("mask ops")
+{
+    u16 integer = 0x0FF0_u16;
+
+    SUBCASE("set") {
+        CHECK(mask::set(integer, 0xF000_u16) == 0xFFF0_u16);
+        CHECK(mask::set(integer, 0x000F_u16) == 0x0FFF_u16);
+    }
+
+    SUBCASE("clear") {
+        CHECK(mask::clear(integer, 0x0F00_u16) == 0x00F0_u16);
+        CHECK(mask::clear(integer, 0x00F0_u16) == 0x0F00_u16);
+    }
+}
+
 TEST_CASE("math ops")
 {
     u16 integer = 0x00F0_u16;

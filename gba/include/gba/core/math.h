@@ -35,6 +35,28 @@ template<typename T>
 
 } // namespace bit
 
+namespace mask {
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T set(const T t, const T m) noexcept { return t | m; }
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T clear(const T t, const T m) noexcept { return t & ~m; }
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T set(const T t, const typename T::type m) noexcept
+{
+    return mask::set(t, integer<typename T::type>{m});
+}
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T clear(const T t, const typename T::type m) noexcept
+{
+    return mask::clear(t, integer<typename T::type>{m});
+}
+
+} // namespace mask
+
 namespace math {
 
 template<typename T>
