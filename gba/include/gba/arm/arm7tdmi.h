@@ -147,6 +147,12 @@ class arm7tdmi {
     u16 if_;
     bool ime_ = false;
 
+    struct {
+        mem_access fetch_type;
+        u32 executing;
+        u32 decoding;
+    } pipeline_;
+
 public:
     arm7tdmi() = default;
 
@@ -172,6 +178,23 @@ private:
     [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
 
     [[nodiscard]] bool condition_met(u32 instruction) const noexcept;
+
+    template<instruction_mode Mode>
+    void pipeline_reload() noexcept
+    {
+        u32& pc = r(15_u8);
+        if constexpr(Mode == instruction_mode::arm) {
+            pipeline_.executing = read_32(pc, mem_access::non_seq);
+            pipeline_.decoding = read_32(pc + 4_u32, mem_access::seq);
+            pipeline_.fetch_type = mem_access::seq;
+            pc += 8_u32;
+        } else {
+            pipeline_.executing = read_16(pc, mem_access::non_seq);
+            pipeline_.decoding = read_16(pc + 2_u32, mem_access::seq);
+            pipeline_.fetch_type = mem_access::seq;
+            pc += 4_u32;
+        }
+    }
 
     // ARM instructions
     void data_processing(u32 instr) noexcept;
