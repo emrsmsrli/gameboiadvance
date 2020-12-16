@@ -161,22 +161,5 @@ Note: The opcode prefetch is caused by the prefetch pipeline in the CPU itself, 
  ie. it works for code in ROM and RAM as well.
 
 */
-u32 arm7tdmi::read(const u32 addr) noexcept
-{
-    if(addr < 0x0000'3FFF_u32) {
-        if(r(15_u8) < 0x0000'3FFF_u32) {
-            return 0_u32;
-        }
-
-        return memcpy<u32>(bios_, addr);
-    }
-
-    return 0_u32;
-}
-
-void arm7tdmi::write(const u32 addr, const u32 data) noexcept
-{
-
-}
 
 } // namespace gba
