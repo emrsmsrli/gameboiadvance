@@ -108,6 +108,7 @@ struct banked_fiq_regs {
 
 class arm7tdmi {
    enum class instruction_mode { arm, thumb };
+   enum class mem_access { non_seq, seq };
 
     u64 total_cycles_;
 
@@ -156,8 +157,16 @@ public:
     psr& spsr() noexcept;
 
 private:
-    [[nodiscard]] u32 read(u32 addr) noexcept;
-    void write(u32 addr, u32 data) noexcept;
+    [[nodiscard]] u32 read_32_rotated(u32 addr, mem_access access) const noexcept;
+    [[nodiscard]] u32 read_32(u32 addr, mem_access access) const noexcept;
+    void write_32(u32 addr, u32 data, mem_access access) noexcept;
+
+    [[nodiscard]] u32 read_16_rotated(u32 addr, mem_access access) const noexcept;
+    [[nodiscard]] u32 read_16(u32 addr, mem_access access) const noexcept;
+    void write_16(u32 addr, u16 data, mem_access access) noexcept;
+
+    [[nodiscard]] u32 read_8(u32 addr, mem_access access) const noexcept;
+    void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
     [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
     [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
