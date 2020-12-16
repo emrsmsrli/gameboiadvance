@@ -17,6 +17,12 @@
 #define LOG_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__) /*NOLINT*/
 #define LOG_TRACE(...) SPDLOG_TRACE(__VA_ARGS__) /*NOLINT*/
 
+#if DEBUG
+  #define ASSERT(x) do { if(!(x)) { LOG_ERROR("assertion failure: " # x); std::terminate(); } } while(0)
+#else
+  #define ASSERT(x)
+#endif
+
 #if defined(_MSC_VER)
   #define FORCEINLINE __forceinline
   #define UNREACHABLE()                                                         \
