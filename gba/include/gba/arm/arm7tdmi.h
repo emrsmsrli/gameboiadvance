@@ -197,13 +197,19 @@ private:
     }
 
     // ARM instructions
-    void data_processing(u32 instr) noexcept;
-    void psr_transfer(u32 instr) noexcept;
+    void data_processing_imm_shifted_reg(u32 instr) noexcept;
+    void data_processing_reg_shifted_reg(u32 instr) noexcept;
+    void data_processing_imm(u32 instr) noexcept;
     void branch_exchange(u32 instr) noexcept;
+    void halfword_data_transfer_reg(u32 instr) noexcept;
+    void halfword_data_transfer_imm(u32 instr) noexcept;
+    void psr_transfer_reg(u32 instr) noexcept;
+    void psr_transfer_imm(u32 instr) noexcept;
     void multiply(u32 instr) noexcept;
+    void multiply_long(u32 instr) noexcept;
     void single_data_swap(u32 instr) noexcept;
-    void halfword_data_transfer(u32 instr) noexcept;
-    void single_data_transfer(u32 instr) noexcept;
+    void single_data_transfer_imm(u32 instr) noexcept;
+    void single_data_transfer_reg(u32 instr) noexcept;
     void undefined(u32 instr) noexcept;
     void block_data_transfer(u32 instr) noexcept;
     void branch_with_link(u32 instr) noexcept;
@@ -229,6 +235,48 @@ private:
     void swi_thumb(u16 instr) noexcept;
     void branch(u16 instr) noexcept;
     void long_branch_link(u16 instr) noexcept;
+
+    static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
+      {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},
+      {"000xxxxx0xx1", function_ptr{&arm7tdmi::data_processing_reg_shifted_reg}},
+      {"001xxxxxxxxx", function_ptr{&arm7tdmi::data_processing_imm}},
+      {"000100100001", function_ptr{&arm7tdmi::branch_exchange}},
+      {"000xx0xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_reg}},
+      {"000xx1xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_imm}},
+      {"00110x10xxxx", function_ptr{&arm7tdmi::psr_transfer_imm}},
+      {"00010xx00000", function_ptr{&arm7tdmi::psr_transfer_reg}},
+      {"000000xx1001", function_ptr{&arm7tdmi::multiply}},
+      {"00001xxx1001", function_ptr{&arm7tdmi::multiply_long}},
+      {"00010x001001", function_ptr{&arm7tdmi::single_data_swap}},
+      {"010xxxxxxxxx", function_ptr{&arm7tdmi::single_data_transfer_imm}},
+      {"011xxxxxxxx0", function_ptr{&arm7tdmi::single_data_transfer_reg}},
+      {"011xxxxxxxx1", function_ptr{&arm7tdmi::undefined}},
+      {"100xxxxxxxxx", function_ptr{&arm7tdmi::block_data_transfer}},
+      {"101xxxxxxxxx", function_ptr{&arm7tdmi::branch_with_link}},
+      {"1111xxxxxxxx", function_ptr{&arm7tdmi::swi_arm}},
+    };
+
+    static constexpr lookup_table<function_ptr<arm7tdmi, void(u16)>, 10_u32, 19_u32> thumb_table_{
+      {"000xxxxxxx", function_ptr{&arm7tdmi::move_shifted_reg}},
+      {"00011xxxxx", function_ptr{&arm7tdmi::add_subtract}},
+      {"001xxxxxxx", function_ptr{&arm7tdmi::mov_cmp_add_sub_imm}},
+      {"010000xxxx", function_ptr{&arm7tdmi::alu}},
+      {"010001xxxx", function_ptr{&arm7tdmi::hireg_bx}},
+      {"01001xxxxx", function_ptr{&arm7tdmi::pc_rel_load}},
+      {"0101xx0xxx", function_ptr{&arm7tdmi::ld_str_reg}},
+      {"0101xx1xxx", function_ptr{&arm7tdmi::ld_str_sign_extended_byte_hword}},
+      {"011xxxxxxx", function_ptr{&arm7tdmi::ld_str_imm}},
+      {"1000xxxxxx", function_ptr{&arm7tdmi::ld_str_hword}},
+      {"1001xxxxxx", function_ptr{&arm7tdmi::ld_str_sp_relative}},
+      {"1010xxxxxx", function_ptr{&arm7tdmi::ld_addr}},
+      {"10110000xx", function_ptr{&arm7tdmi::add_offset_to_sp}},
+      {"1011x10xxx", function_ptr{&arm7tdmi::push_pop}},
+      {"1100xxxxxx", function_ptr{&arm7tdmi::ld_str_multiple}},
+      {"1101xxxxxx", function_ptr{&arm7tdmi::branch_cond}},
+      {"11011111xx", function_ptr{&arm7tdmi::swi_thumb}},
+      {"11100xxxxx", function_ptr{&arm7tdmi::branch}},
+      {"1111xxxxxx", function_ptr{&arm7tdmi::long_branch_link}},
+    };
 };
 
 } // namespace gba

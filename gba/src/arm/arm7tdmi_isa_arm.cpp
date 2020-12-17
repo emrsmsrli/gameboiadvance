@@ -9,32 +9,44 @@
 
 namespace gba {
 
-void arm7tdmi::data_processing(const u32 instr) noexcept
+void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
 {
 
 }
 
-void arm7tdmi::psr_transfer(const u32 instr) noexcept
+void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
+{
+
+}
+
+void arm7tdmi::data_processing_imm(const u32 instr) noexcept
 {
     
 }
 
 void arm7tdmi::branch_exchange(const u32 instr) noexcept
 {
-    //2S + 1N
-    const u32 addr = r(narrow<u8>(instr & 0xF_u32));
-    /*
-	int rm = opcode & 0x0000000F;
-	_ARMSetMode(cpu, cpu->gprs[rm] & 0x00000001);
-	cpu->gprs[ARM_PC] = cpu->gprs[rm] & 0xFFFFFFFE;
-	if (cpu->executionMode == MODE_THUMB) {
-		currentCycles += ThumbWritePC(cpu);
-	} else {
-		currentCycles += ARMWritePC(cpu);
-	})*/
 
-    // set_instruction_mode(static_cast<instruction_mode>(bit::extract(addr, 0_u8).get()));
-    // TODO pipeline flush
+}
+
+void arm7tdmi::halfword_data_transfer_reg(const u32 instr) noexcept
+{
+
+}
+
+void arm7tdmi::halfword_data_transfer_imm(const u32 instr) noexcept
+{
+
+}
+
+void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
+{
+
+}
+
+void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
+{
+
 }
 
 void arm7tdmi::multiply(const u32 instr) noexcept
@@ -42,17 +54,22 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     
 }
 
+void arm7tdmi::multiply_long(const u32 instr) noexcept
+{
+
+}
+
 void arm7tdmi::single_data_swap(const u32 instr) noexcept
 {
     
 }
 
-void arm7tdmi::halfword_data_transfer(const u32 instr) noexcept
+void arm7tdmi::single_data_transfer_imm(const u32 instr) noexcept
 {
     
 }
 
-void arm7tdmi::single_data_transfer(const u32 instr) noexcept
+void arm7tdmi::single_data_transfer_reg(const u32 instr) noexcept
 {
     
 }
