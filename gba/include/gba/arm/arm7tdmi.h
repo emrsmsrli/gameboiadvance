@@ -182,7 +182,7 @@ private:
     [[nodiscard]] bool condition_met(u32 instruction) const noexcept;
 
     template<instruction_mode Mode>
-    void pipeline_reload() noexcept
+    void pipeline_flush() noexcept
     {
         u32& pc = r(15_u8);
         if constexpr(Mode == instruction_mode::arm) {
