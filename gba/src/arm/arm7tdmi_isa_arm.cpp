@@ -95,16 +95,15 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
 
 void arm7tdmi::branch_with_link(const u32 instr) noexcept
 {
-    // todo 1N
+    u32& pc = r(15_u8);
 
     // link
     if(bit::test(instr, 24_u8)) {
-        r(14_u8) = r(15_u8) - 4_u32;
+        r(14_u8) = mask::clear(pc, 0b11_u32);
     }
 
-    r(15_u8) += math::sign_extend<26>(instr & 0x00FFFFFF_u32 << 2_u32);
-
-    // todo 2S
+    pc += math::sign_extend<26>((instr & 0x00FF'FFFF_u32) << 2_u32);
+    pipeline_flush<instruction_mode::arm>();
 }
 
 void arm7tdmi::swi_arm(const u32 instr) noexcept
