@@ -36,9 +36,9 @@ public:
         heap_.resize(64_usize);
     }
 
-    void add_event(u64 delay, delegate<void(u64)> callback)
+    void add_event(const u64 delay, const delegate<void(u64)> callback)
     {
-        heap_.emplace_back(now_ + delay, callback);
+        heap_.push_back(event{callback, now_ + delay});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
     }
 
