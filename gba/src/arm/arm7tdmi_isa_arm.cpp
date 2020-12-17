@@ -99,7 +99,7 @@ void arm7tdmi::branch_with_link(const u32 instr) noexcept
 
     // link
     if(bit::test(instr, 24_u8)) {
-        r(14_u8) = mask::clear(pc, 0b11_u32);
+        r(14_u8) = pc - 4_u32;
     }
 
     pc += math::sign_extend<26>((instr & 0x00FF'FFFF_u32) << 2_u32);
