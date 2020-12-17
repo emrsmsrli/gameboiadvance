@@ -10,6 +10,8 @@
 
 #include <gba/core/container.h>
 #include <gba/core/math.h>
+#include <gba/helper/lookup_table.h>
+#include <gba/helper/function_ptr.h>
 
 namespace gba {
 
