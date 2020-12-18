@@ -22,6 +22,9 @@ public:
     struct event {
         delegate<void(u64 /*late_cycles*/)> callback;
         u64 timestamp;
+
+        bool operator>(const event& other) const noexcept { return timestamp > other.timestamp; }
+        bool operator==(const event& other) const noexcept { return timestamp == other.timestamp && callback == other.callback; }
     };
 
 private:
