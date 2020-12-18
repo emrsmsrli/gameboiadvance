@@ -6,6 +6,7 @@ configure_file(cmake/version.h.in
 
 add_library(${PROJECT_NAME} STATIC
         src/arm/arm7tdmi.cpp
+        src/arm/arm7tdmi_alu.cpp
         src/arm/arm7tdmi_isa_arm.cpp
         src/arm/arm7tdmi_isa_thumb.cpp
         src/arm/arm7tdmi_io.cpp

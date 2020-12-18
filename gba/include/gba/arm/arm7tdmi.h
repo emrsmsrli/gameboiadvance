@@ -202,6 +202,7 @@ private:
     void data_processing_imm_shifted_reg(u32 instr) noexcept;
     void data_processing_reg_shifted_reg(u32 instr) noexcept;
     void data_processing_imm(u32 instr) noexcept;
+    void data_processing(u32 instr, u32 second_op, bool carry) noexcept;
     void branch_exchange(u32 instr) noexcept;
     void halfword_data_transfer_reg(u32 instr) noexcept;
     void halfword_data_transfer_imm(u32 instr) noexcept;
@@ -237,6 +238,12 @@ private:
     void swi_thumb(u16 instr) noexcept;
     void branch(u16 instr) noexcept;
     void long_branch_link(u16 instr) noexcept;
+
+    // alu helpers
+    u32 alu_add(u32 first_op, u32 second_op, bool set_conds) noexcept;
+    u32 alu_adc(u32 first_op, u32 second_op, u32 carry, bool set_conds) noexcept;
+    u32 alu_sub(u32 first_op, u32 second_op, bool set_conds) noexcept;
+    u32 alu_sbc(u32 first_op, u32 second_op, u32 borrow, bool set_conds) noexcept;
 
     static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
       {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},
