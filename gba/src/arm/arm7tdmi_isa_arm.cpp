@@ -11,7 +11,60 @@ namespace gba {
 
 void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
 {
+    u32 reg_op = r(narrow<u8>(instr & 0xF_u32));
+    const u32 shift_type = (instr >> 5_u32) & 0b11_u32;
+    const u8 shift_amount = narrow<u8>((instr >> 7_u32) & 0x1F_u32);
+    bool carry = cpsr().c;
 
+    switch(shift_type.get()) { // 0=LSL, 1=LSR, 2=ASR, 3=ROR
+        case 0: {
+            if(shift_amount != 0_u8) {
+                const auto lsl = math::logical_shift_left(reg_op, shift_amount);
+                reg_op = lsl.result;
+                carry = static_cast<bool>(lsl.carry.get());
+            }
+            break;
+        }
+        case 1: {
+            if(shift_amount == 0_u8) {
+                reg_op = 0_u32;
+                carry = bit::test(reg_op, 31_u8);
+            } else {
+                const auto lsr = math::logical_shift_right(reg_op, shift_amount);
+                reg_op = lsr.result;
+                carry = static_cast<bool>(lsr.carry.get());
+            }
+            break;
+        }
+        case 2: {
+            if(shift_amount == 0_u32) {
+                const u32 msb = bit::extract(reg_op, 31_u8);
+                reg_op = 0xFFFF'FFFF_u32 * msb;
+                carry = static_cast<bool>(msb.get());
+            } else {
+                const auto asr = math::arithmetic_shift_right(reg_op, shift_amount);
+                reg_op = asr.result;
+                carry = static_cast<bool>(asr.carry.get());
+            }
+            break;
+        }
+        case 3: {
+            if(shift_amount == 0_u32) {
+                const auto rrx = math::logical_rotate_right_extended(reg_op, bit::from_bool(carry));
+                reg_op = rrx.result;
+                carry = static_cast<bool>(rrx.carry.get());
+            } else {
+                auto asr = math::logical_rotate_right(reg_op, shift_amount);
+                reg_op = asr.result;
+                carry = static_cast<bool>(asr.carry.get());
+            }
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+
+    data_processing(instr, reg_op, carry);
 }
 
 void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
