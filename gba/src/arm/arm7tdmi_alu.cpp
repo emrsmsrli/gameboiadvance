@@ -114,10 +114,9 @@ void arm7tdmi::alu_ror(u32& operand, u8 shift_amount, bool& carry, const bool im
 u32 arm7tdmi::alu_add(const u32 first_op, const u32 second_op, const bool set_flags) noexcept
 {
     if(set_flags) {
-        u64 result = first_op;
-        result += second_op;
-
+        const u64 result = widen<u64>(first_op) + second_op;
         const u32 result32 = narrow<u32>(result);
+
         cpsr().n = bit::test(result32, 31_u8);
         cpsr().z = result32 == 0_u32;
         cpsr().c = bit::test(result, 32_u8);
@@ -131,11 +130,9 @@ u32 arm7tdmi::alu_add(const u32 first_op, const u32 second_op, const bool set_fl
 u32 arm7tdmi::alu_adc(const u32 first_op, const u32 second_op, const u32 carry, const bool set_flags) noexcept
 {
     if(set_flags) {
-        u64 result = first_op;
-        result += second_op;
-        result += carry;
-
+        const u64 result = widen<u64>(first_op) + second_op + carry;
         const u32 result32 = narrow<u32>(result);
+
         cpsr().n = bit::test(result32, 31_u8);
         cpsr().z = result32 == 0_u32;
         cpsr().c = bit::test(result, 32_u8);

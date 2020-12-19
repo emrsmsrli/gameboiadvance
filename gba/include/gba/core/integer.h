@@ -232,11 +232,19 @@ template<typename To, typename From, typename = std::enable_if_t<
 FORCEINLINE constexpr To narrow(const From from) noexcept
 {
     if constexpr(sizeof(To) < sizeof(From)) {
-        return static_cast<typename To::type>(from.get());
+        return static_cast<detail::underlying_int_type<To>>(from.get());
     } else {
         static_assert(sizeof(To) == sizeof(From), "narrow() shouldn't widen integers");
         return from;
     }
+}
+
+template<typename To, typename From, typename = detail::enable_integer<detail::underlying_int_type<To>>>
+FORCEINLINE constexpr To widen(const From from) noexcept
+{
+    static_assert(std::is_signed_v<detail::underlying_int_type<From>> ==
+      std::is_signed_v<detail::underlying_int_type<To>>);
+    return static_cast<detail::underlying_int_type<To>>(from.get());
 }
 
 // sign ops
