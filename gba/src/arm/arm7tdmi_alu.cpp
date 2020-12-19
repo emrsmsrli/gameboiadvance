@@ -34,7 +34,7 @@ void arm7tdmi::alu_barrel_shift(const barrel_shift_type shift_type, u32& operand
     }
 }
 
-static void alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcept
+void arm7tdmi::alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcept
 {
     if(shift_amount >= 32_u8) {
         operand = 0_u32;
@@ -51,7 +51,7 @@ static void alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcept
     }
 }
 
-static void alu_lsr(u32& operand, const u8 shift_amount, bool& carry, const bool imm) noexcept
+void arm7tdmi::alu_lsr(u32& operand, const u8 shift_amount, bool& carry, const bool imm) noexcept
 {
     if(shift_amount >= 32_u8) {
         operand = 0_u32;
@@ -73,7 +73,7 @@ static void alu_lsr(u32& operand, const u8 shift_amount, bool& carry, const bool
     }
 }
 
-static void alu_asr(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
+void arm7tdmi::alu_asr(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
 {
     if(shift_amount == 0_u8) {
         if(imm) {
@@ -94,7 +94,7 @@ static void alu_asr(u32& operand, u8 shift_amount, bool& carry, const bool imm) 
     }
 }
 
-static void alu_ror(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
+void arm7tdmi::alu_ror(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
 {
     if(shift_amount == 0_u32) {
         if(imm) {
