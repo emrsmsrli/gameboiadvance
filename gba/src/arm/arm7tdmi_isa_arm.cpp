@@ -171,12 +171,53 @@ void arm7tdmi::halfword_data_transfer_imm(const u32 instr) noexcept
 
 void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
 {
+    const bool use_spsr = bit::test(instr, 22_u8);
+    switch(bit::extract(instr, 21_u8).get()) {
+        case 0: { // MRS
+            u32& rd = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
+            ASSERT(rd != r15_);
 
+            if(in_exception_mode() && use_spsr) {
+                rd = static_cast<u32>(spsr());
+            } else {
+                rd = static_cast<u32>(cpsr());
+            }
+            break;
+        }
+        case 1: { // MSR
+            const u32 rm = r(narrow<u8>(instr & 0xF_u32));
+            ASSERT(rm != r15_);
+            psr_transfer_msr(instr, rm, use_spsr);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
 }
 
 void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
 {
+    const bool use_spsr = bit::test(instr, 22_u8);
+    const u32 imm = math::logical_rotate_right(instr & 0xFF_u32, narrow<u8>((instr >> 8_u32) & 0xF_u32)).result;
+    psr_transfer_msr(instr, imm, use_spsr);
+}
 
+void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
+{
+    u32 mask;
+    if(bit::test(instr, 19_u8)) { mask |= 0xF000'0000_u32; }
+    if(bit::test(instr, 16_u8) && (use_spsr || !in_privileged_mode())) { mask |= 0x0000'00FF_u32; }
+
+    if(use_spsr) {
+        auto& reg = spsr();
+        if(in_exception_mode()) {
+            reg = mask::clear(static_cast<u32>(reg), mask) | operand;
+        }
+    } else {
+        auto& reg = cpsr();
+        // todo properly change mode?
+        reg = mask::clear(static_cast<u32>(reg), mask) | operand;
+    }
 }
 
 void arm7tdmi::multiply(const u32 instr) noexcept

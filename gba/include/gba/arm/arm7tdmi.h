@@ -210,6 +210,7 @@ private:
     void halfword_data_transfer_imm(u32 instr) noexcept;
     void psr_transfer_reg(u32 instr) noexcept;
     void psr_transfer_imm(u32 instr) noexcept;
+    void psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept;
     void multiply(u32 instr) noexcept;
     void multiply_long(u32 instr) noexcept;
     void single_data_swap(u32 instr) noexcept;
