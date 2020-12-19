@@ -105,10 +105,9 @@ template<typename T>
 template<typename T>
 [[nodiscard]] constexpr logical_op_result<T> logical_rotate_right(const T t, const u8 rotate) noexcept
 {
-    constexpr auto n_bits = make_unsigned(numeric_limits<T>::digits);
     return logical_op_result<T>{
-      (t >> rotate) | (t << narrow<T>(n_bits - rotate)),
-      bit::extract(t, narrow<u8>(n_bits) - 1_u8)
+      (t >> rotate) | (t << narrow<T>(make_unsigned(numeric_limits<T>::digits) - rotate)),
+      bit::extract(t, rotate - 1_u8)
     };
 }
 

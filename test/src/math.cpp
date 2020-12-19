@@ -113,11 +113,7 @@ TEST_CASE("math ops")
         CHECK(math::logical_rotate_right(integer, 4_u8).carry == 0_u16);
 
         CHECK(math::logical_rotate_right(integer, 5_u8).result == 0x8007_u16);
-        CHECK(math::logical_rotate_right(integer, 5_u8).carry == 0_u16);
-
-        u16 i2 = 0xF0F0_u16;
-        CHECK(math::logical_rotate_right(i2, 5_u8).result == 0x8787_u16);
-        CHECK(math::logical_rotate_right(i2, 5_u8).carry == 1_u16);
+        CHECK(math::logical_rotate_right(integer, 5_u8).carry == 1_u16);
     }
 
     SUBCASE("logical_rotate_right_extended") {
