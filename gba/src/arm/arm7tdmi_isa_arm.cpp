@@ -193,6 +193,9 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
         default:
             UNREACHABLE();
     }
+
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 4_u32;
 }
 
 void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
@@ -200,6 +203,9 @@ void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
     const bool use_spsr = bit::test(instr, 22_u8);
     const u32 imm = math::logical_rotate_right(instr & 0xFF_u32, narrow<u8>((instr >> 8_u32) & 0xF_u32)).result;
     psr_transfer_msr(instr, imm, use_spsr);
+
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 4_u32;
 }
 
 void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
