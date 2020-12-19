@@ -51,7 +51,7 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
 {
     pipeline_.fetch_type = mem_access::seq;
 
-    const bool set_conds = bit::test(instr, 20_u8);
+    const bool set_flags = bit::test(instr, 20_u8);
     const u32 opcode = (instr >> 21_u8) & 0xF_u8;
     const u32 rn = r(narrow<u8>((instr >> 16_u8) & 0xF_u8));
 
@@ -59,7 +59,7 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
     u32& rd = r(dest);
 
     const auto evaluate_and_set_flags = [&](const u32 expression) {
-        if(set_conds) {
+        if(set_flags) {
             cpsr().n = bit::test(expression, 31_u8);
             cpsr().z = expression == 0_u32;
             cpsr().c = carry;
@@ -75,22 +75,22 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
             rd = evaluate_and_set_flags(rn ^ second_op);
             break;
         case 0x2: // SUB
-            rd = alu_sub(rn, second_op, set_conds);
+            rd = alu_sub(rn, second_op, set_flags);
             break;
         case 0x3: // RSB
-            rd = alu_sub(second_op, rn, set_conds);
+            rd = alu_sub(second_op, rn, set_flags);
             break;
         case 0x4: // ADD
-            rd = alu_add(rn, second_op, set_conds);
+            rd = alu_add(rn, second_op, set_flags);
             break;
         case 0x5: // ADDC
-            rd = alu_adc(rn, second_op, bit::from_bool(cpsr().c), set_conds);
+            rd = alu_adc(rn, second_op, bit::from_bool(cpsr().c), set_flags);
             break;
         case 0x6: // SBC
-            rd = alu_sbc(rn, second_op, bit::from_bool(!cpsr().c), set_conds);
+            rd = alu_sbc(rn, second_op, bit::from_bool(!cpsr().c), set_flags);
             break;
         case 0x7: // RSC
-            rd = alu_sbc(second_op, rn, bit::from_bool(!cpsr().c), set_conds);
+            rd = alu_sbc(second_op, rn, bit::from_bool(!cpsr().c), set_flags);
             break;
         case 0x8: { // TST
             const u32 result = rn & second_op;
@@ -132,7 +132,7 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
     if((0x8_u32 > opcode || opcode > 0xB_u32) && dest == 15_u8) {
         ASSERT(in_privileged_mode());
 
-        if(set_conds) {
+        if(set_flags) {
             cpsr() = spsr();
             // fixme change mode properly? restore registers and such
         }
