@@ -256,6 +256,7 @@ private:
     u32 alu_adc(u32 first_op, u32 second_op, u32 carry, bool set_flags) noexcept;
     u32 alu_sub(u32 first_op, u32 second_op, bool set_flags) noexcept;
     u32 alu_sbc(u32 first_op, u32 second_op, u32 borrow, bool set_flags) noexcept;
+    u64 alu_multiply(u32 rm, u32 rs) noexcept;
 
     static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
       {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},

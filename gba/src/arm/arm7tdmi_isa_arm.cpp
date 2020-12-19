@@ -228,7 +228,33 @@ void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
 
 void arm7tdmi::multiply(const u32 instr) noexcept
 {
-    
+    u32& rd = r(narrow<u8>((instr >> 16_u32) & 0xF_u32));
+    const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
+    const u32 rm = r(narrow<u8>(instr & 0xF_u32));
+
+    ASSERT(rd != rm);
+    ASSERT(rd != r15_);
+    ASSERT(rs != r15_);
+    ASSERT(rm != r15_);
+
+    u32 result = narrow<u32>(alu_multiply(rm, rs));
+
+    if(bit::test(instr, 21_u8)) {
+        const u32 rn = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
+        ASSERT(rn != r15_);
+
+        result += rn;
+        tick_internal();
+    }
+
+    if(bit::test(instr, 20_u8)) {
+        cpsr().z = result == 0_u32;
+        cpsr().n = bit::test(result, 31_u8);
+    }
+
+    rd = result;
+    pipeline_.fetch_type = mem_access::non_seq;
+    r(15_u8) += 4_u32;
 }
 
 void arm7tdmi::multiply_long(const u32 instr) noexcept
