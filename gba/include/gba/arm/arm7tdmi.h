@@ -176,6 +176,8 @@ private:
     [[nodiscard]] u32 read_8(u32 addr, mem_access access) noexcept;
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
+    void tick_internal() noexcept { /*todo used in internal cycles*/ }
+
     [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
     [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
 
@@ -240,6 +242,15 @@ private:
     void long_branch_link(u16 instr) noexcept;
 
     // alu helpers
+    enum class barrel_shift_type { lsl, lsr, asr, ror };
+
+    static void alu_barrel_shift(barrel_shift_type shift_type, u32& operand,
+      u8 shift_amount, bool& carry, bool imm) noexcept;
+    static void alu_lsl(u32& operand, u8 shift_amount, bool& carry) noexcept;
+    static void alu_lsr(u32& operand, u8 shift_amount, bool& carry, bool imm) noexcept;
+    static void alu_asr(u32& operand, u8 shift_amount, bool& carry, bool imm) noexcept;
+    static void alu_ror(u32& operand, u8 shift_amount, bool& carry, bool imm) noexcept;
+
     u32 alu_add(u32 first_op, u32 second_op, bool set_conds) noexcept;
     u32 alu_adc(u32 first_op, u32 second_op, u32 carry, bool set_conds) noexcept;
     u32 alu_sub(u32 first_op, u32 second_op, bool set_conds) noexcept;

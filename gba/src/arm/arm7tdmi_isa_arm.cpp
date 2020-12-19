@@ -22,7 +22,15 @@ void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
 
 void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
 {
-    // todo 1 internal cycle
+    u32 reg_op = r(narrow<u8>(instr & 0xF_u32));
+    const u32 shift_type = (instr >> 5_u32) & 0b11_u32;
+    const u8 shift_amount = narrow<u8>(r(narrow<u8>((instr >> 8_u32) & 0xF_u32)));
+    bool carry = cpsr().c;
+
+    tick_internal();
+
+    alu_barrel_shift(static_cast<barrel_shift_type>(shift_type.get()), reg_op, shift_amount, carry, false);
+    data_processing(instr, reg_op, carry);
 }
 
 void arm7tdmi::data_processing_imm(const u32 instr) noexcept
@@ -41,6 +49,8 @@ void arm7tdmi::data_processing_imm(const u32 instr) noexcept
 
 void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool carry) noexcept
 {
+    pipeline_.fetch_type = mem_access::seq;
+
     const bool set_conds = bit::test(instr, 20_u8);
     const u32 opcode = (instr >> 21_u8) & 0xF_u8;
     const u32 rn = r(narrow<u8>((instr >> 16_u8) & 0xF_u8));
