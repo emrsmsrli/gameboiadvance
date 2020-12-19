@@ -9,6 +9,108 @@
 
 namespace gba {
 
+void arm7tdmi::alu_barrel_shift(const barrel_shift_type shift_type, u32& operand,
+  u8 shift_amount, bool& carry, const bool imm) noexcept
+{
+    switch(shift_type) {
+        case barrel_shift_type::lsl: {
+            alu_lsl(operand, shift_amount, carry);
+            break;
+        }
+        case barrel_shift_type::lsr: {
+            alu_lsr(operand, shift_amount, carry, imm);
+            break;
+        }
+        case barrel_shift_type::asr: {
+            alu_asr(operand, shift_amount, carry, imm);
+            break;
+        }
+        case barrel_shift_type::ror: {
+            alu_ror(operand, shift_amount, carry, imm);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+}
+
+static void alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcept
+{
+    if(shift_amount >= 32_u8) {
+        operand = 0_u32;
+
+        if(shift_amount == 32_u8) {
+            carry = bit::test(operand, 0_u8);
+        } else {
+            carry = false;
+        }
+    } else if(shift_amount != 0_u8) {
+        const auto lsl = math::logical_shift_left(operand, shift_amount);
+        operand = lsl.result;
+        carry = static_cast<bool>(lsl.carry.get());
+    }
+}
+
+static void alu_lsr(u32& operand, const u8 shift_amount, bool& carry, const bool imm) noexcept
+{
+    if(shift_amount >= 32_u8) {
+        operand = 0_u32;
+
+        if(shift_amount == 32_u8) {
+            carry = bit::test(operand, 31_u8);
+        } else {
+            carry = false;
+        }
+    } else if(shift_amount == 0_u8) {
+        if(imm) {
+            operand = 0_u32;
+            carry = bit::test(operand, 31_u8);
+        }
+    } else {
+        const auto lsr = math::logical_shift_right(operand, shift_amount);
+        operand = lsr.result;
+        carry = static_cast<bool>(lsr.carry.get());
+    }
+}
+
+static void alu_asr(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
+{
+    if(shift_amount == 0_u8) {
+        if(imm) {
+            shift_amount = 32_u8;
+        } else {
+            return;
+        }
+    }
+
+    if(shift_amount >= 32_u8) {
+        const u32 msb = bit::extract(operand, 31_u8);
+        operand = 0xFFFF'FFFF_u32 * msb;
+        carry = static_cast<bool>(msb.get());
+    } else {
+        const auto asr = math::arithmetic_shift_right(operand, shift_amount);
+        operand = asr.result;
+        carry = static_cast<bool>(asr.carry.get());
+    }
+}
+
+static void alu_ror(u32& operand, u8 shift_amount, bool& carry, const bool imm) noexcept
+{
+    if(shift_amount == 0_u32) {
+        if(imm) {
+            const auto rrx = math::logical_rotate_right_extended(operand, bit::from_bool(carry));
+            operand = rrx.result;
+            carry = static_cast<bool>(rrx.carry.get());
+        }
+    } else {
+        shift_amount %= 32_u8;
+
+        const auto asr = math::logical_rotate_right(operand, shift_amount);
+        operand = asr.result;
+        carry = static_cast<bool>(asr.carry.get());
+    }
+}
+
 u32 arm7tdmi::alu_add(const u32 first_op, const u32 second_op, const bool set_conds) noexcept
 {
     if(set_conds) {
