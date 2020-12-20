@@ -134,7 +134,6 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
 
         if(set_flags) {
             cpsr() = spsr();
-            // fixme change mode properly? restore registers and such
         }
 
         if(cpsr().t) {
@@ -174,20 +173,20 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
     const bool use_spsr = bit::test(instr, 22_u8);
     switch(bit::extract(instr, 21_u8).get()) {
         case 0: { // MRS
-            u32& rd = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
-            ASSERT(rd != r15_);
+            const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
+            ASSERT(rd != 15_u8);
 
             if(in_exception_mode() && use_spsr) {
-                rd = static_cast<u32>(spsr());
+                r(rd) = static_cast<u32>(spsr());
             } else {
-                rd = static_cast<u32>(cpsr());
+                r(rd) = static_cast<u32>(cpsr());
             }
             break;
         }
         case 1: { // MSR
-            const u32 rm = r(narrow<u8>(instr & 0xF_u32));
-            ASSERT(rm != r15_);
-            psr_transfer_msr(instr, rm, use_spsr);
+            const u8 rm = narrow<u8>(instr & 0xF_u32);
+            ASSERT(rm != 15_u8);
+            psr_transfer_msr(instr, r(rm), use_spsr);
             break;
         }
         default:
@@ -221,7 +220,6 @@ void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
         }
     } else {
         auto& reg = cpsr();
-        // todo properly change mode?
         reg = mask::clear(static_cast<u32>(reg), mask) | operand;
     }
 }
@@ -309,24 +307,25 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
 
 void arm7tdmi::single_data_swap(const u32 instr) noexcept
 {
-    const u32 rm = r(narrow<u8>(instr & 0xF_u8));
-    u32& rd = r(narrow<u8>((instr >> 12_u8) & 0xF_u8));
-    const u32 rn_addr = r(narrow<u8>((instr >> 16_u8) & 0xF_u8));
+    const u8 rm = narrow<u8>(instr & 0xF_u8);
+    const u8 rd = narrow<u8>((instr >> 12_u8) & 0xF_u8);
+    const u8 rn = narrow<u8>((instr >> 16_u8) & 0xF_u8);
+    const u32 rn_addr = r(rn);
 
-    ASSERT(rm != r15_);
-    ASSERT(rd != r15_);
-    ASSERT(rn_addr != r15_);
+    ASSERT(rm != 15_u8);
+    ASSERT(rd != 15_u8);
+    ASSERT(rn != 15_u8);
 
     u32 data;
     if(bit::test(instr, 22_u8)) {  // byte
         data = read_8(rn_addr, mem_access::non_seq);
-        write_8(rn_addr, narrow<u8>(rm), mem_access::non_seq);
+        write_8(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
     } else {  // word
         data = read_32_rotated(rn_addr, mem_access::non_seq);
-        write_32(rn_addr, narrow<u8>(rm), mem_access::non_seq);
+        write_32(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
     }
 
-    rd = data;
+    r(rd) = data;
     tick_internal();
 
     pipeline_.fetch_type = mem_access::non_seq;
