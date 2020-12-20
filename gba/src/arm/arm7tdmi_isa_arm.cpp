@@ -237,7 +237,11 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     ASSERT(rs != r15_);
     ASSERT(rm != r15_);
 
-    u32 result = narrow<u32>(alu_multiply(rm, rs));
+    alu_multiply_internal(rs, [](const u32 r, const u32 mask) {
+        return r == 0_u32 || r == mask;
+    });
+
+    u32 result = rm * rs;
 
     if(bit::test(instr, 21_u8)) {
         const u32 rn = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
@@ -259,7 +263,48 @@ void arm7tdmi::multiply(const u32 instr) noexcept
 
 void arm7tdmi::multiply_long(const u32 instr) noexcept
 {
+    u32& rdhi = r(narrow<u8>((instr >> 16_u32) & 0xF_u32));
+    u32& rdlo = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
+    const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
+    const u32 rm = r(narrow<u8>(instr & 0xF_u32));
 
+    ASSERT(rdhi != rm && rdlo != rm && rdlo != rdhi);
+    ASSERT(rdhi != r15_);
+    ASSERT(rdlo != r15_);
+    ASSERT(rs != r15_);
+    ASSERT(rm != r15_);
+
+    tick_internal();
+
+    i64 result;
+    if(bit::test(instr, 22_u8)) { // signed mul
+        alu_multiply_internal(rs, [](const u64 r, const u64 mask) {
+            return r == 0_u32 || r == mask;
+        });
+
+        result = math::sign_extend<32>(widen<u64>(rm)) * math::sign_extend<32>(widen<u64>(rs));
+    } else {
+        alu_multiply_internal(rs, [](const u32 r, const u32 mask) {
+            return r == 0_u32;
+        });
+
+        result = make_signed(widen<u64>(rm) * rs);
+    }
+
+    if(bit::test(instr, 21_u8)) {
+        result += (widen<u64>(rdhi) << 32_u64) | rdlo;
+        tick_internal();
+    }
+
+    if(bit::test(instr, 20_u8)) {
+        cpsr().z = result == 0_i64;
+        cpsr().n = result < 0_i64;
+    }
+
+    rdhi = narrow<u32>(make_unsigned(result) >> 32_u64);
+    rdlo = narrow<u32>(make_unsigned(result));
+    pipeline_.fetch_type = mem_access::non_seq;
+    r(15_u8) += 4_u32;
 }
 
 void arm7tdmi::single_data_swap(const u32 instr) noexcept

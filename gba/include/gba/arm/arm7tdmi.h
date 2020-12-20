@@ -256,7 +256,21 @@ private:
     u32 alu_adc(u32 first_op, u32 second_op, u32 carry, bool set_flags) noexcept;
     u32 alu_sub(u32 first_op, u32 second_op, bool set_flags) noexcept;
     u32 alu_sbc(u32 first_op, u32 second_op, u32 borrow, bool set_flags) noexcept;
-    u64 alu_multiply(u32 rm, u32 rs) noexcept;
+
+    template<typename RsPredicate>
+    void alu_multiply_internal(const u32 rs, RsPredicate&& rs_predicate) noexcept
+    {
+        u32 mask = 0xFFFF'FF00_u32;
+
+        tick_internal();
+        for(u32 i = 0_u32; i < 3_u32; ++i, mask <<= 8_u32) {
+            const u32 result = rs & mask;
+            if(rs_predicate(result, mask)) {
+                break;
+            }
+            tick_internal();
+        }
+    }
 
     static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
       {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},

@@ -169,22 +169,4 @@ u32 arm7tdmi::alu_sbc(const u32 first_op, const u32 second_op, const u32 borrow,
     return result;
 }
 
-u64 arm7tdmi::alu_multiply(const u32 rm, const u32 rs) noexcept
-{
-    u32 mask = 0xFFFF'FF00_u32;
-
-    tick_internal();
-    for(u32 i = 0_u32; i < 3_u32; ++i, mask <<= 8_u32) {
-        const u32 result = rs & mask;
-        if(result == 0_u32 || result == mask) {
-            break;
-        }
-        tick_internal();
-    }
-
-    u64 result = rm;
-    result *= rs;
-    return result;
-}
-
 } // namespace gba
