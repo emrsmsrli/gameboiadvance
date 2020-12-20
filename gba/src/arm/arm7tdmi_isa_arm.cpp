@@ -141,6 +141,8 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
         } else {
             pipeline_flush<instruction_mode::arm>();
         }
+    } else {
+        r(15_u8) += 4_u32;
     }
 }
 
