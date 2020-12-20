@@ -420,9 +420,14 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
     }
 }
 
-void arm7tdmi::undefined(const u32 instr) noexcept
+void arm7tdmi::undefined(const u32 /*instr*/) noexcept
 {
-
+    und_.r14 = r15_ - 4_u32;
+    und_.spsr = cpsr();
+    cpsr().mode = privilege_mode::und;
+    cpsr().i = true;
+    r15_ = 0x0000'0004_u32;
+    pipeline_flush<instruction_mode::arm>();
 }
 
 void arm7tdmi::block_data_transfer(const u32 instr) noexcept
