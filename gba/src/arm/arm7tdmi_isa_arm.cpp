@@ -332,19 +332,97 @@ void arm7tdmi::single_data_swap(const u32 instr) noexcept
     r(15_u8) += 4_u8;
 }
 
-void arm7tdmi::single_data_transfer_imm(const u32 instr) noexcept
+void arm7tdmi::single_data_transfer(const u32 instr) noexcept
 {
-    
-}
+    const bool pre_indexing = bit::test(instr, 24_u8);
+    const bool add_to_base = bit::test(instr, 23_u8);
+    const bool transfer_byte = bit::test(instr, 22_u8);
+    const bool write_back = bit::test(instr, 21_u8);
+    const bool is_ldr = bit::test(instr, 20_u8);
+    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
+    const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
 
-void arm7tdmi::single_data_transfer_reg(const u32 instr) noexcept
-{
-    
+    u32 rn_addr = r(rn);
+
+    privilege_mode old_mode;
+    if(!pre_indexing && write_back) {
+        old_mode = cpsr().mode;
+        cpsr().mode = privilege_mode::usr;
+    }
+
+    const u32 offset = [=]() {
+        // reg
+        if(bit::test(instr, 25_u8)) {
+            const auto shift_type = static_cast<barrel_shift_type>(((instr >> 5_u32) & 0b11_u32).get());
+            const u8 shift_amount = narrow<u8>((instr >> 7_u32) & 0x1F_u32);
+            u32 rm = r(narrow<u8>(instr & 0xF_u32));
+            bool dummy = cpsr().c;
+            alu_barrel_shift(shift_type, rm, shift_amount, dummy, true);
+            return rm;
+        }
+        // imm
+        return instr & 0xFFF_u32;
+    }();
+
+    const auto add_rn_offset = [&]() {
+        if(add_to_base) {
+            rn_addr += offset;
+        } else {
+            rn_addr -= offset;
+        }
+    };
+
+    if(pre_indexing) {
+        add_rn_offset();
+    }
+
+    if(is_ldr) {
+        if(transfer_byte) {
+            r(rd) = read_8(rn_addr, mem_access::non_seq);
+        } else {
+            r(rd) = read_32_rotated(rn_addr, mem_access::non_seq);
+        }
+
+        tick_internal();
+    } else {
+        u32 dest = r(rd);
+        if(rd == 15_u8) {
+            dest += 4_u32;
+        }
+
+        if(transfer_byte) {
+            write_8(rn_addr, narrow<u8>(dest), mem_access::non_seq);
+        } else {
+            write_32(rn_addr, dest, mem_access::non_seq);
+        }
+    }
+
+    // change mode before, so we don't write back rn to usr regs
+    if(!pre_indexing && write_back) {
+        cpsr().mode = old_mode;
+    }
+
+    // write back
+    if(!is_ldr || rn != rd) {
+        if(!pre_indexing) {
+            add_rn_offset();
+            r(rn) = rn_addr;
+        } else if(write_back) {
+            r(rn) = rn_addr;
+        }
+    }
+
+    if(is_ldr && rd == 15_u8) {
+        pipeline_flush<instruction_mode::arm>();
+    } else {
+        pipeline_.fetch_type = mem_access::non_seq;
+        r(15_u8) += 4_u32;
+    }
 }
 
 void arm7tdmi::undefined(const u32 instr) noexcept
 {
-    
+
 }
 
 void arm7tdmi::block_data_transfer(const u32 instr) noexcept

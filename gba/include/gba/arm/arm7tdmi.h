@@ -112,8 +112,6 @@ class arm7tdmi {
    enum class instruction_mode { arm, thumb };
    enum class mem_access { non_seq, seq };
 
-    u64 total_cycles_;
-
     vector<u8> bios_{16_kb};
     vector<u8> wram_{256_kb};
     vector<u8> iwram_{32_kb};
@@ -214,8 +212,7 @@ private:
     void multiply(u32 instr) noexcept;
     void multiply_long(u32 instr) noexcept;
     void single_data_swap(u32 instr) noexcept;
-    void single_data_transfer_imm(u32 instr) noexcept;
-    void single_data_transfer_reg(u32 instr) noexcept;
+    void single_data_transfer(u32 instr) noexcept;
     void undefined(u32 instr) noexcept;
     void block_data_transfer(u32 instr) noexcept;
     void branch_with_link(u32 instr) noexcept;
@@ -284,8 +281,8 @@ private:
       {"000000xx1001", function_ptr{&arm7tdmi::multiply}},
       {"00001xxx1001", function_ptr{&arm7tdmi::multiply_long}},
       {"00010x001001", function_ptr{&arm7tdmi::single_data_swap}},
-      {"010xxxxxxxxx", function_ptr{&arm7tdmi::single_data_transfer_imm}},
-      {"011xxxxxxxx0", function_ptr{&arm7tdmi::single_data_transfer_reg}},
+      {"010xxxxxxxxx", function_ptr{&arm7tdmi::single_data_transfer}},
+      {"011xxxxxxxx0", function_ptr{&arm7tdmi::single_data_transfer}},
       {"011xxxxxxxx1", function_ptr{&arm7tdmi::undefined}},
       {"100xxxxxxxxx", function_ptr{&arm7tdmi::block_data_transfer}},
       {"101xxxxxxxxx", function_ptr{&arm7tdmi::branch_with_link}},
