@@ -284,7 +284,7 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
 
         result = math::sign_extend<32>(widen<u64>(rm)) * math::sign_extend<32>(widen<u64>(rs));
     } else {
-        alu_multiply_internal(rs, [](const u32 r, const u32 mask) {
+        alu_multiply_internal(rs, [](const u32 r, const u32 /*mask*/) {
             return r == 0_u32;
         });
 
@@ -309,7 +309,28 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
 
 void arm7tdmi::single_data_swap(const u32 instr) noexcept
 {
-    
+    const u32 rm = r(narrow<u8>(instr & 0xF_u8));
+    u32& rd = r(narrow<u8>((instr >> 12_u8) & 0xF_u8));
+    const u32 rn_addr = r(narrow<u8>((instr >> 16_u8) & 0xF_u8));
+
+    ASSERT(rm != r15_);
+    ASSERT(rd != r15_);
+    ASSERT(rn_addr != r15_);
+
+    u32 data;
+    if(bit::test(instr, 22_u8)) {  // byte
+        data = read_8(rn_addr, mem_access::non_seq);
+        write_8(rn_addr, narrow<u8>(rm), mem_access::non_seq);
+    } else {  // word
+        data = read_32_rotated(rn_addr, mem_access::non_seq);
+        write_32(rn_addr, narrow<u8>(rm), mem_access::non_seq);
+    }
+
+    rd = data;
+    tick_internal();
+
+    pipeline_.fetch_type = mem_access::non_seq;
+    r(15_u8) += 4_u8;
 }
 
 void arm7tdmi::single_data_transfer_imm(const u32 instr) noexcept
