@@ -9,7 +9,7 @@
 
 namespace gba {
 
-u32 arm7tdmi::read_32_rotated(const u32 addr, const mem_access access) noexcept
+u32 arm7tdmi::read_32_aligned(u32 addr, mem_access access) noexcept
 {
     const u32 data = read_32(addr, access);
     const u32 rotate_amount = (data & 0b11_u32) * 8_u32;
@@ -34,7 +34,7 @@ void arm7tdmi::write_32(const u32 addr, const u32 data, const mem_access access)
     UNREACHABLE();
 }
 
-u32 arm7tdmi::read_16_rotated(const u32 addr, const mem_access access) noexcept
+u32 arm7tdmi::read_16_aligned(u32 addr, mem_access access) noexcept
 {
     const u32 data = read_16(addr, access);
     const u32 rotate_amount = bit::extract(data, 0_u8);

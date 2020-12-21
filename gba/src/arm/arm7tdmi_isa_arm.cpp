@@ -335,7 +335,7 @@ void arm7tdmi::single_data_swap(const u32 instr) noexcept
         data = read_8(rn_addr, mem_access::non_seq);
         write_8(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
     } else {  // word
-        data = read_32_rotated(rn_addr, mem_access::non_seq);
+        data = read_32_aligned(rn_addr, mem_access::non_seq);
         write_32(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
     }
 
@@ -380,7 +380,7 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
         if(transfer_byte) {
             r(rd) = read_8(rn_addr, mem_access::non_seq);
         } else {
-            r(rd) = read_32_rotated(rn_addr, mem_access::non_seq);
+            r(rd) = read_32_aligned(rn_addr, mem_access::non_seq);
         }
 
         tick_internal();
