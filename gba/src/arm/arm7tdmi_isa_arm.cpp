@@ -174,12 +174,77 @@ void arm7tdmi::branch_exchange(const u32 instr) noexcept
 
 void arm7tdmi::halfword_data_transfer_reg(const u32 instr) noexcept
 {
-
+    const u8 rm = narrow<u8>(instr & 0xF_u32);
+    ASSERT(rm != 15_u8);
+    halfword_data_transfer(instr, r(rm));
 }
 
 void arm7tdmi::halfword_data_transfer_imm(const u32 instr) noexcept
 {
+    halfword_data_transfer(instr, ((instr >> 4_u32) & 0xF0_u32) | (instr & 0xF_u32));
+}
 
+void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcept
+{
+    const bool pre_indexing = bit::test(instr, 24_u8);
+    const bool add_to_base = bit::test(instr, 23_u8);
+    const bool write_back = bit::test(instr, 21_u8);
+    const bool is_ldr = bit::test(instr, 20_u8);
+    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
+    const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
+
+    u32 rn_addr = r(rn);
+
+    if(pre_indexing) {
+        rn_addr = addresing_offset(add_to_base, rn_addr, offset);
+    }
+
+    if(is_ldr) {
+        switch(((instr >> 5_u32) & 0b11_u32).get()) {
+            case 1: { // LDRH
+                r(rd) = read_16_aligned(rn_addr, mem_access::non_seq);
+                break;
+            }
+            case 2: { // LDRSB
+                r(rd) = read_8_signed(rn_addr, mem_access::non_seq);
+                break;
+            }
+            case 3: { // LDRSH
+                r(rd) = read_16_signed(rn_addr, mem_access::non_seq);
+                break;
+            }
+            default:
+                UNREACHABLE();
+        }
+
+        tick_internal();
+    } else {
+        // STRH
+        ASSERT(((instr >> 5_u32) & 0b11_u32) == 1_u32);
+
+        u32 src = r(rd);
+        if(rd == 15_u8) {
+            src += 4_u32;
+        }
+
+        write_16(rn_addr, narrow<u16>(src), mem_access::non_seq);
+    }
+
+    if(!is_ldr || rn != rd) {
+        if(!pre_indexing) {
+            rn_addr = addresing_offset(add_to_base, rn_addr, offset);
+            r(rn) = rn_addr;
+        } else if(write_back) {
+            r(rn) = rn_addr;
+        }
+    }
+
+    if(is_ldr && rd == 15_u8) {
+        pipeline_flush<instruction_mode::arm>();
+    } else {
+        pipeline_.fetch_type = mem_access::non_seq;
+        r(15_u8) += 4_u32;
+    }
 }
 
 void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
@@ -427,7 +492,7 @@ void arm7tdmi::undefined(const u32 /*instr*/) noexcept
 
 void arm7tdmi::block_data_transfer(const u32 instr) noexcept
 {
-    
+
 }
 
 void arm7tdmi::branch_with_link(const u32 instr) noexcept
