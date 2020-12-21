@@ -18,13 +18,17 @@ void arm7tdmi::tick() noexcept
     if(cpsr().t) {
         pc = mask::clear(pc, 0b01_u8); // halfword align
         pipeline_.decoding = read_16(pc, pipeline_.fetch_type);
-        thumb_table_[instruction >> 6_u32](this, narrow<u16>(instruction));
+        auto func = thumb_table_[instruction >> 6_u32];
+        ASSERT(func.is_valid());
+        func(this, narrow<u16>(instruction));
     } else {
         pc = mask::clear(pc, 0b11_u32); // word align
         pipeline_.decoding = read_32(pc, pipeline_.fetch_type);
 
         if(condition_met(instruction)) {
-            arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)](this, instruction);
+            auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
+            ASSERT(func.is_valid());
+            func(this, instruction);
         } else {
             pipeline_.fetch_type = mem_access::seq;
             pc += 4_u32;
