@@ -167,10 +167,12 @@ private:
     [[nodiscard]] u32 read_32(u32 addr, mem_access access) noexcept;
     void write_32(u32 addr, u32 data, mem_access access) noexcept;
 
+    [[nodiscard]] u32 read_16_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_16_aligned(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_16(u32 addr, mem_access access) noexcept;
     void write_16(u32 addr, u16 data, mem_access access) noexcept;
 
+    [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_8(u32 addr, mem_access access) noexcept;
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
 

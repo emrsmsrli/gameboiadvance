@@ -9,7 +9,7 @@
 
 namespace gba {
 
-u32 arm7tdmi::read_32_aligned(u32 addr, mem_access access) noexcept
+u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
 {
     const u32 data = read_32(addr, access);
     const u32 rotate_amount = (data & 0b11_u32) * 8_u32;
@@ -34,7 +34,15 @@ void arm7tdmi::write_32(const u32 addr, const u32 data, const mem_access access)
     UNREACHABLE();
 }
 
-u32 arm7tdmi::read_16_aligned(u32 addr, mem_access access) noexcept
+u32 arm7tdmi::read_16_signed(const u32 addr, const mem_access access) noexcept
+{
+    if(bit::test(addr, 0_u8)) {
+        return make_unsigned(math::sign_extend<8>(widen<u32>(read_8(addr, access))));
+    }
+    return make_unsigned(math::sign_extend<16>(widen<u32>(read_16(addr, access))));
+}
+
+u32 arm7tdmi::read_16_aligned(const u32 addr, const mem_access access) noexcept
 {
     const u32 data = read_16(addr, access);
     const u32 rotate_amount = bit::extract(data, 0_u8);
@@ -49,6 +57,11 @@ u32 arm7tdmi::read_16(const u32 addr, const mem_access access) noexcept
 void arm7tdmi::write_16(const u32 addr, const u16 data, const mem_access access) noexcept
 {
     UNREACHABLE();
+}
+
+u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
+{
+    return make_unsigned(math::sign_extend<8>(widen<u32>(read_8(addr, access))));
 }
 
 u32 arm7tdmi::read_8(const u32 addr, const mem_access access) noexcept
