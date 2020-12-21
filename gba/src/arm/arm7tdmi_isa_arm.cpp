@@ -9,6 +9,18 @@
 
 namespace gba {
 
+namespace  {
+
+u32 addresing_offset(const bool add_to_base, const u32 rn, const u32 offset) noexcept
+{
+    if(add_to_base) {
+        return rn + offset;
+    }
+    return rn - offset;
+}
+
+} // namespace
+
 void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
 {
     u32 reg_op = r(narrow<u8>(instr & 0xF_u32));
@@ -360,16 +372,8 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
         return instr & 0xFFF_u32;
     }();
 
-    const auto add_rn_offset = [&]() {
-        if(add_to_base) {
-            rn_addr += offset;
-        } else {
-            rn_addr -= offset;
-        }
-    };
-
     if(pre_indexing) {
-        add_rn_offset();
+        rn_addr = addresing_offset(add_to_base, rn_addr, offset);
     }
 
     if(is_ldr) {
@@ -396,7 +400,7 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
     // write back
     if(!is_ldr || rn != rd) {
         if(!pre_indexing) {
-            add_rn_offset();
+            rn_addr = addresing_offset(add_to_base, rn_addr, offset);
             r(rn) = rn_addr;
         } else if(write_back) {
             r(rn) = rn_addr;
