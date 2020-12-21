@@ -346,12 +346,6 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
 
     u32 rn_addr = r(rn);
 
-    privilege_mode old_mode;
-    if(!pre_indexing && write_back) {
-        old_mode = cpsr().mode;
-        cpsr().mode = privilege_mode::usr;
-    }
-
     const u32 offset = [=]() {
         // reg
         if(bit::test(instr, 25_u8)) {
@@ -397,11 +391,6 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
         } else {
             write_32(rn_addr, src, mem_access::non_seq);
         }
-    }
-
-    // change mode before, so we don't write back rn to usr regs
-    if(!pre_indexing && write_back) {
-        cpsr().mode = old_mode;
     }
 
     // write back
