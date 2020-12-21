@@ -387,15 +387,15 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
 
         tick_internal();
     } else {
-        u32 dest = r(rd);
+        u32 src = r(rd);
         if(rd == 15_u8) {
-            dest += 4_u32;
+            src += 4_u32;
         }
 
         if(transfer_byte) {
-            write_8(rn_addr, narrow<u8>(dest), mem_access::non_seq);
+            write_8(rn_addr, narrow<u8>(src), mem_access::non_seq);
         } else {
-            write_32(rn_addr, dest, mem_access::non_seq);
+            write_32(rn_addr, src, mem_access::non_seq);
         }
     }
 
