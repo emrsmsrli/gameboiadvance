@@ -178,7 +178,6 @@ void arm7tdmi::branch_exchange(const u32 instr) noexcept
         pipeline_flush<instruction_mode::thumb>();
     } else {
         r(15_u8) = mask::clear(addr, 0b11_u32);
-        cpsr().t = false;
         pipeline_flush<instruction_mode::arm>();
     }
 }
