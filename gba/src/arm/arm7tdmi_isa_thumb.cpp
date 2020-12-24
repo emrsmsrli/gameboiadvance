@@ -9,7 +9,7 @@
 
 namespace gba {
 
-void arm7tdmi::move_shifted_reg(u16 instr) noexcept
+void arm7tdmi::move_shifted_reg(const u16 instr) noexcept
 {
     const u16 opcode = (instr >> 11_u16) & 0b11_u16;
     const u8 offset = narrow<u8>((instr >> 6_u16) & 0x1F_u16);
@@ -28,7 +28,7 @@ void arm7tdmi::move_shifted_reg(u16 instr) noexcept
     r(15_u8) += 2_u32;
 }
 
-void arm7tdmi::add_subtract(u16 instr) noexcept
+void arm7tdmi::add_subtract(const u16 instr) noexcept
 {
     const bool is_sub = bit::test(instr, 9_u8);
     const bool is_imm = bit::test(instr, 10_u8);
@@ -50,27 +50,27 @@ void arm7tdmi::add_subtract(u16 instr) noexcept
     r(15_u8) += 2_u32;
 }
 
-void arm7tdmi::mov_cmp_add_sub_imm(u16 instr) noexcept
+void arm7tdmi::mov_cmp_add_sub_imm(const u16 instr) noexcept
 {
     const u16 opcode = (instr >> 11_u16) & 0b11_u16;
     u32& rd = r(narrow<u8>((instr >> 8_u16) & 0x7_u16));
     const u16 offset = instr & 0xFF_u16;
     switch(opcode.get()) {
-        case 0b00: {
+        case 0b00: { // MOV
             rd = offset;
             cpsr().n = false;
             cpsr().z = offset == 0_u16;
             break;
         }
-        case 0b01: {
+        case 0b01: { // CMP
             alu_sub(rd, offset, true);
             break;
         }
-        case 0b10: {
+        case 0b10: { // ADD
             rd = alu_add(rd, offset, true);
             break;
         }
-        case 0b11: {
+        case 0b11: { // SUB
             rd = alu_sub(rd, offset, true);
             break;
         }
@@ -80,82 +80,82 @@ void arm7tdmi::mov_cmp_add_sub_imm(u16 instr) noexcept
     r(15_u8) += 2_u32;
 }
 
-void arm7tdmi::alu(u16 instr) noexcept
+void arm7tdmi::alu(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::hireg_bx(u16 instr) noexcept
+void arm7tdmi::hireg_bx(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::pc_rel_load(u16 instr) noexcept
+void arm7tdmi::pc_rel_load(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_reg(u16 instr) noexcept
+void arm7tdmi::ld_str_reg(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_sign_extended_byte_hword(u16 instr) noexcept
+void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_imm(u16 instr) noexcept
+void arm7tdmi::ld_str_imm(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_hword(u16 instr) noexcept
+void arm7tdmi::ld_str_hword(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_sp_relative(u16 instr) noexcept
+void arm7tdmi::ld_str_sp_relative(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_addr(u16 instr) noexcept
+void arm7tdmi::ld_addr(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::add_offset_to_sp(u16 instr) noexcept
+void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::push_pop(u16 instr) noexcept
+void arm7tdmi::push_pop(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::ld_str_multiple(u16 instr) noexcept
+void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::branch_cond(u16 instr) noexcept
+void arm7tdmi::branch_cond(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::swi_thumb(u16 instr) noexcept
+void arm7tdmi::swi_thumb(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::branch(u16 instr) noexcept
+void arm7tdmi::branch(const u16 instr) noexcept
 {
 
 }
 
-void arm7tdmi::long_branch_link(u16 instr) noexcept
+void arm7tdmi::long_branch_link(const u16 instr) noexcept
 {
 
 }
