@@ -174,6 +174,7 @@ void arm7tdmi::branch_exchange(const u32 instr) noexcept
     const u32 addr = r(narrow<u8>(instr & 0xF_u32));
     if(bit::test(addr, 0_u8)) {
         r(15_u8) = mask::clear(addr, 0b01_u8);
+        cpsr().t = true;
         pipeline_flush<instruction_mode::thumb>();
     } else {
         r(15_u8) = mask::clear(addr, 0b11_u32);
