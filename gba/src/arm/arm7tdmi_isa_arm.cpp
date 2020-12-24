@@ -11,12 +11,23 @@ namespace gba {
 
 namespace  {
 
-u32 addresing_offset(const bool add_to_base, const u32 rn, const u32 offset) noexcept
+FORCEINLINE u32 addresing_offset(const bool add_to_base, const u32 rn, const u32 offset) noexcept
 {
     if(add_to_base) {
         return rn + offset;
     }
     return rn - offset;
+}
+
+vector<u8> generate_register_list(const u32 instr) noexcept
+{
+    vector<u8> regs;
+    for(u8 i = 0_u8; i < 16_u8; ++i) {
+        if(bit::test(instr, i)) {
+            regs.push_back(i);
+        }
+    }
+    return regs;
 }
 
 } // namespace
@@ -492,7 +503,92 @@ void arm7tdmi::undefined(const u32 /*instr*/) noexcept
 
 void arm7tdmi::block_data_transfer(const u32 instr) noexcept
 {
+    bool pre_indexing = bit::test(instr, 24_u8);
+    const bool add_to_base = bit::test(instr, 23_u8);
+    const bool load_psr = bit::test(instr, 22_u8);
+    const bool write_back = bit::test(instr, 21_u8);
+    const bool is_ldr = bit::test(instr, 20_u8);
+    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
+    ASSERT(rn != 15_u8);
 
+    bool transfer_pc = bit::test(instr, 15_u8);
+    auto rlist = generate_register_list(instr);
+    u32 offset = narrow<u32>(rlist.size()) * 4_u32;
+
+    const bool switch_mode = load_psr && (!is_ldr || !transfer_pc);
+
+    // Empty Rlist: R15 loaded/stored, and Rb=Rb+/-40h.
+    if(rlist.empty()) {
+        rlist.push_back(15_u8);
+        offset = 0x40_u32;
+        transfer_pc = true;
+    }
+
+    u32 rn_addr = r(rn);
+    u32 rn_addr_old = rn_addr;
+    u32 rn_addr_new = rn_addr;
+
+    privilege_mode old_mode;
+    if(switch_mode) {
+        old_mode = cpsr().mode;
+        cpsr().mode = privilege_mode::usr;
+    }
+
+    // for DECREASING addressing modes, the CPU does first calculate the lowest address,
+    // and does then process rlist with increasing addresses
+    if(!add_to_base) {
+        pre_indexing = !pre_indexing;
+        rn_addr -= offset;
+        rn_addr_new -= offset;
+    } else {
+        rn_addr_new += offset;
+    }
+
+    auto access_type = mem_access::non_seq;
+    for(u8 reg : rlist) {
+        if(pre_indexing) {
+            rn_addr += 4_u32;
+        }
+
+        if(is_ldr) {
+            r(reg) = read_32(rn_addr, access_type);
+            if(reg == 15_u8 && load_psr && in_privileged_mode()) {
+                cpsr() = spsr();
+                cpsr().t = false;
+            }
+        } else if(reg == rn) {
+            write_32(rn_addr, rlist[0_usize] == rn ? rn_addr_old : rn_addr_new, access_type);
+        } else if(reg == 15_u8) {
+            write_32(rn_addr, r(15_u8) + 4_u32, access_type);
+        } else {
+            write_32(rn_addr, r(reg), access_type);
+        }
+
+        if(!pre_indexing) {
+            rn_addr += 4_u32;
+        }
+
+        access_type = mem_access::seq;
+    }
+
+    if(switch_mode) {
+        cpsr().mode = old_mode;
+    }
+
+    if(write_back && (!is_ldr || !bit::test(instr, rn))) {
+        r(rn) = rn_addr_new;
+    }
+
+    if(is_ldr) {
+        tick_internal();
+    }
+
+    if(is_ldr && transfer_pc) {
+        pipeline_flush<instruction_mode::arm>();
+    } else {
+        pipeline_.fetch_type = mem_access::non_seq;
+        r(15_u8) += 4_u32;
+    }
 }
 
 void arm7tdmi::branch_with_link(const u32 instr) noexcept
