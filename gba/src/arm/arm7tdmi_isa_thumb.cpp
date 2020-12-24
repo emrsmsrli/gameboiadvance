@@ -263,7 +263,27 @@ void arm7tdmi::pc_rel_load(const u16 instr) noexcept
 
 void arm7tdmi::ld_str_reg(const u16 instr) noexcept
 {
+    const bool is_ldr = bit::test(instr, 11_u8);
+    const bool transfer_byte = bit::test(instr, 10_u8);
+    const u32 ro = r(narrow<u8>((instr >> 6_u16) & 0x7_u16));
+    const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
+    const u32 address = rb + ro;
+    if(is_ldr) {
+        if(transfer_byte) {
+            rd = read_8(address, mem_access::non_seq);
+        } else {
+            rd = read_32(address, mem_access::non_seq);
+        }
+        tick_internal();
+    } else {
+        if(transfer_byte) {
+            write_8(address, narrow<u8>(rd), mem_access::non_seq);
+        } else {
+            write_32(address, rd, mem_access::non_seq);
+        }
+    }
 }
 
 void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
