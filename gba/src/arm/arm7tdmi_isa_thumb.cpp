@@ -293,7 +293,45 @@ void arm7tdmi::ld_str_reg(const u16 instr) noexcept
 
 void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 10_u16) & 0b11_u16;
+    const u32 ro = r(narrow<u8>((instr >> 6_u16) & 0x7_u16));
+    const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
+    pipeline_.fetch_type = mem_access::seq;
+
+    const u32 address = rb + ro;
+    switch(opcode.get()) {
+        case 0b00: {
+            write_16(address, narrow<u16>(rd), mem_access::non_seq);
+            break;
+        }
+        case 0b01: {
+            rd = read_8(address, mem_access::non_seq);
+            rd = make_unsigned(math::sign_extend<8>(rd));
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0b10: {
+            rd = read_16(address, mem_access::non_seq);
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0b11: {
+            rd = read_16(address, mem_access::non_seq);
+            rd = make_unsigned(math::sign_extend<16>(rd));
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+    }
+
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::ld_str_imm(const u16 instr) noexcept
