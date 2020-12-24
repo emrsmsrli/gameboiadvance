@@ -251,7 +251,14 @@ void arm7tdmi::hireg_bx(const u16 instr) noexcept
 
 void arm7tdmi::pc_rel_load(const u16 instr) noexcept
 {
+    u32& pc = r(15_u8);
+    u32& rd = r(narrow<u8>((instr >> 8_u16) & 0x7_u16));
+    const u16 offset = (instr & 0xFF_u16) << 2_u16;
+    rd = read_32(bit::clear(pc, 1_u8) + offset, mem_access::non_seq);
+    tick_internal();
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc += 2_u32;
 }
 
 void arm7tdmi::ld_str_reg(const u16 instr) noexcept
