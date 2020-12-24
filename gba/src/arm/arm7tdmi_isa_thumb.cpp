@@ -269,8 +269,6 @@ void arm7tdmi::ld_str_reg(const u16 instr) noexcept
     const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
     u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
-    pipeline_.fetch_type = mem_access::seq;
-
     const u32 address = rb + ro;
     if(is_ldr) {
         if(transfer_byte) {
@@ -279,7 +277,6 @@ void arm7tdmi::ld_str_reg(const u16 instr) noexcept
             rd = read_32(address, mem_access::non_seq);
         }
         tick_internal();
-        pipeline_.fetch_type = mem_access::non_seq;
     } else {
         if(transfer_byte) {
             write_8(address, narrow<u8>(rd), mem_access::non_seq);
@@ -288,6 +285,7 @@ void arm7tdmi::ld_str_reg(const u16 instr) noexcept
         }
     }
 
+    pipeline_.fetch_type = mem_access::non_seq;
     r(15_u8) += 2_u32;
 }
 
@@ -297,8 +295,6 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
     const u32 ro = r(narrow<u8>((instr >> 6_u16) & 0x7_u16));
     const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
     u32& rd = r(narrow<u8>(instr & 0x7_u16));
-
-    pipeline_.fetch_type = mem_access::seq;
 
     const u32 address = rb + ro;
     switch(opcode.get()) {
@@ -311,14 +307,12 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
             rd = make_unsigned(math::sign_extend<8>(rd));
 
             tick_internal();
-            pipeline_.fetch_type = mem_access::non_seq;
             break;
         }
         case 0b10: {
             rd = read_16(address, mem_access::non_seq);
 
             tick_internal();
-            pipeline_.fetch_type = mem_access::non_seq;
             break;
         }
         case 0b11: {
@@ -326,11 +320,11 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
             rd = make_unsigned(math::sign_extend<16>(rd));
 
             tick_internal();
-            pipeline_.fetch_type = mem_access::non_seq;
             break;
         }
     }
 
+    pipeline_.fetch_type = mem_access::non_seq;
     r(15_u8) += 2_u32;
 }
 
