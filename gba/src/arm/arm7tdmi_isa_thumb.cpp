@@ -74,6 +74,8 @@ void arm7tdmi::mov_cmp_add_sub_imm(const u16 instr) noexcept
             rd = alu_sub(rd, offset, true);
             break;
         }
+        default:
+            UNREACHABLE();
     }
 
     pipeline_.fetch_type = mem_access::seq;
@@ -82,7 +84,114 @@ void arm7tdmi::mov_cmp_add_sub_imm(const u16 instr) noexcept
 
 void arm7tdmi::alu(const u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 6_u16) & 0xF_u16;
+    u32 rs = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
+    bool carry = cpsr().c;
 
+    pipeline_.fetch_type = mem_access::seq;
+
+    const auto evaluate_and_set_flags = [&](const u32 expression) {
+        cpsr().n = bit::test(expression, 31_u8);
+        cpsr().z = expression == 0_u32;
+        return expression;
+    };
+
+    switch(opcode.get()) {
+        case 0x0: { // AND
+            rd = evaluate_and_set_flags(rd & rs);
+            break;
+        }
+        case 0x1: { // EOR
+            rd = evaluate_and_set_flags(rd ^ rs);
+            break;
+        }
+        case 0x2: { // LSL
+            alu_lsl(rd, narrow<u8>(rs), carry);
+            rd = evaluate_and_set_flags(rd);
+            cpsr().c = carry;
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0x3: { // LSR
+            alu_lsr(rd, narrow<u8>(rs), carry, false);
+            rd = evaluate_and_set_flags(rd);
+            cpsr().c = carry;
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0x4: { // ASR
+            alu_asr(rd, narrow<u8>(rs), carry, false);
+            rd = evaluate_and_set_flags(rd);
+            cpsr().c = carry;
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0x5: { // ADC
+            rd = alu_adc(rd, rs, bit::from_bool(carry), true);
+            break;
+        }
+        case 0x6: { // SBC
+            rd = alu_sbc(rd, rs, bit::from_bool(!carry), true);
+            break;
+        }
+        case 0x7: { // ROR
+            alu_ror(rd, narrow<u8>(rs), carry, false);
+            rd = evaluate_and_set_flags(rd);
+            cpsr().c = carry;
+
+            tick_internal();
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0x8: { // TST
+            evaluate_and_set_flags(rd & rs);
+            break;
+        }
+        case 0x9: { // NEG
+            rd = alu_sub(0_u32, rs, true);
+            break;
+        }
+        case 0xA: { // CMP
+            alu_sub(rd, rs, true);
+            break;
+        }
+        case 0xB: { // CMN
+            alu_add(rd, rs, true);
+            break;
+        }
+        case 0xC: { // ORR
+            rd = evaluate_and_set_flags(rd | rs);
+            break;
+        }
+        case 0xD: { // MUL
+            alu_multiply_internal(rd, [](const u32 r, const u32 mask) {
+                return r == 0_u32 || r == mask;
+            });
+            rd = evaluate_and_set_flags(rd * rs);
+            cpsr().c = false;
+            pipeline_.fetch_type = mem_access::non_seq;
+            break;
+        }
+        case 0xE: { // BIC
+            rd = evaluate_and_set_flags(rd & ~rs);
+            break;
+        }
+        case 0xF: { // MVN
+            rd = evaluate_and_set_flags(~rs);
+            break;
+        }
+        default:
+            UNREACHABLE();
+    }
+
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::hireg_bx(const u16 instr) noexcept
