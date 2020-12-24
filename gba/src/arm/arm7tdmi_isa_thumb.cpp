@@ -52,7 +52,32 @@ void arm7tdmi::add_subtract(u16 instr) noexcept
 
 void arm7tdmi::mov_cmp_add_sub_imm(u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
+    u32& rd = r(narrow<u8>((instr >> 8_u16) & 0x7_u16));
+    const u16 offset = instr & 0xFF_u16;
+    switch(opcode.get()) {
+        case 0b00: {
+            rd = offset;
+            cpsr().n = false;
+            cpsr().z = offset == 0_u16;
+            break;
+        }
+        case 0b01: {
+            alu_sub(rd, offset, true);
+            break;
+        }
+        case 0b10: {
+            rd = alu_add(rd, offset, true);
+            break;
+        }
+        case 0b11: {
+            rd = alu_sub(rd, offset, true);
+            break;
+        }
+    }
 
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::alu(u16 instr) noexcept
