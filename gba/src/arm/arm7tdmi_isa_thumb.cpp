@@ -196,7 +196,57 @@ void arm7tdmi::alu(const u16 instr) noexcept
 
 void arm7tdmi::hireg_bx(const u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 8_u16) & 0b11_u16;
+    const u8 rs_reg = narrow<u8>((instr >> 3_u16) & 0xF_u16);
+    u32 rs = r(rs_reg);
+    u32& rd = r(narrow<u8>((instr & 0x7_u16) | ((instr >> 4_u16) & 0x8_u16)));
 
+    if(rs_reg == 15_u8) {
+        rs = bit::clear(rs, 0_u8);
+    }
+
+    const auto set_rd_and_flush = [&](const u32 expression) {
+        rd = expression;
+        if(rd == 15_u8) {
+            rd = bit::clear(rd, 0_u8);
+            pipeline_flush<instruction_mode::thumb>();
+        } else {
+            pipeline_.fetch_type = mem_access::seq;
+            r(15_u8) += 2_u32;
+        }
+    };
+
+    switch(opcode.get()) {
+        case 0b00: { // ADD
+            ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
+            set_rd_and_flush(rd + rs);
+            break;
+        }
+        case 0b01: { // CMP
+            ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
+            alu_sub(rd, rs, true);
+            pipeline_.fetch_type = mem_access::seq;
+            r(15_u8) += 2_u32;
+            break;
+        }
+        case 0b10: { // MOV
+            ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
+            set_rd_and_flush(rs);
+            break;
+        }
+        case 0b11: { // BX
+            ASSERT(!bit::test(instr, 7_u8));
+            if(bit::test(rs, 0_u8)) {
+                r(15_u8) = bit::clear(rs, 0_u8);
+                pipeline_flush<instruction_mode::thumb>();
+            } else {
+                cpsr().t = false;
+                r(15_u8) = mask::clear(rs, 0b11_u32);
+                pipeline_flush<instruction_mode::arm>();
+            }
+            break;
+        }
+    }
 }
 
 void arm7tdmi::pc_rel_load(const u16 instr) noexcept
