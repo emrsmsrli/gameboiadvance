@@ -30,7 +30,24 @@ void arm7tdmi::move_shifted_reg(u16 instr) noexcept
 
 void arm7tdmi::add_subtract(u16 instr) noexcept
 {
+    const bool is_sub = bit::test(instr, 9_u8);
+    const bool is_imm = bit::test(instr, 10_u8);
+    u32 data = (instr >> 6_u16) & 0x7_u16;
+    const u32 rs = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
+    if(!is_imm) {
+        data = r(narrow<u8>(data));
+    }
+
+    if(is_sub) {
+        rd = alu_sub(rs, data, true);
+    } else {
+        rd = alu_add(rs, data, true);
+    }
+
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::mov_cmp_add_sub_imm(u16 instr) noexcept
