@@ -11,7 +11,21 @@ namespace gba {
 
 void arm7tdmi::move_shifted_reg(u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
+    const u8 offset = narrow<u8>((instr >> 6_u16) & 0x1F_u16);
+    u32 rs = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
+    bool carry = cpsr().c;
 
+    alu_barrel_shift(static_cast<barrel_shift_type>(opcode.get()), rs, offset, carry, true);
+    rd = rs;
+
+    cpsr().z = rs == 0_u32;
+    cpsr().n = bit::test(rs, 31_u8);
+    cpsr().c = carry;
+
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::add_subtract(u16 instr) noexcept
