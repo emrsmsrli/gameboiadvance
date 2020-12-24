@@ -604,9 +604,14 @@ void arm7tdmi::branch_with_link(const u32 instr) noexcept
     pipeline_flush<instruction_mode::arm>();
 }
 
-void arm7tdmi::swi_arm(const u32 instr) noexcept
+void arm7tdmi::swi_arm(const u32 /*instr*/) noexcept
 {
-    
+    svc_.r14 = r15_ - 4_u32;
+    svc_.spsr = cpsr();
+    cpsr().mode = privilege_mode::svc;
+    cpsr().i = true;
+    r15_ = 0x0000'0008_u32;
+    pipeline_flush<instruction_mode::arm>();
 }
 
 } // namespace gba
