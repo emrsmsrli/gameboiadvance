@@ -419,11 +419,10 @@ void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
     const bool subtract = bit::test(instr, 7_u8);
     const u16 imm_offset = (instr & 0x7F_u16) << 2_u16;
 
-    u32& sp = r(13_u8):
     if(subtract) {
-        sp -= imm_offset;
+        r(13_u8) -= imm_offset;
     } else {
-        sp += imm_offset;
+        r(13_u8) += imm_offset;
     }
 
     pipeline_.fetch_type = mem_access::seq;
