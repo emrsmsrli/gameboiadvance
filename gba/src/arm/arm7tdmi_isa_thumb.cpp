@@ -335,23 +335,22 @@ void arm7tdmi::ld_str_imm(const u16 instr) noexcept
     const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
     u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
-    const u32 address = rb + imm;
     switch(opcode.get()) {
         case 0b00: {
-            write_32(address, rd, mem_access::non_seq);
+            write_32(rb + (imm << 2_u8), rd, mem_access::non_seq);
             break;
         }
         case 0b01: {
-            rd = read_32_aligned(address, mem_access::non_seq);
+            rd = read_32_aligned(rb + (imm << 2_u8), mem_access::non_seq);
             tick_internal();
             break;
         }
         case 0b10: {
-            write_8(address, narrow<u8>(rd), mem_access::non_seq);
+            write_8(rb + imm, narrow<u8>(rd), mem_access::non_seq);
             break;
         }
         case 0b11: {
-            rd = read_8(address, mem_access::non_seq);
+            rd = read_8(rb + imm, mem_access::non_seq);
             tick_internal();
             break;
         }
