@@ -303,8 +303,7 @@ void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
     if(bit::test(instr, 16_u8) && (use_spsr || !in_privileged_mode())) { mask |= 0x0000'00FF_u32; }
 
     if(use_spsr) {
-        auto& reg = spsr();
-        if(in_exception_mode()) {
+        if(auto& reg = spsr(); in_exception_mode()) {
             reg = mask::clear(static_cast<u32>(reg), mask) | operand;
         }
     } else {
