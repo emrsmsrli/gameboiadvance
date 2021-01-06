@@ -330,7 +330,35 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
 
 void arm7tdmi::ld_str_imm(const u16 instr) noexcept
 {
+    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
+    const u16 imm = (instr >> 6_u16) & 0x1F_u16;
+    const u32 rb = r(narrow<u8>((instr >> 3_u16) & 0x7_u16));
+    u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
+    const u32 address = rb + imm;
+    switch(opcode.get()) {
+        case 0b00: {
+            write_32(address, rd, mem_access::non_seq);
+            break;
+        }
+        case 0b01: {
+            rd = read_32_aligned(address, mem_access::non_seq);
+            tick_internal();
+            break;
+        }
+        case 0b10: {
+            write_8(address, narrow<u8>(rd), mem_access::non_seq);
+            break;
+        }
+        case 0b11: {
+            rd = read_8(address, mem_access::non_seq);
+            tick_internal();
+            break;
+        }
+    }
+
+    pipeline_.fetch_type = mem_access::non_seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::ld_str_hword(const u16 instr) noexcept
