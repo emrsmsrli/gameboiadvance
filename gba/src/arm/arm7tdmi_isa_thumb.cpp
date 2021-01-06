@@ -382,7 +382,20 @@ void arm7tdmi::ld_str_hword(const u16 instr) noexcept
 
 void arm7tdmi::ld_str_sp_relative(const u16 instr) noexcept
 {
+    const bool is_ldr = bit::test(instr, 11_u8);
+    u32& rd = r(narrow<u8>((instr >> 8_u16) & 0x7_u16));
+    const u16 imm_offset = (instr & 0xFF_u16) << 2_u16;
 
+    const u32 address = r(13_u8) + imm_offset;
+    if(is_ldr) {
+        rd = read_32_aligned(address, mem_access::non_seq);
+        tick_internal();
+    } else {
+        write_32(address, rd, mem_access::non_seq);
+    }
+
+    pipeline_.fetch_type = mem_access::non_seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::ld_addr(const u16 instr) noexcept
