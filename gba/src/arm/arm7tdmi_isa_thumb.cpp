@@ -400,7 +400,18 @@ void arm7tdmi::ld_str_sp_relative(const u16 instr) noexcept
 
 void arm7tdmi::ld_addr(const u16 instr) noexcept
 {
+    const bool use_sp = bit::test(instr, 11_u8);
+    u32& rd = r(narrow<u8>((instr >> 8_u16) & 0x7_u16));
+    const u16 imm_offset = (instr & 0xFF_u16) << 2_u16;
 
+    if(use_sp) {
+        rd = r(13_u8) + imm_offset;
+    } else {
+        rd = bit::clear(r(15_u8), 1_u8) + imm_offset;
+    }
+
+    pipeline_.fetch_type = mem_access::seq;
+    r(15_u8) += 2_u32;
 }
 
 void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
