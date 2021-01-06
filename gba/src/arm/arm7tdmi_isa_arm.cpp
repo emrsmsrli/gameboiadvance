@@ -289,7 +289,7 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
 void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
 {
     const bool use_spsr = bit::test(instr, 22_u8);
-    const u32 imm = math::logical_rotate_right(instr & 0xFF_u32, narrow<u8>((instr >> 8_u32) & 0xF_u32)).result;
+    const u32 imm = math::logical_rotate_right(instr & 0xFF_u32, narrow<u8>((instr >> 8_u32) & 0xF_u32) << 1_u8).result;
     psr_transfer_msr(instr, imm, use_spsr);
 
     pipeline_.fetch_type = mem_access::seq;
