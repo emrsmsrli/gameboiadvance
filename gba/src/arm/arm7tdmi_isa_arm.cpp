@@ -296,7 +296,7 @@ void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
     r(15_u8) += 4_u32;
 }
 
-void arm7tdmi::psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept
+void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool use_spsr) noexcept
 {
     u32 mask;
     if(bit::test(instr, 19_u8)) { mask |= 0xF000'0000_u32; }
