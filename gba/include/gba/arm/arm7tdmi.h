@@ -178,28 +178,6 @@ private:
 
     void tick_internal() noexcept { /*todo used in internal cycles*/ }
 
-    [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
-    [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
-
-    [[nodiscard]] bool condition_met(u32 instruction) const noexcept;
-
-    template<instruction_mode Mode>
-    void pipeline_flush() noexcept
-    {
-        u32& pc = r(15_u8);
-        if constexpr(Mode == instruction_mode::arm) {
-            pipeline_.executing = read_32(pc, mem_access::non_seq);
-            pipeline_.decoding = read_32(pc + 4_u32, mem_access::seq);
-            pipeline_.fetch_type = mem_access::seq;
-            pc += 8_u32;
-        } else {
-            pipeline_.executing = read_16(pc, mem_access::non_seq);
-            pipeline_.decoding = read_16(pc + 2_u32, mem_access::seq);
-            pipeline_.fetch_type = mem_access::seq;
-            pc += 4_u32;
-        }
-    }
-
     // ARM instructions
     void data_processing_imm_shifted_reg(u32 instr) noexcept;
     void data_processing_reg_shifted_reg(u32 instr) noexcept;
@@ -241,6 +219,30 @@ private:
     void swi_thumb(u16 instr) noexcept;
     void branch(u16 instr) noexcept;
     void long_branch_link(u16 instr) noexcept;
+
+    // decoder helpers
+    [[nodiscard]] static vector<u8> generate_register_list(u32 instr, u8 count) noexcept;
+    [[nodiscard]] bool condition_met(u32 instruction) const noexcept;
+
+    [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
+    [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
+
+    template<instruction_mode Mode>
+    void pipeline_flush() noexcept
+    {
+        u32& pc = r(15_u8);
+        if constexpr(Mode == instruction_mode::arm) {
+            pipeline_.executing = read_32(pc, mem_access::non_seq);
+            pipeline_.decoding = read_32(pc + 4_u32, mem_access::seq);
+            pipeline_.fetch_type = mem_access::seq;
+            pc += 8_u32;
+        } else {
+            pipeline_.executing = read_16(pc, mem_access::non_seq);
+            pipeline_.decoding = read_16(pc + 2_u32, mem_access::seq);
+            pipeline_.fetch_type = mem_access::seq;
+            pc += 4_u32;
+        }
+    }
 
     // alu helpers
     enum class barrel_shift_type { lsl, lsr, asr, ror };

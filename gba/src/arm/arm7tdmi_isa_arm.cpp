@@ -19,17 +19,6 @@ FORCEINLINE u32 addresing_offset(const bool add_to_base, const u32 rn, const u32
     return rn - offset;
 }
 
-vector<u8> generate_register_list(const u32 instr) noexcept
-{
-    vector<u8> regs;
-    for(u8 i = 0_u8; i < 16_u8; ++i) {
-        if(bit::test(instr, i)) {
-            regs.push_back(i);
-        }
-    }
-    return regs;
-}
-
 } // namespace
 
 void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
@@ -510,7 +499,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     ASSERT(rn != 15_u8);
 
     bool transfer_pc = bit::test(instr, 15_u8);
-    auto rlist = generate_register_list(instr);
+    auto rlist = generate_register_list(instr, 16_u8);
     u32 offset = narrow<u32>(rlist.size()) * 4_u32;
 
     const bool switch_mode = load_psr && (!is_ldr || !transfer_pc);
