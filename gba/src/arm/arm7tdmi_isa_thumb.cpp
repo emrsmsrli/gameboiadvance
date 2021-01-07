@@ -303,22 +303,17 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
             break;
         }
         case 0b01: {
-            rd = read_8(address, mem_access::non_seq);
-            rd = make_unsigned(math::sign_extend<8>(rd));
-
+            rd = read_8_signed(address, mem_access::non_seq);
             tick_internal();
             break;
         }
         case 0b10: {
             rd = read_16_aligned(address, mem_access::non_seq);
-
             tick_internal();
             break;
         }
         case 0b11: {
-            rd = read_16(address, mem_access::non_seq);
-            rd = make_unsigned(math::sign_extend<16>(rd));
-
+            rd = read_16_signed(address, mem_access::non_seq);
             tick_internal();
             break;
         }
