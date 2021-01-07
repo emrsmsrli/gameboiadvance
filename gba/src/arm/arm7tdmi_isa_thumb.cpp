@@ -310,7 +310,7 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
             break;
         }
         case 0b10: {
-            rd = read_16(address, mem_access::non_seq);
+            rd = read_16_aligned(address, mem_access::non_seq);
 
             tick_internal();
             break;
