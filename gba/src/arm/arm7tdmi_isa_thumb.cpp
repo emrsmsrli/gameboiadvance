@@ -274,7 +274,7 @@ void arm7tdmi::ld_str_reg(const u16 instr) noexcept
         if(transfer_byte) {
             rd = read_8(address, mem_access::non_seq);
         } else {
-            rd = read_32(address, mem_access::non_seq);
+            rd = read_32_aligned(address, mem_access::non_seq);
         }
         tick_internal();
     } else {
