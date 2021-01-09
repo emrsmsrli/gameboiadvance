@@ -493,7 +493,54 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
 
 void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 {
+    const bool is_ldm = bit::test(instr, 11_u8);
+    const u8 rb = narrow<u8>((instr >> 8_u16) & 0x7_u16);
+    const auto rlist = generate_register_list(instr, 8_u8);
+    u32& rb_reg = r(rb);
+    u32& pc = r(15_u8);
 
+    if(rlist.empty()) {
+        if(is_ldm) {
+            pc = read_32(rb_reg, mem_access::non_seq);
+            pipeline_flush<instruction_mode::thumb>();
+        } else {
+            pipeline_.fetch_type = mem_access::seq;
+            pc += 2_u32;
+            write_32(rb_reg, pc, mem_access::non_seq);
+        }
+
+        rb_reg += 0x40_u32;
+        return;
+    }
+
+    u32 address = rb_reg;
+    if(is_ldm) {
+        auto access = mem_access::non_seq;
+        for(const u8 reg : rlist) {
+            r(reg) = read_32(address, access);
+            access = mem_access::seq;
+            address += 4_u32;
+        }
+
+        tick_internal();
+
+        if(!bit::test(instr, rb)) {
+            rb_reg = address;
+        }
+    } else {
+        const u32 final_addr = address + 4_u32 * narrow<u32>(rlist.size());
+        write_32(address, rlist[0_usize], mem_access::non_seq);
+        rb_reg = final_addr;
+        address += 4_u32;
+
+        for(u32 i = 1_u32; i < rlist.size(); ++i) {
+            write_32(address, rlist[i], mem_access::seq);
+            address += 4_u32;
+        }
+    }
+
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc += 2_u32;
 }
 
 void arm7tdmi::branch_cond(const u16 instr) noexcept
