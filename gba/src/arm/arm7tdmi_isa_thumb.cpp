@@ -545,7 +545,14 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 
 void arm7tdmi::branch_cond(const u16 instr) noexcept
 {
-
+    if(condition_met((instr >> 8_u16) & 0xF_u16)) {
+        const i32 offset = make_signed((instr & 0xFF_u16) << 1_u16);
+        r(15_u8) += offset;
+        pipeline_flush<instruction_mode::thumb>();
+    } else {
+        pipeline_.fetch_type = mem_access::seq;
+        r(15_u8) += 2_u32;
+    }
 }
 
 void arm7tdmi::swi_thumb(const u16 instr) noexcept
