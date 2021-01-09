@@ -25,7 +25,7 @@ void arm7tdmi::tick() noexcept
         pc = mask::clear(pc, 0b11_u32); // word align
         pipeline_.decoding = read_32(pc, pipeline_.fetch_type);
 
-        if(condition_met(instruction)) {
+        if(condition_met(instruction >> 28_u32)) {
             auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
             ASSERT(func.is_valid());
             func(this, instruction);
@@ -87,9 +87,8 @@ psr& arm7tdmi::spsr() noexcept
     }
 }
 
-bool arm7tdmi::condition_met(const u32 instruction) const noexcept
+bool arm7tdmi::condition_met(const u32 cond) const noexcept
 {
-    const u32 cond = instruction >> 28_u32;
     switch(cond.get()) {
         /* EQ */ case 0x0: return cpsr_.z;
         /* NE */ case 0x1: return !cpsr_.z;

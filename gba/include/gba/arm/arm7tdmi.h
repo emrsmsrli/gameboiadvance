@@ -222,7 +222,7 @@ private:
 
     // decoder helpers
     [[nodiscard]] static vector<u8> generate_register_list(u32 instr, u8 count) noexcept;
-    [[nodiscard]] bool condition_met(u32 instruction) const noexcept;
+    [[nodiscard]] bool condition_met(u32 cond) const noexcept;
 
     [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
     [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
