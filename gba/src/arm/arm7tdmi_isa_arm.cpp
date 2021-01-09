@@ -532,7 +532,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     }
 
     auto access_type = mem_access::non_seq;
-    for(u8 reg : rlist) {
+    for(const u8 reg : rlist) {
         if(pre_indexing) {
             rn_addr += 4_u32;
         }
