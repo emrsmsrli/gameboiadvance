@@ -425,7 +425,70 @@ void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
 
 void arm7tdmi::push_pop(const u16 instr) noexcept
 {
+    const bool is_pop = bit::test(instr, 11_u8);
+    const bool use_pc_lr = bit::test(instr, 8_u8);
+    const auto rlist = generate_register_list(instr, 8_u8);
+    u32& sp = r(13_u8);
+    u32& pc = r(15_u8);
+    auto access = mem_access::non_seq;
 
+    if(rlist.empty() && !use_pc_lr) {
+        if(is_pop) {
+            pc = read_32(sp, access);
+            pipeline_flush<instruction_mode::thumb>();
+            sp += 0x40_u32;
+        } else {
+            sp -= 0x40_u32;
+            pipeline_.fetch_type = mem_access::non_seq;
+            pc += 2;
+            write_32(sp, pc, access);
+        }
+
+        return;
+    }
+
+    u32 address = sp;
+
+    if(is_pop) {
+        for(const u8 reg : rlist) {
+            r(reg) = read_32(address, access);
+            access = mem_access::seq;
+            address += 4_u32;
+        }
+
+        if(use_pc_lr) {
+            pc = bit::clear(read_32(address, access), 0_u8);
+            sp = address + 4_u8;
+            tick_internal();
+            pipeline_flush<instruction_mode::thumb>();
+            return;
+        }
+
+        tick_internal();
+        sp = address;
+    } else {
+        address -= 4_u32 * narrow<u32>(rlist.size());
+        if(use_pc_lr) {
+            address -= 4_u32;
+        }
+
+        const u32 new_sp = address;
+
+        for(const u8 reg : rlist) {
+            write_32(address, r(reg), access);
+            access = mem_access::seq;
+            address += 4_u32;
+        }
+
+        if(use_pc_lr) {
+            write_32(address, r(14_u8), access);
+        }
+
+        sp = new_sp;
+    }
+
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc += 2_u32;
 }
 
 void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
