@@ -562,7 +562,9 @@ void arm7tdmi::swi_thumb(const u16 instr) noexcept
 
 void arm7tdmi::branch(const u16 instr) noexcept
 {
-
+    const i32 offset = make_signed((instr & 0x7FF_u16) << 1_u16);
+    r(15_u8) += offset;
+    pipeline_flush<instruction_mode::thumb>();
 }
 
 void arm7tdmi::long_branch_link(const u16 instr) noexcept
