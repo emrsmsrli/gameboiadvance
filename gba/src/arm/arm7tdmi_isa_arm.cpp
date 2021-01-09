@@ -494,7 +494,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     const bool add_to_base = bit::test(instr, 23_u8);
     const bool load_psr = bit::test(instr, 22_u8);
     const bool write_back = bit::test(instr, 21_u8);
-    const bool is_ldr = bit::test(instr, 20_u8);
+    const bool is_ldm = bit::test(instr, 20_u8);
     const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
     ASSERT(rn != 15_u8);
 
@@ -502,7 +502,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     auto rlist = generate_register_list(instr, 16_u8);
     u32 offset = narrow<u32>(rlist.size()) * 4_u32;
 
-    const bool switch_mode = load_psr && (!is_ldr || !transfer_pc);
+    const bool switch_mode = load_psr && (!is_ldm || !transfer_pc);
 
     // Empty Rlist: R15 loaded/stored, and Rb=Rb+/-40h.
     if(rlist.empty()) {
@@ -537,7 +537,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
             rn_addr += 4_u32;
         }
 
-        if(is_ldr) {
+        if(is_ldm) {
             r(reg) = read_32(rn_addr, access_type);
             if(reg == 15_u8 && load_psr && in_privileged_mode()) {
                 cpsr() = spsr();
@@ -562,15 +562,15 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
         cpsr().mode = old_mode;
     }
 
-    if(write_back && (!is_ldr || !bit::test(instr, rn))) {
+    if(write_back && (!is_ldm || !bit::test(instr, rn))) {
         r(rn) = rn_addr_new;
     }
 
-    if(is_ldr) {
+    if(is_ldm) {
         tick_internal();
     }
 
-    if(is_ldr && transfer_pc) {
+    if(is_ldm && transfer_pc) {
         pipeline_flush<instruction_mode::arm>();
     } else {
         pipeline_.fetch_type = mem_access::non_seq;
