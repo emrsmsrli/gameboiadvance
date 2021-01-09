@@ -569,7 +569,20 @@ void arm7tdmi::branch(const u16 instr) noexcept
 
 void arm7tdmi::long_branch_link(const u16 instr) noexcept
 {
+    u32& lr = r(14_u8);
+    u32& pc = r(15_u8);
 
+    const u16 offset = instr & 0x7FF_u16;
+    if(bit::test(instr, 11_u8)) {   // second instr
+        const u32 temp = pc - 2_u32;
+        pc = bit::clear(lr + (offset << 1_u8), 0_u8);
+        lr = bit::set(temp, 0_u8);
+        pipeline_flush<instruction_mode::thumb>();
+    } else {                        // first instr
+        lr = pc + math::sign_extend<23>(widen<u32>(offset << 12_u16));
+        pipeline_.fetch_type = mem_access::seq;
+        pc += 2_u32;
+    }
 }
 
 
