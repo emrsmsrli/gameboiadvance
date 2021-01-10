@@ -2,7 +2,10 @@ cmake_minimum_required(VERSION 3.12.4)
 project(gba_debugger CXX)
 
 add_library(${PROJECT_NAME} STATIC
-        src/disassembler.cpp)
+        src/debugger.cpp
+        src/disassembler.cpp
+        src/arm_debugger.cpp
+        src/gamepak_debugger.cpp)
 
 add_library(gba::debugger ALIAS ${PROJECT_NAME})
 
@@ -13,6 +16,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         fmt::fmt
         imgui::sfml
         json::json
+        access_private::access_private
         sfml-system
         sfml-window
         sfml-graphics
