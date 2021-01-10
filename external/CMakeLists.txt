@@ -10,5 +10,6 @@ endfunction()
 add_header_only_library(doctest)
 add_header_only_library(cxxopts)
 add_header_only_library(json)
+add_header_only_library(access_private)
 
 add_subdirectory(imgui_sfml)
