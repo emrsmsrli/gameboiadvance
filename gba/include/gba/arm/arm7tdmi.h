@@ -113,7 +113,7 @@ struct banked_fiq_regs {
 enum class instruction_mode { arm, thumb };
 enum class mem_access { non_seq, seq };
 
-struct arm_pipeline {
+struct pipeline {
     mem_access fetch_type{mem_access::non_seq};
     u32 executing;
     u32 decoding;
@@ -158,7 +158,7 @@ class arm7tdmi {
     u16 if_;
     bool ime_ = false;
 
-    arm_pipeline pipeline_;
+    pipeline pipeline_;
 
 public:
     arm7tdmi() = default;
