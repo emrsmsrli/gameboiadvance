@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba {
+namespace gba::arm {
 
 namespace  {
 
@@ -601,4 +601,4 @@ void arm7tdmi::swi_arm(const u32 /*instr*/) noexcept
     pipeline_flush<instruction_mode::arm>();
 }
 
-} // namespace gba
+} // namespace gba::arm

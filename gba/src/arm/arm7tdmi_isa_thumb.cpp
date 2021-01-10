@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba {
+namespace gba::arm {
 
 void arm7tdmi::move_shifted_reg(const u16 instr) noexcept
 {
@@ -592,4 +592,4 @@ void arm7tdmi::long_branch_link(const u16 instr) noexcept
 }
 
 
-} // namespace gba
+} // namespace gba::arm

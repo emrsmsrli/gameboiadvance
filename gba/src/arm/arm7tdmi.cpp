@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba {
+namespace gba::arm {
 
 void arm7tdmi::tick() noexcept
 {
@@ -122,4 +122,4 @@ vector<u8> arm7tdmi::generate_register_list(const u32 instr, const u8 count) noe
     return regs;
 }
 
-} // namespace gba
+} // namespace gba::arm

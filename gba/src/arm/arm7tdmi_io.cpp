@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba {
+namespace gba::arm {
 
 u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
 {
@@ -74,4 +74,4 @@ void arm7tdmi::write_8(const u32 addr, const u8 data, const mem_access access) n
     UNREACHABLE();
 }
 
-} // namespace gba
+} // namespace gba::arm

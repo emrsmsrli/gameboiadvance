@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba {
+namespace gba::arm {
 
 void arm7tdmi::alu_barrel_shift(const barrel_shift_type shift_type, u32& operand,
   u8 shift_amount, bool& carry, const bool imm) noexcept
@@ -169,4 +169,4 @@ u32 arm7tdmi::alu_sbc(const u32 first_op, const u32 second_op, const u32 borrow,
     return result;
 }
 
-} // namespace gba
+} // namespace gba::arm

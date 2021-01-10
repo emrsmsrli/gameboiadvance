@@ -15,6 +15,8 @@
 
 namespace gba {
 
+namespace arm {
+
 enum class privilege_mode : u8::type {
     usr = 0x10,  // user
     fiq = 0x11,  // fast interrupt
@@ -108,6 +110,15 @@ struct banked_fiq_regs {
     psr spsr;
 };
 
+enum class instruction_mode { arm, thumb };
+enum class mem_access { non_seq, seq };
+
+struct arm_pipeline {
+    mem_access fetch_type{mem_access::non_seq};
+    u32 executing;
+    u32 decoding;
+};
+
 class arm7tdmi {
    enum class instruction_mode { arm, thumb };
    enum class mem_access { non_seq, seq };
@@ -147,11 +158,7 @@ class arm7tdmi {
     u16 if_;
     bool ime_ = false;
 
-    struct {
-        mem_access fetch_type;
-        u32 executing;
-        u32 decoding;
-    } pipeline_;
+    arm_pipeline pipeline_;
 
 public:
     arm7tdmi() = default;
@@ -316,6 +323,8 @@ private:
       {"1111xxxxxx", function_ptr{&arm7tdmi::long_branch_link}},
     };
 };
+
+} // namespace arm
 
 } // namespace gba
 
