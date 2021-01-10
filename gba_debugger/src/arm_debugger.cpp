@@ -13,32 +13,32 @@
 #include <gba/arm/arm7tdmi.h>
 #include <gba_debugger/debugger_helpers.h>
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r0_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r1_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r2_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r3_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r4_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r5_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r6_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r7_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r8_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r9_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r10_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r11_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r12_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r13_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r14_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_fiq_regs, fiq_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, svc_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, abt_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, irq_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, und_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::pipeline, pipeline_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_);
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_);
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r0_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r1_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r2_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r3_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r4_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r5_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r6_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r7_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r8_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r9_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r10_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r11_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r12_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r13_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r14_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_fiq_regs, fiq_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, svc_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, abt_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, irq_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, und_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::pipeline, pipeline_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_)
 
 namespace gba::debugger {
 
@@ -53,6 +53,31 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         for(u32 i = 0_u32; i < n; ++i) {
             ImGui::Text("%08X", reg.get());
             ImGui::NextColumn();
+        }
+    };
+
+    const auto psr_tooltip = [](arm::psr& p) {
+        if(ImGui::IsItemHovered()) {
+            ImGui::BeginTooltip();
+            ImGui::Text("n: %s", fmt_bool(p.n));  // signed flag
+            ImGui::Text("z: %s", fmt_bool(p.z));  // zero flag
+            ImGui::Text("c: %s", fmt_bool(p.c));  // carry flag
+            ImGui::Text("v: %s", fmt_bool(p.v));  // overflow flag
+            ImGui::Text("i: %s", fmt_bool(p.i));  // irq disabled flag
+            ImGui::Text("f: %s", fmt_bool(p.f));  // fiq disabled flag
+            ImGui::Text("t: %s", fmt_bool(p.t));  // thumb mode flag
+            ImGui::Text("mode: %s", [&]() {
+                switch(p.mode) {
+                    case arm::privilege_mode::usr: return "usr";
+                    case arm::privilege_mode::fiq: return "fiq";
+                    case arm::privilege_mode::irq: return "irq";
+                    case arm::privilege_mode::svc: return "svc";
+                    case arm::privilege_mode::abt: return "abt";
+                    case arm::privilege_mode::und: return "und";
+                    case arm::privilege_mode::sys: return "sys";
+                }
+            }());
+            ImGui::EndTooltip();
         }
     };
 
@@ -151,16 +176,25 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
     ImGui::Separator();
 
     ImGui::TextUnformatted("CPSR"); ImGui::NextColumn();
-    print_reg_n(static_cast<u32>(access_private::cpsr_(*arm)), 6_u32);
+    for(u32 i = 0_u32; i < 6_u32; ++i) {
+        ImGui::Text("%08X", static_cast<u32>(access_private::cpsr_(*arm)).get());
+        psr_tooltip(access_private::cpsr_(*arm));
+        ImGui::NextColumn();
+    }
     ImGui::Separator();
 
     ImGui::TextUnformatted("SPSR"); ImGui::NextColumn();
     /* no spsr in usr/sys */ ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::fiq_(*arm).spsr).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::svc_(*arm).spsr).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::abt_(*arm).spsr).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::irq_(*arm).spsr).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::und_(*arm).spsr).get()); ImGui::NextColumn();
+    ImGui::Text("%08X", static_cast<u32>(access_private::fiq_(*arm).spsr).get());
+    psr_tooltip(access_private::fiq_(*arm).spsr); ImGui::NextColumn();
+    ImGui::Text("%08X", static_cast<u32>(access_private::svc_(*arm).spsr).get());
+    psr_tooltip(access_private::svc_(*arm).spsr); ImGui::NextColumn();
+    ImGui::Text("%08X", static_cast<u32>(access_private::abt_(*arm).spsr).get());
+    psr_tooltip(access_private::abt_(*arm).spsr); ImGui::NextColumn();
+    ImGui::Text("%08X", static_cast<u32>(access_private::irq_(*arm).spsr).get());
+    psr_tooltip(access_private::irq_(*arm).spsr); ImGui::NextColumn();
+    ImGui::Text("%08X", static_cast<u32>(access_private::und_(*arm).spsr).get());
+    psr_tooltip(access_private::und_(*arm).spsr); ImGui::NextColumn();
     ImGui::Separator();
 
     ImGui::Columns(1);
