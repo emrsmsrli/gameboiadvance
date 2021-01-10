@@ -120,9 +120,6 @@ struct pipeline {
 };
 
 class arm7tdmi {
-   enum class instruction_mode { arm, thumb };
-   enum class mem_access { non_seq, seq };
-
     vector<u8> bios_{16_kb};
     vector<u8> wram_{256_kb};
     vector<u8> iwram_{32_kb};
