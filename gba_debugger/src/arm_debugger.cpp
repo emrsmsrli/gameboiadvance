@@ -51,8 +51,8 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
 
     const auto print_reg_n = [](const u32 reg, const u32 n) {
         for(u32 i = 0_u32; i < n; ++i) {
+            ImGui::TableNextColumn();
             ImGui::Text("%08X", reg.get());
-            ImGui::NextColumn();
         }
     };
 
@@ -81,123 +81,128 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         }
     };
 
-    ImGui::Columns(7);
-    ImGui::NextColumn();
-    ImGui::TextUnformatted("USR/SYS"); ImGui::NextColumn();
-    ImGui::TextUnformatted("FIQ"); ImGui::NextColumn();
-    ImGui::TextUnformatted("SVC"); ImGui::NextColumn();
-    ImGui::TextUnformatted("ABT"); ImGui::NextColumn();
-    ImGui::TextUnformatted("IRQ"); ImGui::NextColumn();
-    ImGui::TextUnformatted("UND"); ImGui::NextColumn();
-    ImGui::Separator();
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
+    ImGui::BeginTable("#arm_registers", 7,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit,
+      ImVec2(0.f, 0.f));
+    ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+    ImGui::TableSetColumnIndex(1);
 
-    ImGui::TextUnformatted("R0"); ImGui::NextColumn();
+    ImGui::TextUnformatted("USR/SYS"); ImGui::TableNextColumn();
+    ImGui::TextUnformatted("FIQ"); ImGui::TableNextColumn();
+    ImGui::TextUnformatted("SVC"); ImGui::TableNextColumn();
+    ImGui::TextUnformatted("ABT"); ImGui::TableNextColumn();
+    ImGui::TextUnformatted("IRQ"); ImGui::TableNextColumn();
+    ImGui::TextUnformatted("UND");
+    ImGui::TableNextRow();
+
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R0");
     print_reg_n(access_private::r0_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R1"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R1");
     print_reg_n(access_private::r1_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R2"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R2");
     print_reg_n(access_private::r2_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R3"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R3");
     print_reg_n(access_private::r3_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R4"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R4");
     print_reg_n(access_private::r4_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R5"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R5");
     print_reg_n(access_private::r5_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R6"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R6");
     print_reg_n(access_private::r6_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R7"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R7");
     print_reg_n(access_private::r7_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R8"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r8_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r8.get()); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R8");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r8_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r8.get());
     print_reg_n(access_private::r8_(*arm), 4_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R9"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r9_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r9.get()); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R9");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r9_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r9.get());
     print_reg_n(access_private::r9_(*arm), 4_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R10"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r10_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r10.get()); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R10");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r10_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r10.get());
     print_reg_n(access_private::r10_(*arm), 4_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R11"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r11_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r11.get()); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R11");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r11_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r11.get());
     print_reg_n(access_private::r11_(*arm), 4_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R12"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r12_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r12.get()); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R12");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r12_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r12.get());
     print_reg_n(access_private::r12_(*arm), 4_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R13"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r13_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r13.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::svc_(*arm).r13.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::abt_(*arm).r13.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::irq_(*arm).r13.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::und_(*arm).r13.get()); ImGui::NextColumn();
-    ImGui::Separator();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R13");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r13_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r13.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::svc_(*arm).r13.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::abt_(*arm).r13.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::irq_(*arm).r13.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::und_(*arm).r13.get());
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R14"); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::r14_(*arm).get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::fiq_(*arm).r14.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::svc_(*arm).r14.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::abt_(*arm).r14.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::irq_(*arm).r14.get()); ImGui::NextColumn();
-    ImGui::Text("%08X", access_private::und_(*arm).r14.get()); ImGui::NextColumn();
-    ImGui::Separator();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R14");
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::r14_(*arm).get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::fiq_(*arm).r14.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::svc_(*arm).r14.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::abt_(*arm).r14.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::irq_(*arm).r14.get());
+    ImGui::TableNextColumn(); ImGui::Text("%08X", access_private::und_(*arm).r14.get());
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("R15"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("R15");
     print_reg_n(access_private::r15_(*arm), 6_u32);
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("CPSR"); ImGui::NextColumn();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("CPSR");
     for(u32 i = 0_u32; i < 6_u32; ++i) {
+        ImGui::TableNextColumn();
         ImGui::Text("%08X", static_cast<u32>(access_private::cpsr_(*arm)).get());
         psr_tooltip(access_private::cpsr_(*arm));
-        ImGui::NextColumn();
     }
-    ImGui::Separator();
+    ImGui::TableNextRow();
 
-    ImGui::TextUnformatted("SPSR"); ImGui::NextColumn();
-    /* no spsr in usr/sys */ ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::fiq_(*arm).spsr).get());
-    psr_tooltip(access_private::fiq_(*arm).spsr); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::svc_(*arm).spsr).get());
-    psr_tooltip(access_private::svc_(*arm).spsr); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::abt_(*arm).spsr).get());
-    psr_tooltip(access_private::abt_(*arm).spsr); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::irq_(*arm).spsr).get());
-    psr_tooltip(access_private::irq_(*arm).spsr); ImGui::NextColumn();
-    ImGui::Text("%08X", static_cast<u32>(access_private::und_(*arm).spsr).get());
-    psr_tooltip(access_private::und_(*arm).spsr); ImGui::NextColumn();
-    ImGui::Separator();
+    ImGui::TableNextColumn(); ImGui::TextUnformatted("SPSR");
+    /* no spsr in usr/sys */ ImGui::TableNextColumn();
+    ImGui::TableNextColumn(); ImGui::Text("%08X", static_cast<u32>(access_private::fiq_(*arm).spsr).get());
+    psr_tooltip(access_private::fiq_(*arm).spsr);
+    ImGui::TableNextColumn(); ImGui::Text("%08X", static_cast<u32>(access_private::svc_(*arm).spsr).get());
+    psr_tooltip(access_private::svc_(*arm).spsr);
+    ImGui::TableNextColumn(); ImGui::Text("%08X", static_cast<u32>(access_private::abt_(*arm).spsr).get());
+    psr_tooltip(access_private::abt_(*arm).spsr);
+    ImGui::TableNextColumn(); ImGui::Text("%08X", static_cast<u32>(access_private::irq_(*arm).spsr).get());
+    psr_tooltip(access_private::irq_(*arm).spsr);
+    ImGui::TableNextColumn(); ImGui::Text("%08X", static_cast<u32>(access_private::und_(*arm).spsr).get());
+    psr_tooltip(access_private::und_(*arm).spsr);
 
-    ImGui::Columns(1);
+    ImGui::EndTable();
+    ImGui::PopStyleVar();
 }
 
 } // namespace
@@ -235,7 +240,6 @@ void arm_debugger::draw() const noexcept
         ImGui::Text("if: %04X", access_private::if_(*arm).get());
         ImGui::Text("ime: %s", fmt_bool(access_private::ime_(*arm)));
     }
-
     ImGui::End();
 }
 
