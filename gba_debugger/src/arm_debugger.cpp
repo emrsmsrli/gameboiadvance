@@ -83,7 +83,7 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
 
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
     ImGui::BeginTable("#arm_registers", 7,
-      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
       ImVec2(0.f, 0.f));
     ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
     ImGui::TableSetColumnIndex(1);
