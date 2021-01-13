@@ -74,7 +74,7 @@ template<u8::type B, typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr logical_op_result<T> logical_shift_left(const T t, const u8 shift) noexcept
+[[nodiscard]] FORCEINLINE constexpr logical_op_result<T> logical_shift_left(const T t, const u8 shift) noexcept
 {
     return logical_op_result<T>{
       t << shift,
@@ -83,13 +83,13 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr logical_op_result<T> logical_shift_right(const T t, const u8 shift) noexcept
+[[nodiscard]] FORCEINLINE constexpr logical_op_result<T> logical_shift_right(const T t, const u8 shift) noexcept
 {
     return logical_op_result<T>{t >> shift, bit::extract(t, shift - 1_u8)};
 }
 
 template<typename T>
-[[nodiscard]] constexpr logical_op_result<T> arithmetic_shift_right(const T t, const u8 shift) noexcept
+[[nodiscard]] FORCEINLINE constexpr logical_op_result<T> arithmetic_shift_right(const T t, const u8 shift) noexcept
 {
     using underlying_type = typename T::type;
     using underlying_stype = make_signed_t<underlying_type>;
@@ -103,7 +103,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr logical_op_result<T> logical_rotate_right(const T t, const u8 rotate) noexcept
+[[nodiscard]] FORCEINLINE constexpr logical_op_result<T> logical_rotate_right(const T t, const u8 rotate) noexcept
 {
     return logical_op_result<T>{
       (t >> rotate) | (t << narrow<T>(make_unsigned(numeric_limits<T>::digits) - rotate)),
@@ -112,7 +112,7 @@ template<typename T>
 }
 
 template<typename T>
-[[nodiscard]] constexpr logical_op_result<T> logical_rotate_right_extended(const T t, const T in_carry) noexcept
+[[nodiscard]] FORCEINLINE constexpr logical_op_result<T> logical_rotate_right_extended(const T t, const T in_carry) noexcept
 {
     return logical_op_result<T>{
       (t >> 1_u8) | (in_carry << narrow<T>(make_unsigned(numeric_limits<T>::digits - 1_i32))),
