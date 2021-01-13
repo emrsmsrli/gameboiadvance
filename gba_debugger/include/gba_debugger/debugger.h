@@ -12,6 +12,7 @@
 #include <SFML/System/Clock.hpp>
 #include <SFML/Window/Event.hpp>
 
+#include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
 #include <gba_debugger/arm_debugger.h>
 
@@ -26,6 +27,9 @@ class window {
     sf::Event window_event_;
     sf::Clock dt_;
 
+    gba* gba_;
+    disassembly_view disassembly_view_;
+    memory_view memory_view_;
     gamepak_debugger gamepak_debugger_;
     arm_debugger arm_debugger_;
 
