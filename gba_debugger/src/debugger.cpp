@@ -10,10 +10,16 @@
 #include <thread>
 #include <chrono>
 
+#include <access_private.h>
 #include <imgui-SFML.h>
 
 #include <gba/gba.h>
 
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
+ACCESS_PRIVATE_FIELD(gba::gamepak, std::unique_ptr<gba::backup>, backup_)
 
 namespace gba::debugger {
 
