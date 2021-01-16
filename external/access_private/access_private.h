@@ -75,6 +75,7 @@ namespace {
     namespace access_private {                                                 \
       Type &Name(Class &&t) { return t.*get(private_access_detail::Tag{}); }   \
       Type &Name(Class &t) { return t.*get(private_access_detail::Tag{}); }    \
+      Type &Name(Class *t) { return (*t).*get(private_access_detail::Tag{}); } \
       /* The following usings are here to avoid duplicate const qualifier      \
        * warnings                                                              \
        */                                                                      \
@@ -83,6 +84,9 @@ namespace {
           const PRIVATE_ACCESS_DETAIL_CONCATENATE(X, Tag);                     \
       PRIVATE_ACCESS_DETAIL_CONCATENATE(Y, Tag) & Name(const Class &t) {       \
         return t.*get(private_access_detail::Tag{});                           \
+      }                                                                        \
+      PRIVATE_ACCESS_DETAIL_CONCATENATE(Y, Tag) & Name(const Class *t) {       \
+        return (*t).*get(private_access_detail::Tag{});                        \
       }                                                                        \
     }                                                                          \
   }
@@ -101,6 +105,16 @@ namespace {
           (std::forward<Obj>(o).*                                              \
            get(private_access_detail::Tag{}))(std::forward<Args>(args)...)) {  \
         return (std::forward<Obj>(o).*get(private_access_detail::Tag{}))(      \
+            std::forward<Args>(args)...);                                      \
+      }                                                                        \
+      template <typename Obj,                                                  \
+                std::enable_if_t<std::is_same<std::remove_const_t<Obj>,        \
+                                              Class>::value> * = nullptr,      \
+                typename... Args>                                              \
+      auto Name(Obj *o, Args &&... args) -> decltype(                          \
+          ((*o).*                                                              \
+           get(private_access_detail::Tag{}))(std::forward<Args>(args)...)) {  \
+        return ((*o).*get(private_access_detail::Tag{}))(                      \
             std::forward<Args>(args)...);                                      \
       }                                                                        \
     }                                                                          \
