@@ -212,10 +212,6 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
 void arm_debugger::draw() const noexcept
 {
     if(ImGui::Begin("ARM")) {
-        // todo bios_
-        // todo wram_
-        // todo iwram_
-
         draw_regs(arm);
 
         ImGui::Spacing();
