@@ -8,13 +8,19 @@
 #ifndef GAMEBOIADVANCE_GBA_H
 #define GAMEBOIADVANCE_GBA_H
 
+#include <gba/core/scheduler.h>
+#include <gba/arm/arm7tdmi.h>
 #include <gba/cartridge/gamepak.h>
+#include <gba/ppu/ppu.h>
 #include <gba/keypad.h>
 
 namespace gba {
 
 struct gba {
+    scheduler scheduler;
+    arm::arm7tdmi arm;
     gamepak pak;
+    ppu ppu;
     keypad keypad;
 
     void tick(u8 cycles = 1_u8) noexcept {}
