@@ -13,9 +13,9 @@
 namespace gba {
 
 class ppu {
-    vector<u8> palette_ram{1_kb};
-    vector<u8> vram{96_kb};
-    vector<u8> oam{1_kb};
+    vector<u8> palette_ram_{1_kb};
+    vector<u8> vram_{96_kb};
+    vector<u8> oam_{1_kb};
 
 public:
     ppu() = default;

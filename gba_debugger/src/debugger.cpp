@@ -20,6 +20,9 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
 ACCESS_PRIVATE_FIELD(gba::gamepak, std::unique_ptr<gba::backup>, backup_)
+ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, palette_ram_)
+ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, vram_)
+ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, oam_)
 
 namespace gba::debugger {
 
@@ -38,9 +41,9 @@ window::window(gba* g) noexcept
     memory_view_.add_entry(memory_view_entry{"ROM"sv, &g->pak.pak_data(), 0x0800'0000_u32});
     memory_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(g->arm), 0x0200'0000_u32});
     memory_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(g->arm), 0x0300'0000_u32});
-    // memory_view_.add_entry(memory_view_entry{"PALETTE"sv, &todo, 0x0500'0000_u32});
-    // memory_view_.add_entry(memory_view_entry{"VRAM"sv, &todo, 0x0600'0000_u32});
-    // memory_view_.add_entry(memory_view_entry{"OAM"sv, &todo, 0x0700'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, &access_private::palette_ram_(g->ppu), 0x0500'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"VRAM"sv, &access_private::vram_(g->ppu), 0x0600'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"OAM"sv, &access_private::oam_(g->ppu), 0x0700'0000_u32});
     switch(g->pak.backup_type()) {
         case backup::type::eeprom_4:
         case backup::type::eeprom_64:
