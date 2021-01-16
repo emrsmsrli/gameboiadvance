@@ -30,13 +30,13 @@ namespace gba::debugger {
 void debugger::gamepak_debugger::draw() const noexcept
 {
     if(ImGui::Begin("GamePak")) {
-        ImGui::Text("title: %s", access_private::game_title_(*pak).data());
-        ImGui::Text("game code: %s", access_private::game_code_(*pak).data());
-        ImGui::Text("maker code: %s", access_private::maker_code_(*pak).data());
+        ImGui::Text("title: %s", access_private::game_title_(pak).data());
+        ImGui::Text("game code: %s", access_private::game_code_(pak).data());
+        ImGui::Text("maker code: %s", access_private::maker_code_(pak).data());
 
         ImGui::Spacing();
         ImGui::Text("backup: %s", [&]() {
-            switch(access_private::backup_type_(*pak)) {
+            switch(access_private::backup_type_(pak)) {
                 case backup::type::detect: return "detect";
                 case backup::type::none: return "none";
                 case backup::type::eeprom_4: return "eeprom_4";
@@ -46,19 +46,18 @@ void debugger::gamepak_debugger::draw() const noexcept
                 case backup::type::flash_128: return "flash_128";
             }
         }());
-        // todo backup memory viewer
 
-        ImGui::Text("main unit code: %02X", access_private::main_unit_code_(*pak).get());
-        ImGui::Text("software version: %02X", access_private::software_version_(*pak).get());
-        ImGui::Text("checksum: %02X", access_private::checksum_(*pak).get());
-
-        ImGui::Spacing();
-        ImGui::Text("loaded: %s", fmt_bool(access_private::loaded_(*pak)));
-        ImGui::Text("has rtc: %s", fmt_bool(access_private::has_rtc_(*pak)));
-        ImGui::Text("has mirroring: %s", fmt_bool(access_private::has_mirroring_(*pak)));
+        ImGui::Text("main unit code: %02X", access_private::main_unit_code_(pak).get());
+        ImGui::Text("software version: %02X", access_private::software_version_(pak).get());
+        ImGui::Text("checksum: %02X", access_private::checksum_(pak).get());
 
         ImGui::Spacing();
-        ImGui::Text("path: %ls", access_private::path_(*pak).c_str());
+        ImGui::Text("loaded: %s", fmt_bool(access_private::loaded_(pak)));
+        ImGui::Text("has rtc: %s", fmt_bool(access_private::has_rtc_(pak)));
+        ImGui::Text("has mirroring: %s", fmt_bool(access_private::has_mirroring_(pak)));
+
+        ImGui::Spacing();
+        ImGui::Text("path: %ls", access_private::path_(pak).c_str());
     }
 
     ImGui::End();
