@@ -17,6 +17,23 @@ namespace gba {
 
 namespace arm {
 
+enum class interrupt_source : u16::type {
+    vblank = 1 << 0,
+    hblank = 1 << 1,
+    vcounter_match = 1 << 2,
+    timer_0_overflow = 1 << 3,
+    timer_1_overflow = 1 << 4,
+    timer_2_overflow = 1 << 5,
+    timer_3_overflow = 1 << 6,
+    serial_io = 1 << 7,
+    dma_0 = 1 << 8,
+    dma_1 = 1 << 9,
+    dma_2 = 1 << 10,
+    dma_3 = 1 << 11,
+    keypad = 1 << 12,
+    gamepak = 1 << 13,
+};
+
 enum class privilege_mode : u8::type {
     usr = 0x10,  // user
     fiq = 0x11,  // fast interrupt
@@ -161,6 +178,7 @@ public:
     arm7tdmi() = default;
 
     void tick() noexcept;
+    void request_interrupt(const interrupt_source irq) noexcept { if_ |= static_cast<u16::type>(irq); }
 
     u32& r(u8 index) noexcept;
     psr& cpsr() noexcept { return cpsr_; }
