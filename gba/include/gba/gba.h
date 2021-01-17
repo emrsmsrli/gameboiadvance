@@ -26,8 +26,13 @@ struct gba {
     void tick(u8 cycles = 1_u8) noexcept {}
     void tick_one_frame() noexcept {}
 
-    void press_key(const keypad::key key) noexcept { keypad.press(key); }
     void release_key(const keypad::key key) noexcept { keypad.release(key); }
+    void press_key(const keypad::key key) noexcept {
+        keypad.press(key);
+        if(keypad.interrupt_available()) {
+            arm.request_interrupt(arm::interrupt_source::keypad);
+        }
+    }
 
     void load_pak(const fs::path& path) { pak.load(path); }
 };

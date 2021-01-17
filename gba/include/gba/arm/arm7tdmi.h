@@ -15,6 +15,8 @@
 
 namespace gba {
 
+struct gba;
+
 namespace arm {
 
 enum class interrupt_source : u16::type {
@@ -137,6 +139,8 @@ struct pipeline {
 };
 
 class arm7tdmi {
+   gba* gba_;
+
     vector<u8> bios_{16_kb};
     vector<u8> wram_{256_kb};
     vector<u8> iwram_{32_kb};
@@ -175,7 +179,16 @@ class arm7tdmi {
     pipeline pipeline_;
 
 public:
-    arm7tdmi() = default;
+    explicit arm7tdmi(gba* gba)
+      : gba_{gba},
+        pipeline_{
+          mem_access::non_seq,
+          0xF000'0000_u32,
+          0xF000'0000_u32
+        }
+    {
+        cpsr().mode = privilege_mode::sys;
+    }
 
     void tick() noexcept;
     void request_interrupt(const interrupt_source irq) noexcept { if_ |= static_cast<u16::type>(irq); }
@@ -197,6 +210,9 @@ private:
     [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_8(u32 addr, mem_access access) noexcept;
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
+
+    [[nodiscard]] u8 read_io(u32 addr) noexcept;
+    void write_io(u32 addr, u8 data) noexcept;
 
     void tick_internal() noexcept { /*todo used in internal cycles*/ }
 

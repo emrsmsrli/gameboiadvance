@@ -12,8 +12,15 @@
 
 namespace gba {
 
-class keypad {
-public:
+struct keypad {
+    struct irq_control {
+        enum class condition_strategy : u8::type { any, all };
+
+        u16 select;
+        bool enabled = false;
+        condition_strategy cond_strategy = condition_strategy::any;
+    };
+
     enum class key : u8::type {
         a = 0_u8,
         b = 1_u8,
@@ -30,26 +37,22 @@ public:
     static inline constexpr auto addr_state = 0x0400'0130_u32;
     static inline constexpr auto addr_control = 0x0400'0132_u32;
 
-private:
-    u16 pressed_ = 0x003F_u16;
-    struct {
-        u16 irq_enabled_buttons;
-        bool irq_enabled = false;
-        bool logical_and_mode = false;
-    } control_;
+    u16 keyinput_ = 0x003F_u16;
+    irq_control keycnt_;
 
-public:
-    void press(key k) noexcept { pressed_ = bit::clear(pressed_, static_cast<u8::type>(k)); }
-    void release(key k) noexcept { pressed_ = bit::set(pressed_, static_cast<u8::type>(k)); }
+    void release(const key k) noexcept { keyinput_ = bit::set(keyinput_, static_cast<u8::type>(k)); }
+    void press(const key k) noexcept { keyinput_ = bit::clear(keyinput_, static_cast<u8::type>(k)); }
 
-    void write(const u32 address, const u8 data) noexcept
+    [[nodiscard]] bool interrupt_available() const noexcept
     {
-        // todo
-    }
+        if(keyinput_ == 0_u16) { return false; }
 
-    [[nodiscard]] u8 read(const u32 address) const noexcept
-    {
-        // todo
+        switch(keycnt_.cond_strategy) {
+            case irq_control::condition_strategy::any: return (keycnt_.select & keyinput_) != 0_u16;
+            case irq_control::condition_strategy::all: return keycnt_.select == keyinput_;
+            default:
+                UNREACHABLE();
+        }
     }
 };
 
