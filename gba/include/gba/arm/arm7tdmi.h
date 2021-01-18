@@ -83,33 +83,6 @@ struct psr {
     }
 };
 
-/*
- * Banks the mode registers as shown belown. FIQ is not included.
- *
- * System/User FIQ       Supervisor Abort     IRQ       Undefined
- * --------------------------------------------------------------
- * R0          R0        R0         R0        R0        R0
- * R1          R1        R1         R1        R1        R1
- * R2          R2        R2         R2        R2        R2
- * R3          R3        R3         R3        R3        R3
- * R4          R4        R4         R4        R4        R4
- * R5          R5        R5         R5        R5        R5
- * R6          R6        R6         R6        R6        R6
- * R7          R7        R7         R7        R7        R7
- * --------------------------------------------------------------
- * R8          R8_fiq    R8         R8        R8        R8
- * R9          R9_fiq    R9         R9        R9        R9
- * R10         R10_fiq   R10        R10       R10       R10
- * R11         R11_fiq   R11        R11       R11       R11
- * R12         R12_fiq   R12        R12       R12       R12
- * R13 (SP)    R13_fiq   R13_svc    R13_abt   R13_irq   R13_und
- * R14 (LR)    R14_fiq   R14_svc    R14_abt   R14_irq   R14_und
- * R15 (PC)    R15       R15        R15       R15       R15
- * --------------------------------------------------------------
- * CPSR        CPSR      CPSR       CPSR      CPSR      CPSR
- * --          SPSR_fiq  SPSR_svc   SPSR_abt  SPSR_irq  SPSR_und
- * --------------------------------------------------------------
- */
 struct banked_mode_regs {
     u32 r13;
     u32 r14;
@@ -146,12 +119,10 @@ class arm7tdmi {
     vector<u8> iwram_{32_kb};
 
     /*
-     * Reading from BIOS Memory (00000000-00003FFF)
-     * The BIOS memory is protected against reading, the GBA allows to read opcodes or data only if the program counter is
-     * located inside of the BIOS area. If the program counter is not in the BIOS area, reading will
-     * return the most recent successfully fetched BIOS opcode (eg. the opcode at [00DCh+8] after startup
-     * and SoftReset, the opcode at [0134h+8] during IRQ execution, and opcode at [013Ch+8] after IRQ execution,
-     * and opcode at [0188h+8] after SWI execution).
+     * The BIOS memory is protected against reading,
+     * the GBA allows to read opcodes or data only if the program counter is
+     * located inside of the BIOS area. If the program counter is not in the BIOS area,
+     * reading will return the most recent successfully fetched BIOS opcode.
      */
     u32 bios_last_read_;
 
@@ -210,6 +181,9 @@ private:
     [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_8(u32 addr, mem_access access) noexcept;
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
+
+    [[nodiscard]] u32 read_bios(u32 addr) noexcept;
+    [[nodiscard]] u8 read_unused(u32 addr) noexcept { return 0_u8; /*todo*/ }
 
     [[nodiscard]] u8 read_io(u32 addr) noexcept;
     void write_io(u32 addr, u8 data) noexcept;

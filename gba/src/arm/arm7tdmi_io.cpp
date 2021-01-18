@@ -86,6 +86,21 @@ void arm7tdmi::write_8(const u32 addr, const u8 data, const mem_access access) n
     UNREACHABLE();
 }
 
+u32 arm7tdmi::read_bios(u32 addr) noexcept
+{
+    const u32 shift = (addr & 0b11_u32) << 3_u32;
+    addr = mask::clear(addr, 0b11_u32);
+
+    if(UNLIKELY(addr >= 0x0000'4000_u32)) {
+        return read_unused(addr);
+    }
+
+    if(r15_ < 0x0000'4000_u32) {
+        bios_last_read_ = memcpy<u32>(bios_, addr);
+    }
+    return bios_last_read_ >> shift;
+}
+
 u8 arm7tdmi::read_io(const u32 addr) noexcept
 {
     switch(addr.get()) {
