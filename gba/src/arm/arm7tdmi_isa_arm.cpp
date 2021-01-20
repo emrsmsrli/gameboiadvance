@@ -110,13 +110,13 @@ void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 se
             rd = alu_add(first_op, second_op, set_flags);
             break;
         case 0x5: // ADDC
-            rd = alu_adc(rn, second_op, bit::from_bool(cpsr().c), set_flags);
+            rd = alu_adc(first_op, second_op, set_flags);
             break;
         case 0x6: // SBC
-            rd = alu_sbc(rn, second_op, bit::from_bool(!cpsr().c), set_flags);
+            rd = alu_sbc(first_op, second_op, set_flags);
             break;
         case 0x7: // RSC
-            rd = alu_sbc(second_op, rn, bit::from_bool(!cpsr().c), set_flags);
+            rd = alu_sbc(second_op, first_op, set_flags);
             break;
         case 0x8: { // TST
             const u32 result = first_op & second_op;

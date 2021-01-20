@@ -267,9 +267,9 @@ private:
     static void alu_ror(u32& operand, u8 shift_amount, bool& carry, bool imm) noexcept;
 
     u32 alu_add(u32 first_op, u32 second_op, bool set_flags) noexcept;
-    u32 alu_adc(u32 first_op, u32 second_op, u32 carry, bool set_flags) noexcept;
+    u32 alu_adc(u32 first_op, u32 second_op, bool set_flags) noexcept;
     u32 alu_sub(u32 first_op, u32 second_op, bool set_flags) noexcept;
-    u32 alu_sbc(u32 first_op, u32 second_op, u32 borrow, bool set_flags) noexcept;
+    u32 alu_sbc(u32 first_op, u32 second_op, bool set_flags) noexcept;
 
     template<typename RsPredicate>
     void alu_multiply_internal(const u32 rs, RsPredicate&& rs_predicate) noexcept

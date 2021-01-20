@@ -134,11 +134,11 @@ void arm7tdmi::alu(const u16 instr) noexcept
             break;
         }
         case 0x5: { // ADC
-            rd = alu_adc(rd, rs, bit::from_bool(carry), true);
+            rd = alu_adc(rd, rs, true);
             break;
         }
         case 0x6: { // SBC
-            rd = alu_sbc(rd, rs, bit::from_bool(!carry), true);
+            rd = alu_sbc(rd, rs, true);
             break;
         }
         case 0x7: { // ROR

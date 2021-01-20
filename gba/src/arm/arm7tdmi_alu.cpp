@@ -125,10 +125,10 @@ u32 arm7tdmi::alu_add(const u32 first_op, const u32 second_op, const bool set_fl
     return first_op + second_op;
 }
 
-u32 arm7tdmi::alu_adc(const u32 first_op, const u32 second_op, const u32 carry, const bool set_flags) noexcept
+u32 arm7tdmi::alu_adc(const u32 first_op, const u32 second_op, const bool set_flags) noexcept
 {
     if(set_flags) {
-        const u64 result = widen<u64>(first_op) + second_op + carry;
+        const u64 result = widen<u64>(first_op) + second_op + bit::from_bool(cpsr().c);
         const u32 result32 = narrow<u32>(result);
 
         cpsr().n = bit::test(result32, 31_u8);
@@ -138,7 +138,7 @@ u32 arm7tdmi::alu_adc(const u32 first_op, const u32 second_op, const u32 carry, 
         return result32;
     }
 
-    return first_op + second_op + carry;
+    return first_op + second_op + bit::from_bool(cpsr().c);
 }
 
 u32 arm7tdmi::alu_sub(const u32 first_op, const u32 second_op, const bool set_flags) noexcept
@@ -153,15 +153,13 @@ u32 arm7tdmi::alu_sub(const u32 first_op, const u32 second_op, const bool set_fl
     return result;
 }
 
-u32 arm7tdmi::alu_sbc(const u32 first_op, const u32 second_op, const u32 borrow, const bool set_flags) noexcept
+u32 arm7tdmi::alu_sbc(const u32 first_op, const u32 second_op, const bool set_flags) noexcept
 {
-    const u32 result = first_op - second_op - borrow;
+    const u32 result = first_op - second_op - bit::from_bool(!cpsr().c);
     if(set_flags) {
         cpsr().n = bit::test(result, 31_u8);
         cpsr().z = result == 0_u32;
-
-        const u64 r64 = second_op;
-        cpsr().c = first_op >= r64 + borrow;
+        cpsr().c = first_op >= widen<u64>(second_op) + bit::from_bool(!cpsr().c);
         cpsr().v = bit::test((first_op ^ second_op) & (first_op ^ result), 31_u8);
     }
     return result;
