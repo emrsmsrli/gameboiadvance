@@ -239,6 +239,8 @@ u8 rtc::get_output_byte() noexcept
         case rtc_command::type::reset:
         case rtc_command::type::force_irq:
             return 0_u8;
+        default:
+            UNREACHABLE();
     }
 }
 

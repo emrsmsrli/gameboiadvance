@@ -103,9 +103,9 @@ void arm7tdmi::alu_ror(u32& operand, u8 shift_amount, bool& carry, const bool im
     } else {
         shift_amount %= 32_u8;
 
-        const auto asr = math::logical_rotate_right(operand, shift_amount);
-        operand = asr.result;
-        carry = static_cast<bool>(asr.carry.get());
+        const auto ror = math::logical_rotate_right(operand, shift_amount);
+        operand = ror.result;
+        carry = static_cast<bool>(ror.carry.get());
     }
 }
 

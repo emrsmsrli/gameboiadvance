@@ -172,7 +172,7 @@ void arm7tdmi::branch_exchange(const u32 instr) noexcept
 {
     const u32 addr = r(narrow<u8>(instr & 0xF_u32));
     if(bit::test(addr, 0_u8)) {
-        r(15_u8) = mask::clear(addr, 0b01_u8);
+        r(15_u8) = bit::clear(addr, 0_u8);
         cpsr().t = true;
         pipeline_flush<instruction_mode::thumb>();
     } else {
@@ -264,7 +264,7 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
             const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
             ASSERT(rd != 15_u8);
 
-            if(in_exception_mode() && use_spsr) {
+            if(use_spsr && in_exception_mode()) {
                 r(rd) = static_cast<u32>(spsr());
             } else {
                 r(rd) = static_cast<u32>(cpsr());
@@ -302,12 +302,13 @@ void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool u
     if(bit::test(instr, 16_u8) && (use_spsr || !in_privileged_mode())) { mask |= 0x0000'00FF_u32; }
 
     if(use_spsr) {
-        if(auto& reg = spsr(); in_exception_mode()) {
-            reg = mask::clear(static_cast<u32>(reg), mask) | operand;
+        if(in_exception_mode()) {
+            auto& reg = spsr();
+            reg = mask::clear(static_cast<u32>(reg), mask) | (operand & mask);
         }
     } else {
         auto& reg = cpsr();
-        reg = mask::clear(static_cast<u32>(reg), mask) | operand;
+        reg = mask::clear(static_cast<u32>(reg), mask) | (operand & mask);
     }
 }
 
@@ -317,10 +318,10 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
     const u32 rm = r(narrow<u8>(instr & 0xF_u32));
 
-    ASSERT(rd != rm);
-    ASSERT(rd != r15_);
-    ASSERT(rs != r15_);
-    ASSERT(rm != r15_);
+    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32));
+    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != 15_u8);
+    ASSERT(narrow<u8>((instr >> 8_u32) & 0xF_u32) != 15_u8);
+    ASSERT(narrow<u8>(instr & 0xF_u32) != 15_u8);
 
     alu_multiply_internal(rs, [](const u32 r, const u32 mask) {
         return r == 0_u32 || r == mask;
@@ -329,10 +330,8 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     u32 result = rm * rs;
 
     if(bit::test(instr, 21_u8)) {
-        const u32 rn = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
-        ASSERT(rn != r15_);
-
-        result += rn;
+        ASSERT(narrow<u8>((instr >> 12_u32) & 0xF_u32) != 15_u8);
+        result += r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
         tick_internal();
     }
 
@@ -353,11 +352,14 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
     const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
     const u32 rm = r(narrow<u8>(instr & 0xF_u32));
 
-    ASSERT(rdhi != rm && rdlo != rm && rdlo != rdhi);
-    ASSERT(rdhi != r15_);
-    ASSERT(rdlo != r15_);
-    ASSERT(rs != r15_);
-    ASSERT(rm != r15_);
+    ASSERT(
+      narrow<u8>((instr >> 16_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32) &&
+      narrow<u8>((instr >> 12_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32) &&
+      narrow<u8>((instr >> 12_u32) & 0xF_u32) != narrow<u8>((instr >> 16_u32) & 0xF_u32));
+    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != 15_u8);
+    ASSERT(narrow<u8>((instr >> 12_u32) & 0xF_u32) != 15_u8);
+    ASSERT(narrow<u8>((instr >> 8_u32) & 0xF_u32) != 15_u8);
+    ASSERT(narrow<u8>(instr & 0xF_u32) != 15_u8);
 
     tick_internal();
 
@@ -409,7 +411,7 @@ void arm7tdmi::single_data_swap(const u32 instr) noexcept
         write_8(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
     } else {  // word
         data = read_32_aligned(rn_addr, mem_access::non_seq);
-        write_32(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
+        write_32(rn_addr, r(rm), mem_access::non_seq);
     }
 
     r(rd) = data;
@@ -473,8 +475,7 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
     // write back
     if(!is_ldr || rn != rd) {
         if(!pre_indexing) {
-            rn_addr = addresing_offset(add_to_base, rn_addr, offset);
-            r(rn) = rn_addr;
+            r(rn) = addresing_offset(add_to_base, rn_addr, offset);
         } else if(write_back) {
             r(rn) = rn_addr;
         }

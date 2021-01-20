@@ -16,7 +16,7 @@ void arm7tdmi::tick() noexcept
     pipeline_.executing = pipeline_.decoding;
 
     if(cpsr().t) {
-        pc = mask::clear(pc, 0b01_u8); // halfword align
+        pc = bit::clear(pc, 0_u8); // halfword align
         pipeline_.decoding = read_16(pc, pipeline_.fetch_type);
         auto func = thumb_table_[instruction >> 6_u32];
         ASSERT(func.is_valid());
@@ -114,6 +114,7 @@ bool arm7tdmi::condition_met(const u32 cond) const noexcept
 vector<u8> arm7tdmi::generate_register_list(const u32 instr, const u8 count) noexcept
 {
     vector<u8> regs;
+    regs.reserve(16_usize);
     for(u8 i = 0_u8; i < count; ++i) {
         if(bit::test(instr, i)) {
             regs.push_back(i);

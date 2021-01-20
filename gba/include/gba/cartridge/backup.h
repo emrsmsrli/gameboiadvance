@@ -140,6 +140,8 @@ constexpr std::string_view to_string_view(const backup::type type) noexcept
         case backup::type::sram: return "sram";
         case backup::type::flash_64: return "flash_64";
         case backup::type::flash_128: return "flash_128";
+        default:
+            UNREACHABLE();
     }
 }
 

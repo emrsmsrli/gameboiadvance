@@ -93,6 +93,7 @@ public:
 
     void clear() noexcept { data_.clear(); }
     void resize(const usize new_size) { data_.resize(new_size.get()); }
+    void reserve(const usize new_size) { data_.reserve(new_size.get()); }
 
     auto begin() noexcept { return data_.begin(); }
     auto end() noexcept { return data_.end(); }

@@ -183,7 +183,7 @@ private:
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
     [[nodiscard]] u32 read_bios(u32 addr) noexcept;
-    [[nodiscard]] u8 read_unused(u32 addr) noexcept { return 0_u8; /*todo*/ }
+    [[nodiscard]] u8 read_unused(u32 /*addr*/) noexcept { return 0_u8; /*todo*/ }
 
     [[nodiscard]] u8 read_io(u32 addr) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
