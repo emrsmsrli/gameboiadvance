@@ -298,25 +298,27 @@ void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
 
     const u32 address = rb + ro;
     switch(opcode.get()) {
-        case 0b00: {
+        case 0b00: { // STRH
             write_16(address, narrow<u16>(rd), mem_access::non_seq);
             break;
         }
-        case 0b01: {
+        case 0b01: { // LDSB
             rd = read_8_signed(address, mem_access::non_seq);
             tick_internal();
             break;
         }
-        case 0b10: {
+        case 0b10: { // LDRH
             rd = read_16_aligned(address, mem_access::non_seq);
             tick_internal();
             break;
         }
-        case 0b11: {
+        case 0b11: { // LDSH
             rd = read_16_signed(address, mem_access::non_seq);
             tick_internal();
             break;
         }
+        default:
+            UNREACHABLE();
     }
 
     pipeline_.fetch_type = mem_access::non_seq;
@@ -331,24 +333,26 @@ void arm7tdmi::ld_str_imm(const u16 instr) noexcept
     u32& rd = r(narrow<u8>(instr & 0x7_u16));
 
     switch(opcode.get()) {
-        case 0b00: {
+        case 0b00: { // STR
             write_32(rb + (imm << 2_u8), rd, mem_access::non_seq);
             break;
         }
-        case 0b01: {
+        case 0b01: { // LDR
             rd = read_32_aligned(rb + (imm << 2_u8), mem_access::non_seq);
             tick_internal();
             break;
         }
-        case 0b10: {
+        case 0b10: { // STRB
             write_8(rb + imm, narrow<u8>(rd), mem_access::non_seq);
             break;
         }
-        case 0b11: {
+        case 0b11: { // LDRB
             rd = read_8(rb + imm, mem_access::non_seq);
             tick_internal();
             break;
         }
+        default:
+            UNREACHABLE();
     }
 
     pipeline_.fetch_type = mem_access::non_seq;
@@ -439,7 +443,7 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
             sp += 0x40_u32;
         } else {
             sp -= 0x40_u32;
-            pipeline_.fetch_type = mem_access::non_seq;
+            pipeline_.fetch_type = mem_access::seq;
             pc += 2;
             write_32(sp, pc, access);
         }
@@ -568,7 +572,7 @@ void arm7tdmi::swi_thumb(const u16 /*instr*/) noexcept
 
 void arm7tdmi::branch(const u16 instr) noexcept
 {
-    const i32 offset = math::sign_extend<11>(widen<u32>((instr & 0x7FF_u16) << 1_u16));
+    const i32 offset = math::sign_extend<11>(widen<u32>((instr & 0x3FF_u16)) << 1_u32);
     r(15_u8) += offset;
     pipeline_flush<instruction_mode::thumb>();
 }
@@ -585,11 +589,10 @@ void arm7tdmi::long_branch_link(const u16 instr) noexcept
         lr = bit::set(temp, 0_u8);
         pipeline_flush<instruction_mode::thumb>();
     } else {                        // first instr
-        lr = pc + math::sign_extend<23>(widen<u32>(offset << 12_u16));
+        lr = pc + math::sign_extend<23>(widen<u32>(offset) << 12_u32);
         pipeline_.fetch_type = mem_access::seq;
         pc += 2_u32;
     }
 }
-
 
 } // namespace gba::arm
