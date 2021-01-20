@@ -41,4 +41,4 @@ script:
   - cd build
   - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_TESTING=ON -DCMAKE_TOOLCHAIN_FILE=$TRAVIS_BUILD_DIR/vcpkg/scripts/buildsystems/vcpkg.cmake ..
   - cmake --build . --config Release --target gameboiadvance_tests -- -j $(nproc)
-  - ctest -C Release
+  - ctest -C Release --extra-verbose

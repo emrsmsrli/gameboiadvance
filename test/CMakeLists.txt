@@ -12,8 +12,14 @@ target_include_directories(${PROJECT_NAME} PRIVATE include/)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         doctest::doctest
+        access_private::access_private
         gba::gba
         project_warnings
         project_options)
+
+add_custom_command(TARGET gameboiadvance_tests POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/res
+        $<TARGET_FILE_DIR:gameboiadvance_tests>/res)
 
 add_test(NAME gba_tests COMMAND ${PROJECT_NAME})
