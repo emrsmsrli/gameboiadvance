@@ -551,7 +551,6 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
             r(reg) = read_32(rn_addr, access_type);
             if(reg == 15_u8 && load_psr && in_privileged_mode()) {
                 cpsr() = spsr();
-                cpsr().t = false;
             }
         } else if(reg == rn) {
             write_32(rn_addr, rlist[0_usize] == rn ? rn_addr_old : rn_addr_new, access_type);
@@ -581,7 +580,11 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     }
 
     if(is_ldm && transfer_pc) {
-        pipeline_flush<instruction_mode::arm>();
+        if(cpsr().t) {
+            pipeline_flush<instruction_mode::thumb>();
+        } else {
+            pipeline_flush<instruction_mode::arm>();
+        }
     } else {
         pipeline_.fetch_type = mem_access::non_seq;
         r(15_u8) += 4_u32;
