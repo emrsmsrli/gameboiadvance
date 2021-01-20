@@ -84,6 +84,7 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
                     case arm::privilege_mode::abt: return "abt";
                     case arm::privilege_mode::und: return "und";
                     case arm::privilege_mode::sys: return "sys";
+                    default: UNREACHABLE();
                 }
             }());
             ImGui::EndTooltip();
@@ -260,6 +261,7 @@ void arm_debugger::draw() const noexcept
             switch(access_private::pipeline_(arm).fetch_type) {
                 case arm::mem_access::non_seq: return "non seq";
                 case arm::mem_access::seq: return "seq";
+                default: UNREACHABLE();
             }
         }());
 
