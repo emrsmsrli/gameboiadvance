@@ -558,7 +558,7 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 void arm7tdmi::branch_cond(const u16 instr) noexcept
 {
     if(condition_met((instr >> 8_u16) & 0xF_u16)) {
-        const i32 offset = math::sign_extend<8>(widen<u32>((instr & 0xFF_u16) << 1_u16));
+        const i32 offset = math::sign_extend<9>(widen<u32>((instr & 0xFF_u16)) << 1_u32);
         r(15_u8) += offset;
         pipeline_flush<instruction_mode::thumb>();
     } else {
