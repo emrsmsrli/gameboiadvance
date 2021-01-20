@@ -37,13 +37,12 @@ void arm7tdmi::alu_barrel_shift(const barrel_shift_type shift_type, u32& operand
 void arm7tdmi::alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcept
 {
     if(shift_amount >= 32_u8) {
-        operand = 0_u32;
-
         if(shift_amount == 32_u8) {
             carry = bit::test(operand, 0_u8);
         } else {
             carry = false;
         }
+        operand = 0_u32;
     } else if(shift_amount != 0_u8) {
         const auto lsl = math::logical_shift_left(operand, shift_amount);
         operand = lsl.result;
@@ -54,17 +53,16 @@ void arm7tdmi::alu_lsl(u32& operand, const u8 shift_amount, bool& carry) noexcep
 void arm7tdmi::alu_lsr(u32& operand, const u8 shift_amount, bool& carry, const bool imm) noexcept
 {
     if(shift_amount >= 32_u8) {
-        operand = 0_u32;
-
         if(shift_amount == 32_u8) {
             carry = bit::test(operand, 31_u8);
         } else {
             carry = false;
         }
+        operand = 0_u32;
     } else if(shift_amount == 0_u8) {
         if(imm) {
-            operand = 0_u32;
             carry = bit::test(operand, 31_u8);
+            operand = 0_u32;
         }
     } else {
         const auto lsr = math::logical_shift_right(operand, shift_amount);
