@@ -194,7 +194,7 @@ private:
     void data_processing_imm_shifted_reg(u32 instr) noexcept;
     void data_processing_reg_shifted_reg(u32 instr) noexcept;
     void data_processing_imm(u32 instr) noexcept;
-    void data_processing(u32 instr, u32 second_op, bool carry) noexcept;
+    void data_processing(u32 instr, u32 first_op, u32 second_op, bool carry) noexcept;
     void branch_exchange(u32 instr) noexcept;
     void halfword_data_transfer_reg(u32 instr) noexcept;
     void halfword_data_transfer_imm(u32 instr) noexcept;

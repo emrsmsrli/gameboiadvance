@@ -29,12 +29,23 @@ void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
     bool carry = cpsr().c;
 
     alu_barrel_shift(static_cast<barrel_shift_type>(shift_type.get()), reg_op, shift_amount, carry, true);
-    data_processing(instr, reg_op, carry);
+    data_processing(instr, r(narrow<u8>((instr >> 16_u8) & 0xF_u8)), reg_op, carry);
 }
 
 void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
 {
-    u32 reg_op = r(narrow<u8>(instr & 0xF_u32));
+    const u8 rm = narrow<u8>(instr & 0xF_u32);
+    u32 reg_op = r(rm);
+    if(rm == 15_u8) {
+        reg_op += 4_u8;
+    }
+
+    const u8 rn = narrow<u8>((instr >> 16_u8) & 0xF_u8);
+    u32 first_op = r(rn);
+    if(rn == 15_u8) {
+        first_op += 4_u8;
+    }
+
     const u32 shift_type = (instr >> 5_u32) & 0b11_u32;
     const u8 shift_amount = narrow<u8>(r(narrow<u8>((instr >> 8_u32) & 0xF_u32)));
     bool carry = cpsr().c;
@@ -42,7 +53,7 @@ void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
     tick_internal();
 
     alu_barrel_shift(static_cast<barrel_shift_type>(shift_type.get()), reg_op, shift_amount, carry, false);
-    data_processing(instr, reg_op, carry);
+    data_processing(instr, first_op, reg_op, carry);
 }
 
 void arm7tdmi::data_processing_imm(const u32 instr) noexcept
@@ -56,44 +67,47 @@ void arm7tdmi::data_processing_imm(const u32 instr) noexcept
         carry = static_cast<bool>(ror.carry.get());
     }
 
-    data_processing(instr, imm_op, carry);
+    data_processing(instr, r(narrow<u8>((instr >> 16_u8) & 0xF_u8)), imm_op, carry);
 }
 
-void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool carry) noexcept
+void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 second_op, const bool carry) noexcept
 {
     pipeline_.fetch_type = mem_access::seq;
 
     const bool set_flags = bit::test(instr, 20_u8);
     const u32 opcode = (instr >> 21_u8) & 0xF_u8;
-    const u32 rn = r(narrow<u8>((instr >> 16_u8) & 0xF_u8));
 
     const u8 dest = narrow<u8>((instr >> 12_u8) & 0xF_u8);
     u32& rd = r(dest);
 
+    const auto do_set_flags = [&](const u32 expression) {
+        cpsr().n = bit::test(expression, 31_u8);
+        cpsr().z = expression == 0_u32;
+        cpsr().c = carry;
+    };
+
     const auto evaluate_and_set_flags = [&](const u32 expression) {
         if(set_flags) {
-            cpsr().n = bit::test(expression, 31_u8);
-            cpsr().z = expression == 0_u32;
-            cpsr().c = carry;
+            do_set_flags(expression);
         }
         return expression;
     };
 
     switch(opcode.get()) {
         case 0x0: // AND
-            rd = evaluate_and_set_flags(rn & second_op);
+            rd = evaluate_and_set_flags(first_op & second_op);
             break;
         case 0x1: // EOR
-            rd = evaluate_and_set_flags(rn ^ second_op);
+            rd = evaluate_and_set_flags(first_op ^ second_op);
             break;
         case 0x2: // SUB
-            rd = alu_sub(rn, second_op, set_flags);
+            rd = alu_sub(first_op, second_op, set_flags);
             break;
         case 0x3: // RSB
-            rd = alu_sub(second_op, rn, set_flags);
+            rd = alu_sub(second_op, first_op, set_flags);
             break;
         case 0x4: // ADD
-            rd = alu_add(rn, second_op, set_flags);
+            rd = alu_add(first_op, second_op, set_flags);
             break;
         case 0x5: // ADDC
             rd = alu_adc(rn, second_op, bit::from_bool(cpsr().c), set_flags);
@@ -105,33 +119,29 @@ void arm7tdmi::data_processing(const u32 instr, const u32 second_op, const bool 
             rd = alu_sbc(second_op, rn, bit::from_bool(!cpsr().c), set_flags);
             break;
         case 0x8: { // TST
-            const u32 result = rn & second_op;
-            cpsr().n = bit::test(result, 31_u8);
-            cpsr().z = result == 0_u32;
-            cpsr().c = carry;
+            const u32 result = first_op & second_op;
+            do_set_flags(result);
             break;
         }
         case 0x9: { // TEQ
-            const u32 result = rn ^ second_op;
-            cpsr().n = bit::test(result, 31_u8);
-            cpsr().z = result == 0_u32;
-            cpsr().c = carry;
+            const u32 result = first_op ^ second_op;
+            do_set_flags(result);
             break;
         }
         case 0xA: // CMP
-            alu_sub(rn, second_op, true);
+            alu_sub(first_op, second_op, true);
             break;
         case 0xB: // CMN
-            alu_add(rn, second_op, true);
+            alu_add(first_op, second_op, true);
             break;
         case 0xC: // ORR
-            rd = evaluate_and_set_flags(rn | second_op);
+            rd = evaluate_and_set_flags(first_op | second_op);
             break;
         case 0xD: // MOV
             rd = evaluate_and_set_flags(second_op);
             break;
         case 0xE: // BIC
-            rd = evaluate_and_set_flags(rn & ~second_op);
+            rd = evaluate_and_set_flags(first_op & ~second_op);
             break;
         case 0xF: // MVN
             rd = evaluate_and_set_flags(~second_op);
