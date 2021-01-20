@@ -72,8 +72,6 @@ void arm7tdmi::data_processing_imm(const u32 instr) noexcept
 
 void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 second_op, const bool carry) noexcept
 {
-    pipeline_.fetch_type = mem_access::seq;
-
     const bool set_flags = bit::test(instr, 20_u8);
     const u32 opcode = (instr >> 21_u8) & 0xF_u8;
 
@@ -150,18 +148,18 @@ void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 se
             UNREACHABLE();
     }
 
-    // todo insert likely/unlikely
-    if((0x8_u32 > opcode || opcode > 0xB_u32) && dest == 15_u8) {
-        ASSERT(in_privileged_mode());
-
-        if(set_flags) {
+    pipeline_.fetch_type = mem_access::seq;
+    if(dest == 15_u8) {
+        if(set_flags && in_exception_mode()) {
             cpsr() = spsr();
         }
 
-        if(cpsr().t) {
-            pipeline_flush<instruction_mode::thumb>();
-        } else {
-            pipeline_flush<instruction_mode::arm>();
+        if((opcode < 0x8_u32 /*TST*/ || 0xB_u32 /*CMN*/ < opcode)) {
+            if(cpsr().t) {
+                pipeline_flush<instruction_mode::thumb>();
+            } else {
+                pipeline_flush<instruction_mode::arm>();
+            }
         }
     } else {
         r(15_u8) += 4_u32;
