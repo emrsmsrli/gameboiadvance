@@ -13,20 +13,17 @@ namespace gba::fs {
 
 vector<u8> read_file(const path& path)
 {
-    std::ifstream stream{path, std::ios::binary | std::ios::in};
-    stream.unsetf(std::ios::skipws);
+    std::ifstream stream{path, std::ios::binary | std::ios::ate};
     if(!stream.is_open()) {
         LOG_CRITICAL("input file stream could not be opened: {}", path.string());
         std::terminate();
     }
 
-    constexpr auto buffer_size = 1024u;
-    array<u8, buffer_size> buffer;
-    vector<u8> bytes;
+    const std::ifstream::pos_type pos = stream.tellg();
 
-    while(stream.read(reinterpret_cast<char*>(buffer.data()), buffer_size)) { // NOLINT
-        std::copy_n(buffer.begin(), stream.gcount(), std::back_inserter(bytes.underlying_data()));
-    }
+    vector<u8> bytes{static_cast<usize::type>(pos)};
+    stream.seekg(0, std::ios::beg);
+    stream.read(reinterpret_cast<char*>(bytes.data()), pos); // NOLINT
 
     LOG_TRACE("read {} bytes from {}", bytes.size(), path.string());
     return bytes;

@@ -100,9 +100,6 @@ public:
     auto end() const noexcept { return data_.end(); }
     auto cbegin() const noexcept { return data_.cbegin(); }
     auto cend() const noexcept { return data_.cend(); }
-
-    std::vector<T>& underlying_data() noexcept { return data_; }
-    const std::vector<T>& underlying_data() const noexcept { return data_; }
 };
 
 template<typename T, typename Container>
