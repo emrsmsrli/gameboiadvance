@@ -199,7 +199,8 @@ void arm7tdmi::hireg_bx(const u16 instr) noexcept
     const u16 opcode = (instr >> 8_u16) & 0b11_u16;
     const u8 rs_reg = narrow<u8>((instr >> 3_u16) & 0xF_u16);
     u32 rs = r(rs_reg);
-    u32& rd = r(narrow<u8>((instr & 0x7_u16) | ((instr >> 4_u16) & 0x8_u16)));
+    const u8 rd_reg = narrow<u8>((instr & 0x7_u16) | ((instr >> 4_u16) & 0x8_u16));
+    u32& rd = r(rd_reg);
 
     if(rs_reg == 15_u8) {
         rs = bit::clear(rs, 0_u8);
@@ -207,7 +208,7 @@ void arm7tdmi::hireg_bx(const u16 instr) noexcept
 
     const auto set_rd_and_flush = [&](const u32 expression) {
         rd = expression;
-        if(rd == 15_u8) {
+        if(rd_reg == 15_u8) {
             rd = bit::clear(rd, 0_u8);
             pipeline_flush<instruction_mode::thumb>();
         } else {
