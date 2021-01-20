@@ -299,7 +299,7 @@ void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool u
 {
     u32 mask;
     if(bit::test(instr, 19_u8)) { mask |= 0xF000'0000_u32; }
-    if(bit::test(instr, 16_u8) && (use_spsr || !in_privileged_mode())) { mask |= 0x0000'00FF_u32; }
+    if(bit::test(instr, 16_u8) && (use_spsr || in_privileged_mode())) { mask |= 0x0000'00FF_u32; }
 
     if(use_spsr) {
         if(in_exception_mode()) {
