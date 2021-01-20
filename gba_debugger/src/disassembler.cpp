@@ -575,8 +575,9 @@ std::string ld_str_multiple(const u32 /*addr*/, const u16 instr) noexcept
 
 std::string branch_cond(const u32 addr, const u16 instr) noexcept
 {
-    return fmt::format("B{} 0x{:08X}", get_condition_mnemonic(instr & 0xFFF_u16, 8_u32),
-      addr + 4_u32 + make_signed(instr & 0xFF_u16) * 2_i16);
+    const i32 offset = math::sign_extend<9>(widen<u32>((instr & 0xFF_u16)) << 1_u32);
+    return fmt::format("B{} 0x{:08X}", get_condition_mnemonic(instr & 0x0FFF_u16, 8_u32),
+      addr + 4_u32 + offset);
 }
 
 std::string swi(const u32 /*addr*/, const u16 instr) noexcept

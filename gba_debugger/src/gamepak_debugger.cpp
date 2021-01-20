@@ -44,6 +44,8 @@ void debugger::gamepak_debugger::draw() const noexcept
                 case backup::type::sram: return "sram";
                 case backup::type::flash_64: return "flash_64";
                 case backup::type::flash_128: return "flash_128";
+                default:
+                    UNREACHABLE();
             }
         }());
 
