@@ -111,16 +111,4 @@ bool arm7tdmi::condition_met(const u32 cond) const noexcept
     return false;
 }
 
-vector<u8> arm7tdmi::generate_register_list(const u32 instr, const u8 count) noexcept
-{
-    vector<u8> regs;
-    regs.reserve(16_usize);
-    for(u8 i = 0_u8; i < count; ++i) {
-        if(bit::test(instr, i)) {
-            regs.push_back(i);
-        }
-    }
-    return regs;
-}
-
 } // namespace gba::arm

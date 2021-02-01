@@ -439,7 +439,7 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
 {
     const bool is_pop = bit::test(instr, 11_u8);
     const bool use_pc_lr = bit::test(instr, 8_u8);
-    const auto rlist = generate_register_list(instr, 8_u8);
+    const auto rlist = generate_register_list<8>(instr);
     u32& sp = r(13_u8);
     u32& pc = r(15_u8);
     auto access = mem_access::non_seq;
@@ -507,7 +507,7 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 {
     const bool is_ldm = bit::test(instr, 11_u8);
     const u8 rb = narrow<u8>((instr >> 8_u16) & 0x7_u16);
-    const auto rlist = generate_register_list(instr, 8_u8);
+    const auto rlist = generate_register_list<8>(instr);
     u32& rb_reg = r(rb);
     u32& pc = r(15_u8);
 

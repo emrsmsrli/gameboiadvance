@@ -233,11 +233,22 @@ private:
     void long_branch_link(u16 instr) noexcept;
 
     // decoder helpers
-    [[nodiscard]] static vector<u8> generate_register_list(u32 instr, u8 count) noexcept;
     [[nodiscard]] bool condition_met(u32 cond) const noexcept;
 
     [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
     [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
+
+    template<usize::type Count>
+    static_vector<u8, Count> generate_register_list(const u32 instr) noexcept
+    {
+        static_vector<u8, Count> regs;
+        for(u8 i = 0_u8; i < Count; ++i) {
+            if(bit::test(instr, i)) {
+                regs.push_back(i);
+            }
+        }
+        return regs;
+    }
 
     template<instruction_mode Mode>
     void pipeline_flush() noexcept

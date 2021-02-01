@@ -508,7 +508,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     ASSERT(rn != 15_u8);
 
     bool transfer_pc = bit::test(instr, 15_u8);
-    auto rlist = generate_register_list(instr, 16_u8);
+    auto rlist = generate_register_list<16>(instr);
     u32 offset = narrow<u32>(rlist.size()) * 4_u32;
 
     const bool switch_mode = load_psr && (!is_ldm || !transfer_pc);
