@@ -18,7 +18,7 @@ namespace gba {
 
 struct gba {
     scheduler schdlr;
-    arm::arm7tdmi arm;
+    arm::arm7tdmi arm{this};
     cartridge::gamepak pak;
     ppu::engine ppu;
     keypad::keypad keypad;
