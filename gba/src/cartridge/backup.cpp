@@ -7,6 +7,8 @@
 
 #include <gba/cartridge/backup.h>
 
+#include <gba/core/math.h>
+
 namespace gba::cartridge {
 
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
@@ -86,8 +88,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
         }
 
         if(state_ == state::transmitting_data) {
-            bit::extract
-            const u8 data = narrow<u8>((buffer_ >> (63_u64 - transmission_count_)) & 0x1_u64);
+            const u8 data = narrow<u8>( bit::extract(buffer_, 63_u8 - transmission_count_));
             ++transmission_count_;
 
             if(transmission_count_ == 64_u8) {
