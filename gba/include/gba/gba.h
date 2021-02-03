@@ -17,17 +17,17 @@
 namespace gba {
 
 struct gba {
-    scheduler scheduler;
-    arm::arm7tdmi arm{this};
-    gamepak pak;
-    ppu ppu;
-    keypad keypad;
+    scheduler schdlr;
+    arm::arm7tdmi arm;
+    cartridge::gamepak pak;
+    ppu::engine ppu;
+    keypad::keypad keypad;
 
     void tick(u8 cycles = 1_u8) noexcept {}
     void tick_one_frame() noexcept {}
 
-    void release_key(const keypad::key key) noexcept { keypad.release(key); }
-    void press_key(const keypad::key key) noexcept {
+    void release_key(const keypad::keypad::key key) noexcept { keypad.release(key); }
+    void press_key(const keypad::keypad::key key) noexcept {
         keypad.press(key);
         if(keypad.interrupt_available()) {
             arm.request_interrupt(arm::interrupt_source::keypad);

@@ -8,7 +8,7 @@
 #include <gba/cartridge/gamepak.h>
 #include <gba/cartridge/gamepak_db.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 namespace {
 
@@ -136,4 +136,4 @@ void gamepak::detect_backup_type() noexcept
     }
 }
 
-} // namespace gba
+} // namespace gba::cartridge

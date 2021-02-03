@@ -19,10 +19,10 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, std::unique_ptr<gba::backup>, backup_)
-ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, palette_ram_)
-ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, vram_)
-ACCESS_PRIVATE_FIELD(gba::ppu, gba::vector<gba::u8>, oam_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::unique_ptr<gba::cartridge::backup>, backup_)
+ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
+ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
+ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, oam_)
 
 namespace gba::debugger {
 
@@ -45,30 +45,30 @@ window::window(gba* g) noexcept
     memory_view_.add_entry(memory_view_entry{"VRAM"sv, &access_private::vram_(g->ppu), 0x0600'0000_u32});
     memory_view_.add_entry(memory_view_entry{"OAM"sv, &access_private::oam_(g->ppu), 0x0700'0000_u32});
     switch(g->pak.backup_type()) {
-        case backup::type::eeprom_4:
-        case backup::type::eeprom_64:
+        case cartridge::backup::type::eeprom_4:
+        case cartridge::backup::type::eeprom_64:
             memory_view_.add_entry(memory_view_entry{
               "EEPROM"sv,
               &access_private::backup_(g->pak)->data(),
               0x0DFF'FF00_u32
             });
             break;
-        case backup::type::sram:
+        case cartridge::backup::type::sram:
             memory_view_.add_entry(memory_view_entry{
               "SRAM"sv,
               &access_private::backup_(g->pak)->data(),
               0x0E00'0000_u32
             });
             break;
-        case backup::type::flash_64:
-        case backup::type::flash_128:
+        case cartridge::backup::type::flash_64:
+        case cartridge::backup::type::flash_128:
             memory_view_.add_entry(memory_view_entry{
               "FLASH"sv,
               &access_private::backup_(g->pak)->data(),
               0x0E00'0000_u32
             });
-        case backup::type::none:
-        case backup::type::detect:
+        case cartridge::backup::type::none:
+        case cartridge::backup::type::detect:
             break;
     }
 

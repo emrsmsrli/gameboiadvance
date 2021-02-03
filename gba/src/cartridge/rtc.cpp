@@ -11,7 +11,7 @@
 #include <chrono>
 #include <ctime>
 
-namespace gba {
+namespace gba::cartridge {
 
 namespace {
 
@@ -72,7 +72,7 @@ void get_time(array<u8, 7>& container, bool hour24_mode) noexcept
 
 } // namespace
 
-u8 gba::rtc::read(const u32 address) const noexcept
+u8 rtc::read(const u32 address) const noexcept
 {
     if(!read_allowed_) { return 0x0_u8; }
 
@@ -244,4 +244,4 @@ u8 rtc::get_output_byte() noexcept
     }
 }
 
-} // namespace gba
+} // namespace gba::cartridge

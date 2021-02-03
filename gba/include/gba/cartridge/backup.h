@@ -15,6 +15,8 @@
 
 namespace gba {
 
+namespace cartridge {
+
 class backup {
     fs::path path_;
     vector<u8> data_;
@@ -128,8 +130,6 @@ private:
     [[nodiscard]] usize physical_addr(const u32 addr) const noexcept { return current_bank_ * 64_kb + addr; }
 };
 
-ENABLE_BITFLAG_OPS(backup_flash::cmd);
-
 constexpr std::string_view to_string_view(const backup::type type) noexcept
 {
     switch(type) {
@@ -144,6 +144,10 @@ constexpr std::string_view to_string_view(const backup::type type) noexcept
             UNREACHABLE();
     }
 }
+
+} // namespace cartridge
+
+ENABLE_BITFLAG_OPS(cartridge::backup_flash::cmd);
 
 } // namespace gba
 

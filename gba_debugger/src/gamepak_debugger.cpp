@@ -13,17 +13,17 @@
 #include <gba/cartridge/gamepak.h>
 #include <gba_debugger/debugger_helpers.h>
 
-ACCESS_PRIVATE_FIELD(gba::gamepak, gba::fs::path, path_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, gba::backup::type, backup_type_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, std::string_view, game_title_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, std::string_view, game_code_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, std::string_view, maker_code_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, gba::u8, main_unit_code_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, gba::u8, software_version_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, gba::u8, checksum_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, bool, loaded_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, bool, has_rtc_)
-ACCESS_PRIVATE_FIELD(gba::gamepak, bool, has_mirroring_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::fs::path, path_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::cartridge::backup::type, backup_type_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::string_view, game_title_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::string_view, game_code_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::string_view, maker_code_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u8, main_unit_code_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u8, software_version_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u8, checksum_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, bool, loaded_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, bool, has_rtc_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, bool, has_mirroring_)
 
 namespace gba::debugger {
 
@@ -37,13 +37,13 @@ void debugger::gamepak_debugger::draw() const noexcept
         ImGui::Spacing();
         ImGui::Text("backup: %s", [&]() {
             switch(access_private::backup_type_(pak)) {
-                case backup::type::detect: return "detect";
-                case backup::type::none: return "none";
-                case backup::type::eeprom_4: return "eeprom_4";
-                case backup::type::eeprom_64: return "eeprom_64";
-                case backup::type::sram: return "sram";
-                case backup::type::flash_64: return "flash_64";
-                case backup::type::flash_128: return "flash_128";
+                case cartridge::backup::type::detect: return "detect";
+                case cartridge::backup::type::none: return "none";
+                case cartridge::backup::type::eeprom_4: return "eeprom_4";
+                case cartridge::backup::type::eeprom_64: return "eeprom_64";
+                case cartridge::backup::type::sram: return "sram";
+                case cartridge::backup::type::flash_64: return "flash_64";
+                case cartridge::backup::type::flash_128: return "flash_128";
                 default:
                     UNREACHABLE();
             }

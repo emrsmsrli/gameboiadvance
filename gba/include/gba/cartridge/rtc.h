@@ -11,7 +11,7 @@
 #include <gba/core/container.h>
 #include <gba/core/math.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 struct rtc_command  {
     enum class type : u16::type {
@@ -67,6 +67,6 @@ private:
     [[nodiscard]] u8 get_output_byte() noexcept;
 };
 
-} // namespace gba
+} // namespace gba::cartridge
 
 #endif //GAMEBOIADVANCE_RTC_H

@@ -7,7 +7,7 @@
 
 #include <gba/cartridge/backup.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
 {
@@ -86,6 +86,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
         }
 
         if(state_ == state::transmitting_data) {
+            bit::extract
             const u8 data = narrow<u8>((buffer_ >> (63_u64 - transmission_count_)) & 0x1_u64);
             ++transmission_count_;
 
@@ -167,7 +168,7 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
             state_ = state::accept_cmd;
 
             if((current_cmds_ & cmd::select_bank) == cmd::select_bank && address == 0x0E00'0000_u32) {
-                current_bank_ = value & 0x1_u8;
+                current_bank_ = bit::extract(value, 0_u8);
                 current_cmds_ &= ~cmd::select_bank;
             } else {
                 data()[physical_addr(address & 0xFFFF_u32)] = value;
@@ -189,4 +190,4 @@ u8 backup_flash::read(u32 address) const noexcept
     return data()[physical_addr(address)];
 }
 
-} // namespace gba
+} // namespace gba::cartridge

@@ -10,12 +10,14 @@
 
 namespace gba {
 
+namespace cartridge {
 class gamepak;
+} // namespace cartridge
 
 namespace debugger {
 
 struct gamepak_debugger {
-    gamepak* pak = nullptr;
+    cartridge::gamepak* pak = nullptr;
 
     void draw() const noexcept;
 };

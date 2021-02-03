@@ -10,7 +10,7 @@
 
 #include <gba/core/math.h>
 
-namespace gba {
+namespace gba::keypad {
 
 struct keypad {
     struct irq_control {
@@ -56,6 +56,6 @@ struct keypad {
     }
 };
 
-} // namespace gba
+} // namespace gba::keypad
 
 #endif //GAMEBOIADVANCE_KEYPAD_H

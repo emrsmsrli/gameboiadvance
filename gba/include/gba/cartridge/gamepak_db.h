@@ -12,7 +12,7 @@
 
 #include <gba/cartridge/backup.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 struct pak_db_entry {
     std::string_view game_code;
@@ -23,6 +23,6 @@ struct pak_db_entry {
 
 std::optional<pak_db_entry> query_pak_db(std::string_view game_code) noexcept;
 
-} // namespace gba
+} // namespace gba::cartridge
 
 #endif //GAMEBOIADVANCE_GAMEPAK_DB_H

@@ -16,7 +16,7 @@
 #include <gba/core/event/event.h>
 #include <gba/helper/filesystem.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 struct gba;
 
@@ -55,6 +55,6 @@ private:
     void detect_backup_type() noexcept;
 };
 
-} // namespace gba
+} // namespace gba::cartridge
 
 #endif //GAMEBOIADVANCE_GAMEPAK_H

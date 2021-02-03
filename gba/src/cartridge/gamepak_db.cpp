@@ -7,7 +7,7 @@
 
 #include <gba/cartridge/gamepak_db.h>
 
-namespace gba {
+namespace gba::cartridge {
 
 // taken from https://github.com/fleroviux/NanoboyAdvance/blob/master/source/emulator/cartridge/game_db.cpp
 constexpr array pak_db {
@@ -135,4 +135,4 @@ std::optional<pak_db_entry> query_pak_db(const std::string_view game_code) noexc
       : std::optional<pak_db_entry>{*it};
 }
 
-} // namespace gba
+} // namespace gba::cartridge
