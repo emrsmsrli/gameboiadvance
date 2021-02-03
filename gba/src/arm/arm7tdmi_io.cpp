@@ -104,10 +104,10 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
 u8 arm7tdmi::read_io(const u32 addr) noexcept
 {
     switch(addr.get()) {
-        case keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
-        case keypad::addr_state + 1: return narrow<u8>(gba_->keypad.keyinput_ >> 8_u16);
-        case keypad::addr_control: return narrow<u8>(gba_->keypad.keycnt_.select);
-        case keypad::addr_control + 1:
+        case keypad::keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
+        case keypad::keypad::addr_state + 1: return narrow<u8>(gba_->keypad.keyinput_ >> 8_u16);
+        case keypad::keypad::addr_control: return narrow<u8>(gba_->keypad.keycnt_.select);
+        case keypad::keypad::addr_control + 1:
             return narrow<u8>(widen<u32>(gba_->keypad.keycnt_.select) >> 8_u32 & 0b11_u32
               | bit::from_bool(gba_->keypad.keycnt_.enabled) << 6_u32
               | static_cast<u32::type>(gba_->keypad.keycnt_.cond_strategy) << 7_u32);
@@ -125,18 +125,18 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 {
     switch(addr.get()) {
-        case keypad::addr_control:
+        case keypad::keypad::addr_control:
             gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0xFF00_u16) | data;
             if(gba_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
             break;
-        case keypad::addr_control + 1:
+        case keypad::keypad::addr_control + 1:
             gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0x00FF_u16)
               | (widen<u16>(data & 0b11_u8) << 8_u16);
             gba_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
             gba_->keypad.keycnt_.cond_strategy =
-              static_cast<keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8).get());
+              static_cast<keypad::keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8).get());
             if(gba_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
