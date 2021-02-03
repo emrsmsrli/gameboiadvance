@@ -8,6 +8,8 @@
 #ifndef GAMEBOIADVANCE_ARM7TDMI_H
 #define GAMEBOIADVANCE_ARM7TDMI_H
 
+#include <algorithm>
+
 #include <gba/core/container.h>
 #include <gba/core/math.h>
 #include <gba/helper/lookup_table.h>
@@ -102,6 +104,18 @@ struct banked_fiq_regs {
     psr spsr;
 };
 
+struct waitstate_control {
+    u8 sram;
+    u8 ws0_nonseq;
+    u8 ws0_seq;
+    u8 ws1_nonseq;
+    u8 ws1_seq;
+    u8 ws2_nonseq;
+    u8 ws2_seq;
+    u8 phi;
+    bool prefetch_buffer_enable;
+};
+
 enum class instruction_mode { arm, thumb };
 enum class mem_access { non_seq, seq };
 
@@ -149,6 +163,10 @@ class arm7tdmi {
 
     pipeline pipeline_;
 
+    waitstate_control waitcnt_;
+    vector<u8> wait_16{256_usize * 2_usize}; // cycle counts for 16bit r/w, nonseq and seq access
+    vector<u8> wait_32{256_usize * 2_usize}; // cycle counts for 32bit r/w, nonseq and seq access
+
 public:
     explicit arm7tdmi(gba* gba)
       : gba_{gba},
@@ -159,6 +177,10 @@ public:
         }
     {
         cpsr().mode = privilege_mode::sys;
+
+        std::fill(wait_16.begin(), wait_16.end(), 1_u8);
+        std::fill(wait_32.begin(), wait_32.end(), 1_u8);
+        update_waitstate_table();
     }
 
     void tick() noexcept;
@@ -183,10 +205,12 @@ private:
     void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
     [[nodiscard]] u32 read_bios(u32 addr) noexcept;
-    [[nodiscard]] u8 read_unused(u32 /*addr*/) noexcept { return 0_u8; /*todo*/ }
+    [[nodiscard]] u32 read_unused(u32 addr) noexcept;
 
     [[nodiscard]] u8 read_io(u32 addr) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
+
+    void update_waitstate_table() noexcept;
 
     void tick_internal() noexcept { /*todo used in internal cycles*/ }
 

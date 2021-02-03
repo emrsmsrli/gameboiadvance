@@ -47,7 +47,11 @@ public:
 
     [[nodiscard]] event<const fs::path&>& on_load() noexcept { return on_load_; }
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }
+    [[nodiscard]] bool has_rtc() const noexcept { return has_rtc_; }
     [[nodiscard]] backup::type backup_type() const noexcept { return backup_type_; }
+
+    [[nodiscard]] std::unique_ptr<backup>& backup() noexcept { return backup_; }
+    [[nodiscard]] rtc& rtc() noexcept { return rtc_; }
 
     [[nodiscard]] vector<u8>& pak_data() noexcept { return pak_data_; }
 

@@ -51,9 +51,9 @@ class rtc {
     u8 control_ = 0x40_u8;
 
 public:
-    static inline constexpr auto port_data = 0x0800'00C4_u32;
-    static inline constexpr auto port_direction = 0x0800'00C6_u32;
-    static inline constexpr auto port_control = 0x0800'00C8_u32;
+    static inline constexpr auto port_data = 0xC4_u32;
+    static inline constexpr auto port_direction = 0xC6_u32;
+    static inline constexpr auto port_control = 0xC8_u32;
 
     [[nodiscard]] u8 read(u32 address) const noexcept;
     void write(u32 address, u8 value) noexcept;

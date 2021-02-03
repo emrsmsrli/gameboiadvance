@@ -12,12 +12,62 @@ namespace gba::arm {
 
 namespace {
 
+enum class memory_page {
+    bios = 0x00,
+    ewram = 0x02,
+    iwram = 0x03,
+    io = 0x04,
+    palette_ram = 0x05,
+    vram = 0x06,
+    oam_ram = 0x07,
+    pak_ws0_lower = 0x08,
+    pak_ws0_upper = 0x09,
+    pak_ws1_lower = 0x0A,
+    pak_ws1_upper = 0x0B,
+    pak_ws2_lower = 0x0C,
+    pak_ws2_upper = 0x0D,
+    pak_sram_1 = 0x0E,
+    pak_sram_2 = 0x0F,
+};
+
 constexpr auto addr_ie = 0x400'0200_u32;            //  2    R/W  IE        Interrupt Enable Register
 constexpr auto addr_if = 0x400'0202_u32;            //  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
 constexpr auto addr_waitcnt = 0x400'0204_u32;       //  2    R/W  WAITCNT   Game Pak Waitstate Control
 constexpr auto addr_ime = 0x400'0208_u32;           //  2    R/W  IME       Interrupt Master Enable Register
 constexpr auto addr_postboot = 0x400'0300_u32;      //  1    R/W  POSTFLG   Undocumented - Post Boot Flag
 constexpr auto addr_haltcnt = 0x400'0301_u32;       //  1    W    HALTCNT   Undocumented - Power Down Control
+
+constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
+constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
+constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
+constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+
+// Even though VRAM is sized 96K (64K+32K),
+// it is repeated in steps of 128K (64K+32K+32K, the two 32K blocks itself being mirrors of each other).
+FORCEINLINE constexpr u32 adjust_vram_addr(u32 addr) noexcept
+{
+    addr &= 0x0001'FFFF_u32;
+    if(addr >= 0x0001'8000_u32) {
+        return bit::clear(addr, 15_u8); // mirror 32K
+    }
+    return addr;
+}
+
+FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
+{
+    return 0xC4_u32 <= addr && addr < 0xCA_u32;
+}
+
+FORCEINLINE constexpr bool is_eeprom(const cartridge::backup::type type, const u32 addr) noexcept
+{
+    return (type == cartridge::backup::type::eeprom_64 || type == cartridge::backup::type::eeprom_4)
+      && addr >= 0x0DFF'FF00_u32;
+}
+
+FORCEINLINE u8& get_wait_cycles(vector<u8>& table, const memory_page page, const mem_access access) noexcept
+{
+    return table[static_cast<u32::type>(page) + static_cast<u32::type>(access) * 0xFF_u32];
+}
 
 } // namespace
 
@@ -28,22 +78,110 @@ u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
     return (data >> rotate_amount) | (data << (32_u32 - rotate_amount));
 }
 
-u32 arm7tdmi::read_32(const u32 addr, const mem_access access) noexcept
+u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 {
-    if(addr < 0x0000'3FFF_u32) {
-        if(r(15_u8) < 0x0000'3FFF_u32) {
-            return 0_u32;
-        }
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_32, page, access);
+    // todo scheduler
 
-        return memcpy<u32>(bios_, addr);
+    if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
+        addr = mask::clear(addr, 0b11_u32);
     }
 
-    return 0_u32;
+    switch(page) {
+        case memory_page::bios:
+            return read_bios(addr);
+        case memory_page::ewram:
+            return memcpy<u32>(wram_, addr & 0x0003'FFFF_u32);
+        case memory_page::iwram:
+            return memcpy<u32>(iwram_, addr & 0x0000'7FFF_u32);
+        case memory_page::io: {
+            u32 result;
+            for(u32 i = 0_u32; i < 4_u32; ++i) {
+                result = widen<u32>(read_io(addr + i)) << (i * 8_u32);
+            }
+            return result;
+        }
+        case memory_page::palette_ram:
+            return memcpy<u32>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+        case memory_page::vram:
+            return memcpy<u32>(gba_->ppu.vram_, adjust_vram_addr(addr));
+        case memory_page::oam_ram:
+            return memcpy<u32>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+        case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+        case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+        case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
+            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
+            addr &= 0x01FF'FFFF_u32;
+            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
+            // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
+                return widen<u32>(gba_->pak.rtc().read(addr + 2_u32)) << 16_u32
+                  | gba_->pak.rtc().read(addr);
+            }
+            return memcpy<u32>(gba_->pak.pak_data(), addr);
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->read(addr) * 0x0101'0101_u32;
+            }
+            return 0xFFFF'FFFF_u32;
+        default:
+            return read_unused(addr);
+    }
 }
 
-void arm7tdmi::write_32(const u32 addr, const u32 data, const mem_access access) noexcept
+void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexcept
 {
-    UNREACHABLE();
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_32, page, access);
+    // todo scheduler
+
+    if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
+        addr = mask::clear(addr, 0b11_u32);
+    }
+
+    switch(page) {
+        case memory_page::ewram:
+            memcpy<u32>(wram_, addr & 0x0003'FFFF_u32, data);
+            break;
+        case memory_page::iwram:
+            memcpy<u32>(iwram_, addr & 0x0000'7FFF_u32, data);
+            break;
+        case memory_page::io:
+            for(u32 i = 0_u32; i < 4_u32; ++i) {
+                write_io(addr + i, narrow<u8>(data >> (i * 8_u32)));
+            }
+            break;
+        case memory_page::palette_ram:
+            memcpy<u32>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::vram:
+            memcpy<u32>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            break;
+        case memory_page::oam_ram:
+            memcpy<u32>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+        case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+        case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
+            addr &= 0x01FF'FFFF_u32;
+            if(is_gpio(addr)) {
+                ASSERT(gba_->pak.has_rtc());
+                gba_->pak.rtc().write(addr, narrow<u8>(data));
+                gba_->pak.rtc().write(addr + 2_u32, narrow<u8>(data >> 16_u32));
+            }
+            break;
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
+            }
+            break;
+        default:
+            LOG_WARN("invalid write32 to address {:08X}, {:08X}", addr, data);
+            break;
+    }
 }
 
 u32 arm7tdmi::read_16_signed(const u32 addr, const mem_access access) noexcept
@@ -61,14 +199,126 @@ u32 arm7tdmi::read_16_aligned(const u32 addr, const mem_access access) noexcept
     return (data >> (8_u32 * rotate_amount)) | (data << (24_u8 * rotate_amount));
 }
 
-u32 arm7tdmi::read_16(const u32 addr, const mem_access access) noexcept
+u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 {
-    UNREACHABLE();
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_16, page, access);
+    // todo scheduler
+
+    if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
+        addr = bit::clear(addr, 0_u8);
+    }
+
+    switch(page) {
+        case memory_page::bios:
+            return read_bios(addr);
+        case memory_page::ewram:
+            return memcpy<u16>(wram_, addr & 0x0003'FFFF_u32);
+        case memory_page::iwram:
+            return memcpy<u16>(iwram_, addr & 0x0000'7FFF_u32);
+        case memory_page::io: {
+            u16 result;
+            for(u16 i = 0_u16; i < 2_u16; ++i) {
+                result = widen<u16>(read_io(addr + i)) << (i * 8_u16);
+            }
+            return result;
+        }
+        case memory_page::palette_ram:
+            return memcpy<u16>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+        case memory_page::vram:
+            return memcpy<u16>(gba_->ppu.vram_, adjust_vram_addr(addr));
+        case memory_page::oam_ram:
+            return memcpy<u16>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+        case memory_page::pak_ws2_upper:
+            if(is_eeprom(gba_->pak.backup_type(), addr)) {
+                return gba_->pak.backup()->read(addr);
+            }
+            [[fallthrough]];
+        case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+        case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+        case memory_page::pak_ws2_lower:
+            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
+            // todo address &= memory.rom.mask;
+            addr &= 0x01FF'FFFF_u32;
+            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
+                return gba_->pak.rtc().read(addr);
+            }
+            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
+            // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            return memcpy<u16>(gba_->pak.pak_data(), addr);
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->read(addr) * 0x0101_u16;
+            }
+            return 0xFFFF_u16;
+        default:
+            return read_unused(addr);
+    }
 }
 
-void arm7tdmi::write_16(const u32 addr, const u16 data, const mem_access access) noexcept
+void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexcept
 {
-    UNREACHABLE();
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_16, page, access);
+    // todo scheduler
+
+    if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
+        addr = bit::clear(addr, 0_u8);
+    }
+
+    switch(page) {
+        case memory_page::ewram:
+            memcpy<u16>(wram_, addr & 0x0003'FFFF_u32, data);
+            break;
+        case memory_page::iwram:
+            memcpy<u16>(iwram_, addr & 0x0000'7FFF_u32, data);
+            break;
+        case memory_page::io:
+            write_io(addr, narrow<u8>(data));
+            write_io(addr + 1, narrow<u8>(data >> 8_u16));
+            break;
+        case memory_page::palette_ram:
+            memcpy<u16>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::vram:
+            memcpy<u16>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            break;
+        case memory_page::oam_ram:
+            memcpy<u16>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+        case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+        case memory_page::pak_ws2_lower:
+            addr &= 0x01FF'FFFF_u32;
+            if(is_gpio(addr)) {
+                ASSERT(gba_->pak.has_rtc());
+                gba_->pak.rtc().write(addr, narrow<u8>(data));
+                gba_->pak.rtc().write(addr + 1_u32, narrow<u8>(data >> 8_u16));
+            }
+            break;
+        case memory_page::pak_ws2_upper:
+            if(is_eeprom(gba_->pak.backup_type(), addr)) {
+                // fixme eeprom is only written by dma
+                gba_->pak.backup()->write(addr, narrow<u8>(data));
+            } else { // fixme???????????????????
+                addr &= 0x01FF'FFFF_u32;
+                if(is_gpio(addr)) {
+                    ASSERT(gba_->pak.has_rtc());
+                    gba_->pak.rtc().write(addr, narrow<u8>(data));
+                }
+            }
+            break;
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
+            }
+            break;
+        default:
+            LOG_WARN("invalid write16 to address {:08X}, {:04X}", addr, data);
+            break;
+    }
 }
 
 u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
@@ -76,14 +326,85 @@ u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
     return make_unsigned(math::sign_extend<8>(widen<u32>(read_8(addr, access))));
 }
 
-u32 arm7tdmi::read_8(const u32 addr, const mem_access access) noexcept
+u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 {
-    UNREACHABLE();
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_16, page, access);
+    // todo scheduler
+
+    switch(page) {
+        case memory_page::bios:
+            return read_bios(addr);
+        case memory_page::ewram:
+            return memcpy<u8>(wram_, addr & 0x0003'FFFF_u32);
+        case memory_page::iwram:
+            return memcpy<u8>(iwram_, addr & 0x0000'7FFF_u32);
+        case memory_page::io:
+            return read_io(addr);
+        case memory_page::palette_ram:
+            return memcpy<u8>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+        case memory_page::vram:
+            return memcpy<u8>(gba_->ppu.vram_, adjust_vram_addr(addr));
+        case memory_page::oam_ram:
+            return memcpy<u8>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+        case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+        case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+        case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
+            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
+            addr &= 0x01FF'FFFF_u32; // todo address &= memory.rom.mask;
+            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address, the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
+                return gba_->pak.rtc().read(addr);
+            }
+            return memcpy<u8>(gba_->pak.pak_data(), addr);
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->read(addr) * 0x0101_u16;
+            }
+            return 0xFFFF_u16;
+        default:
+            return read_unused(addr);
+    }
 }
 
-void arm7tdmi::write_8(const u32 addr, const u8 data, const mem_access access) noexcept
+void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcept
 {
-    UNREACHABLE();
+    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const u32 wait = get_wait_cycles(wait_16, page, access);
+    // todo scheduler
+
+    switch(page) {
+        case memory_page::ewram:
+            memcpy<u8>(wram_, addr & 0x0003'FFFF_u32, data);
+            break;
+        case memory_page::iwram:
+            memcpy<u8>(iwram_, addr & 0x0000'7FFF_u32, data);
+            break;
+        case memory_page::io:
+            write_io(addr, narrow<u8>(data));
+            break;
+        case memory_page::palette_ram:
+            // todo check gbatek Writing 8bit Data to Video Memory
+            memcpy<u8>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::vram:
+            // todo check gbatek Writing 8bit Data to Video Memory
+            memcpy<u8>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            break;
+        case memory_page::oam_ram:
+            memcpy<u8>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            break;
+        case memory_page::pak_sram_1: case memory_page::pak_sram_2:
+            addr &= 0x0EFF'FFFF_u32;
+            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
+                return gba_->pak.backup()->write(addr, data);
+            }
+            break;
+        default:
+            LOG_WARN("invalid write8 to address {:08X}, {:02X}", addr, data);
+            break;
+    }
 }
 
 u32 arm7tdmi::read_bios(u32 addr) noexcept
@@ -99,6 +420,52 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
         bios_last_read_ = memcpy<u32>(bios_, addr);
     }
     return bios_last_read_ >> shift;
+}
+
+u32 arm7tdmi::read_unused(const u32 addr) noexcept
+{
+    /*Reading from Unused Memory (00004000-01FFFFFF,10000000-FFFFFFFF)
+Accessing unused memory at 00004000h-01FFFFFFh, and 10000000h-FFFFFFFFh (and 02000000h-03FFFFFFh
+     when RAM is disabled via Port 4000800h) returns the recently pre-fetched opcode. For ARM code this is simply:
+
+  WORD = [$+8]
+
+For THUMB code the result consists of two 16bit fragments and
+     depends on the address area and alignment where the opcode was stored.
+For THUMB code in Main RAM, Palette Memory, VRAM, and Cartridge ROM this is:
+
+  LSW = [$+4], MSW = [$+4]
+
+For THUMB code in BIOS or OAM (and in 32K-WRAM on Original-NDS (in GBA mode)):
+
+  LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
+  LSW = [$+2], MSW = [$+4]   ;for opcodes at non-4-byte aligned locations
+
+For THUMB code in 32K-WRAM on GBA, GBA SP, GBA Micro, NDS-Lite (but not NDS):
+
+  LSW = [$+4], MSW = OldHI   ;for opcodes at 4-byte aligned locations
+  LSW = OldLO, MSW = [$+4]   ;for opcodes at non-4-byte aligned locations
+
+Whereas OldLO/OldHI are usually:
+
+  OldLO=[$+2], OldHI=[$+2]
+
+Unless the previous opcode's prefetch was overwritten; that can happen
+     if the previous opcode was itself an LDR opcode, ie. if it was itself reading data:
+
+  OldLO=LSW(data), OldHI=MSW(data)
+  Theoretically, this might also change if a DMA transfer occurs.
+
+Note: Additionally, as usually, the 32bit data value will be rotated if the data address
+     wasn't 4-byte aligned, and the upper bits of the 32bit value will be masked in case of LDRB/LDRH reads.
+Note: The opcode prefetch is caused by the prefetch pipeline in the CPU itself, not by the
+     external gamepak prefetch, ie. it works for code in ROM and RAM as well.
+
+Reading from Unused or Write-Only I/O Ports
+Works like above Unused Memory when the entire 32bit memory fragment is Unused (eg. 0E0h)
+     and/or Write-Only (eg. DMA0SAD). And otherwise, returns zero if the lower 16bit fragment
+     is readable (eg. 04Ch=MOSAIC, 04Eh=NOTUSED/ZERO).*/
+    return 0_u8;
 }
 
 u8 arm7tdmi::read_io(const u32 addr) noexcept
@@ -157,7 +524,59 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case addr_if + 1:
             if_ &= ~(widen<u16>(data) << 8_u16);
             break;
+        case addr_waitcnt:
+            waitcnt_.sram = data & 0b11_u8;
+            waitcnt_.ws0_nonseq = (data >> 2_u8) & 0b11_u8;
+            waitcnt_.ws0_seq = bit::extract(data, 4_u8);
+            waitcnt_.ws1_nonseq = (data >> 5_u8) & 0b11_u8;
+            waitcnt_.ws2_seq = bit::extract(data, 7_u8);
+            update_waitstate_table();
+            break;
+        case addr_waitcnt + 1:
+            waitcnt_.ws2_nonseq = data & 0b11_u8;
+            waitcnt_.ws2_seq = bit::extract(data, 2_u8);
+            waitcnt_.phi = (data >> 3_u8) & 0b11_u8;
+            waitcnt_.prefetch_buffer_enable = bit::test(data, 6_u8);
+            update_waitstate_table();
+            break;
     }
+}
+
+void arm7tdmi::update_waitstate_table() noexcept
+{
+    const u8 w_sram = 1_u8 + ws_nonseq[waitcnt_.sram];
+    get_wait_cycles(wait_16, memory_page::pak_sram_1, mem_access::non_seq) = w_sram;
+    get_wait_cycles(wait_16, memory_page::pak_sram_1, mem_access::seq) = w_sram;
+    get_wait_cycles(wait_32, memory_page::pak_sram_1, mem_access::non_seq) = w_sram;
+    get_wait_cycles(wait_32, memory_page::pak_sram_1, mem_access::seq) = w_sram;
+
+    get_wait_cycles(wait_16, memory_page::pak_ws0_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
+    get_wait_cycles(wait_16, memory_page::pak_ws0_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
+    get_wait_cycles(wait_16, memory_page::pak_ws1_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
+    get_wait_cycles(wait_16, memory_page::pak_ws1_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
+    get_wait_cycles(wait_16, memory_page::pak_ws2_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
+    get_wait_cycles(wait_16, memory_page::pak_ws2_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
+
+    get_wait_cycles(wait_16, memory_page::pak_ws0_lower, mem_access::seq) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
+    get_wait_cycles(wait_16, memory_page::pak_ws0_upper, mem_access::seq) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
+    get_wait_cycles(wait_16, memory_page::pak_ws1_lower, mem_access::seq) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
+    get_wait_cycles(wait_16, memory_page::pak_ws1_upper, mem_access::seq) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
+    get_wait_cycles(wait_16, memory_page::pak_ws2_lower, mem_access::seq) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
+    get_wait_cycles(wait_16, memory_page::pak_ws2_upper, mem_access::seq) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
+
+    get_wait_cycles(wait_32, memory_page::pak_ws0_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
+    get_wait_cycles(wait_32, memory_page::pak_ws0_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
+    get_wait_cycles(wait_32, memory_page::pak_ws1_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
+    get_wait_cycles(wait_32, memory_page::pak_ws1_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
+    get_wait_cycles(wait_32, memory_page::pak_ws2_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
+    get_wait_cycles(wait_32, memory_page::pak_ws2_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
+
+    get_wait_cycles(wait_32, memory_page::pak_ws0_lower, mem_access::seq) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
+    get_wait_cycles(wait_32, memory_page::pak_ws0_upper, mem_access::seq) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
+    get_wait_cycles(wait_32, memory_page::pak_ws1_lower, mem_access::seq) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
+    get_wait_cycles(wait_32, memory_page::pak_ws1_upper, mem_access::seq) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
+    get_wait_cycles(wait_32, memory_page::pak_ws2_lower, mem_access::seq) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
+    get_wait_cycles(wait_32, memory_page::pak_ws2_upper, mem_access::seq) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
 }
 
 } // namespace gba::arm
