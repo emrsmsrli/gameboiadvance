@@ -13,6 +13,7 @@
 #include <gba/cartridge/rtc.h>
 
 using namespace gba;
+using namespace gba::cartridge;
 
 namespace {
 

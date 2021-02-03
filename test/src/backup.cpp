@@ -12,6 +12,7 @@
 #include <gba/core/math.h>
 
 using namespace gba;
+using namespace gba::cartridge;
 
 namespace {
 
