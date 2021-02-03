@@ -20,6 +20,12 @@ add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PUBLIC include/)
 
+if(ENABLE_PCH)
+    target_precompile_headers(${PROJECT_NAME} PUBLIC
+            include/gba/core/integer.h
+            include/gba/core/container.h)
+endif()
+
 target_link_libraries(${PROJECT_NAME} PUBLIC
         spdlog::spdlog
         project_warnings
