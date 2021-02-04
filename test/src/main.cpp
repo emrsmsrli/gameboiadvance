@@ -21,7 +21,7 @@ TEST_CASE("test roms")
      for(const auto& file : gba::fs::directory_iterator{gba::fs::current_path() / "res"}) {
          const auto& path = file.path();
          if(auto ext = path.extension(); ext == ".gba") {
-             gba::gba g;
+             gba::gba g{{}};
              g.load_pak(path);
 
              REQUIRE(g.pak.loaded());

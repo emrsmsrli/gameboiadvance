@@ -168,15 +168,29 @@ class arm7tdmi {
     vector<u8> wait_32{256_usize * 2_usize}; // cycle counts for 32bit r/w, nonseq and seq access
 
 public:
-    explicit arm7tdmi(gba* gba)
+    explicit arm7tdmi(gba* gba) : arm7tdmi(gba, {}) {}
+    arm7tdmi(gba* gba, vector<u8> bios)
       : gba_{gba},
+        bios_{std::move(bios)},
         pipeline_{
           mem_access::non_seq,
           0xF000'0000_u32,
           0xF000'0000_u32
         }
     {
-        cpsr().mode = privilege_mode::sys;
+        if(bios_.empty()) {
+            r0_ = 0x0000'0CA5_u32;
+            r13_ = 0x0300'7F00_u32;
+            r14_ = 0x0800'0000_u32;
+            r15_ = 0x0800'0000_u32;
+            irq_.r13 = 0x0300'7FA0_u32;
+            svc_.r13 = 0x0300'7FE0_u32;
+            irq_.spsr.mode = privilege_mode::usr;
+            svc_.spsr.mode = privilege_mode::usr;
+            cpsr().mode = privilege_mode::sys;
+        } else {
+            ASSERT(bios.size() == 16_kb);
+        }
 
         std::fill(wait_16.begin(), wait_16.end(), 1_u8);
         std::fill(wait_32.begin(), wait_32.end(), 1_u8);
@@ -207,7 +221,7 @@ private:
     [[nodiscard]] u32 read_bios(u32 addr) noexcept;
     [[nodiscard]] u32 read_unused(u32 addr) noexcept;
 
-    [[nodiscard]] u8 read_io(u32 addr) noexcept;
+    [[nodiscard]] u32 read_io(u32 addr) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
 
     void update_waitstate_table() noexcept;

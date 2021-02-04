@@ -18,12 +18,20 @@ namespace gba {
 
 struct gba {
     scheduler schdlr;
-    arm::arm7tdmi arm{this};
     cartridge::gamepak pak;
+    arm::arm7tdmi arm;
     ppu::engine ppu;
     keypad::keypad keypad;
 
-    void tick(u8 cycles = 1_u8) noexcept {}
+    gba(vector<u8> bios) : pak{}, arm(this, std::move(bios)) {}
+
+    void tick(u64 cycles = 1_u8) noexcept
+    {
+        for(u64 i = 0_u64; i < cycles; ++i) {
+            arm.tick();
+        }
+    }
+
     void tick_one_frame() noexcept {}
 
     void release_key(const keypad::keypad::key key) noexcept { keypad.release(key); }

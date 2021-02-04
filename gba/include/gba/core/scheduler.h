@@ -36,7 +36,7 @@ private:
 public:
     scheduler()
     {
-        heap_.resize(64_usize);
+        heap_.reserve(64_usize);
     }
 
     void add_event(const u64 delay, const delegate<void(u64)> callback)
@@ -56,8 +56,8 @@ public:
     void add_cycles(const u32 cycles) noexcept
     {
         now_ += cycles;
-        if(UNLIKELY(heap_[0_usize].timestamp <= now_)) {
-            while(!heap_.empty() && heap_[0_usize].timestamp <= now_) {
+        if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
+            while(!heap_.empty() && next_event <= now_) {
                 const auto [callback, timestamp] = heap_[0_usize];
                 std::pop_heap(heap_.begin(), heap_.end(), predicate{});
                 heap_.pop_back();
@@ -69,7 +69,8 @@ public:
     }
 
     [[nodiscard]] u64 now() const noexcept { return now_; }
-    [[nodiscard]] u64 remaining_cycles_to_next_event() const noexcept { return heap_[0_usize].timestamp - now_; }
+    [[nodiscard]] u64 timestamp_of_next_event() const noexcept { ASSERT(!heap_.empty()); return heap_[0_usize].timestamp; }
+    [[nodiscard]] u64 remaining_cycles_to_next_event() const noexcept { return timestamp_of_next_event() - now(); }
 };
 
 } // namespace gba

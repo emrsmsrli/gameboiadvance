@@ -82,7 +82,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_32, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = mask::clear(addr, 0b11_u32);
@@ -96,11 +96,10 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
         case memory_page::iwram:
             return memcpy<u32>(iwram_, addr & 0x0000'7FFF_u32);
         case memory_page::io: {
-            u32 result;
-            for(u32 i = 0_u32; i < 4_u32; ++i) {
-                result = widen<u32>(read_io(addr + i)) << (i * 8_u32);
-            }
-            return result;
+            return read_io(addr)
+              | (read_io(addr + 1_u32) << (8_u16))
+              | (read_io(addr + 2_u32) << (8_u16))
+              | (read_io(addr + 3_u32) << (8_u16));
         }
         case memory_page::palette_ram:
             return memcpy<u32>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
@@ -135,7 +134,7 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_32, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = mask::clear(addr, 0b11_u32);
@@ -203,7 +202,7 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_16, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = bit::clear(addr, 0_u8);
@@ -216,13 +215,9 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return memcpy<u16>(wram_, addr & 0x0003'FFFF_u32);
         case memory_page::iwram:
             return memcpy<u16>(iwram_, addr & 0x0000'7FFF_u32);
-        case memory_page::io: {
-            u16 result;
-            for(u16 i = 0_u16; i < 2_u16; ++i) {
-                result = widen<u16>(read_io(addr + i)) << (i * 8_u16);
-            }
-            return result;
-        }
+        case memory_page::io:
+            return read_io(addr)
+              | (read_io(addr + 1_u32) << (8_u16));
         case memory_page::palette_ram:
             return memcpy<u16>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
@@ -261,7 +256,7 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_16, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = bit::clear(addr, 0_u8);
@@ -330,7 +325,7 @@ u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_16, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     switch(page) {
         case memory_page::bios:
@@ -372,7 +367,7 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
     const u32 wait = get_wait_cycles(wait_16, page, access);
-    // todo scheduler
+    gba_->schdlr.add_cycles(wait);
 
     switch(page) {
         case memory_page::ewram:
@@ -424,51 +419,45 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
 
 u32 arm7tdmi::read_unused(const u32 addr) noexcept
 {
-    /*Reading from Unused Memory (00004000-01FFFFFF,10000000-FFFFFFFF)
-Accessing unused memory at 00004000h-01FFFFFFh, and 10000000h-FFFFFFFFh (and 02000000h-03FFFFFFh
-     when RAM is disabled via Port 4000800h) returns the recently pre-fetched opcode. For ARM code this is simply:
+    u32 data;
+    if(cpsr().t) {
+        const auto current_page = static_cast<memory_page>(r15_.get() >> 24_u32);
+        switch(current_page) {
+            case memory_page::ewram:
+            case memory_page::palette_ram: case memory_page::vram:
+            case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
+            case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
+            case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
+                data = pipeline_.decoding * 0x0001'0001_u32;
+                break;
+            case memory_page::bios:
+            case memory_page::oam_ram:
+                if((addr & 0b11_u32) != 0_u32) {
+                    data = pipeline_.executing | (pipeline_.decoding << 16_u32);
+                } else {
+                    // should've been LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
+                    LOG_WARN("bios|oam unused read at {:08X}", addr);
+                    data = pipeline_.decoding * 0x0001'0001_u32;
+                }
+                break;
+            case memory_page::iwram:
+                if((addr & 0b11_u32) != 0_u32) {
+                    data = pipeline_.executing | (pipeline_.decoding << 16_u32);
+                } else {
+                    data = pipeline_.decoding | (pipeline_.executing << 16_u32);
+                }
+                break;
+            default:
+                break; // returns 0
+        }
+    } else {
+        data = pipeline_.decoding;
+    }
 
-  WORD = [$+8]
-
-For THUMB code the result consists of two 16bit fragments and
-     depends on the address area and alignment where the opcode was stored.
-For THUMB code in Main RAM, Palette Memory, VRAM, and Cartridge ROM this is:
-
-  LSW = [$+4], MSW = [$+4]
-
-For THUMB code in BIOS or OAM (and in 32K-WRAM on Original-NDS (in GBA mode)):
-
-  LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
-  LSW = [$+2], MSW = [$+4]   ;for opcodes at non-4-byte aligned locations
-
-For THUMB code in 32K-WRAM on GBA, GBA SP, GBA Micro, NDS-Lite (but not NDS):
-
-  LSW = [$+4], MSW = OldHI   ;for opcodes at 4-byte aligned locations
-  LSW = OldLO, MSW = [$+4]   ;for opcodes at non-4-byte aligned locations
-
-Whereas OldLO/OldHI are usually:
-
-  OldLO=[$+2], OldHI=[$+2]
-
-Unless the previous opcode's prefetch was overwritten; that can happen
-     if the previous opcode was itself an LDR opcode, ie. if it was itself reading data:
-
-  OldLO=LSW(data), OldHI=MSW(data)
-  Theoretically, this might also change if a DMA transfer occurs.
-
-Note: Additionally, as usually, the 32bit data value will be rotated if the data address
-     wasn't 4-byte aligned, and the upper bits of the 32bit value will be masked in case of LDRB/LDRH reads.
-Note: The opcode prefetch is caused by the prefetch pipeline in the CPU itself, not by the
-     external gamepak prefetch, ie. it works for code in ROM and RAM as well.
-
-Reading from Unused or Write-Only I/O Ports
-Works like above Unused Memory when the entire 32bit memory fragment is Unused (eg. 0E0h)
-     and/or Write-Only (eg. DMA0SAD). And otherwise, returns zero if the lower 16bit fragment
-     is readable (eg. 04Ch=MOSAIC, 04Eh=NOTUSED/ZERO).*/
-    return 0_u8;
+    return data >> ((addr & 0b11_u32) << 3_u32);
 }
 
-u8 arm7tdmi::read_io(const u32 addr) noexcept
+u32 arm7tdmi::read_io(const u32 addr) noexcept
 {
     switch(addr.get()) {
         case keypad::keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
@@ -486,7 +475,7 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
         case addr_if + 1: return narrow<u8>(if_ >> 8_u8);
     }
 
-    return 0_u8;
+    return read_unused(addr);
 }
 
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept

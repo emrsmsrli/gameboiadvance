@@ -11,6 +11,7 @@
 
 #include <gba/gba.h>
 #include <gba/version.h>
+#include <gba_debugger/debugger.h>
 
 int main(int argc, char** argv) {
     cxxopts::Options options("gameboiadvance", "An excellent Gameboy Advance emulator");
@@ -20,9 +21,9 @@ int main(int argc, char** argv) {
       .add_options()
         ("v,version", "Print version and exit")
         ("h,help", "Show this help text")
-        ("L,log-level", "Logging level (trace, debug, info, warn, err, critical, off)", cxxopts::value<std::string>()->default_value("off"))
         ("fullscreen", "Enable fullscreen")
         ("S,viewport-scale", "Scale of the viewport (not used if fullscreen is set), (240x160)*S", cxxopts::value<uint32_t>()->default_value("2"))
+        ("bios", "BIOS binary path", cxxopts::value<std::string>())
         ("rom-path", "Rom path or directory", cxxopts::value<std::vector<std::string>>());
 
     options.parse_positional("rom-path");
@@ -42,11 +43,23 @@ int main(int argc, char** argv) {
 #if SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
     spdlog::set_default_logger(spdlog::stdout_color_st("  core  "));
     spdlog::set_pattern("[%H:%M:%S:%e] [%s:%#] [%^%L%$] %v");
-    spdlog::set_level(spdlog::level::from_str(parsed["log-level"].as<std::string>()));
 #endif
 
-    gba::gba g;
+    gba::vector<gba::u8> bios;
+    if(parsed["bios"].count() != 0) {
+        bios = gba::fs::read_file(parsed["bios"].as<std::string>());
+    }
+
+    gba::gba g{std::move(bios)};
     g.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
+
+    gba::debugger::window window(&g);
+
+    while(true) {
+        if(!window.draw()) {
+            break;
+        }
+    }
 
     return 0;
 }
