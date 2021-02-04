@@ -20,11 +20,13 @@ namespace gba {
 class scheduler {
 public:
     struct event {
+        using handle = u64;
+
         delegate<void(u64 /*late_cycles*/)> callback;
         u64 timestamp;
+        handle h;
 
         bool operator>(const event& other) const noexcept { return timestamp > other.timestamp; }
-        bool operator==(const event& other) const noexcept { return timestamp == other.timestamp && callback == other.callback; }
     };
 
 private:
@@ -32,6 +34,7 @@ private:
 
     vector<event> heap_;
     u64 now_;
+    u64 next_event_handle;
 
 public:
     scheduler()
@@ -39,15 +42,20 @@ public:
         heap_.reserve(64_usize);
     }
 
-    void add_event(const u64 delay, const delegate<void(u64)> callback)
+    event::handle add_event(const u64 delay, const delegate<void(u64)> callback)
     {
-        heap_.push_back(event{callback, now_ + delay});
+        heap_.push_back(event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
+        return next_event_handle;
     }
 
-    void remove_event(const event& event)
+    void remove_event(const event::handle handle)
     {
-        if(const auto it = std::find(heap_.begin(), heap_.end(), event); it != heap_.end()) {
+        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const event& e) {
+            return e.h == handle;
+        });
+
+        if(it != heap_.end()) {
             heap_.erase(it);
             std::make_heap(heap_.begin(), heap_.end(), predicate{});
         }
@@ -58,11 +66,14 @@ public:
         now_ += cycles;
         if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
             while(!heap_.empty() && next_event <= now_) {
-                const auto [callback, timestamp] = heap_[0_usize];
+                const auto [callback, timestamp, handle] = heap_[0_usize];
+
                 std::pop_heap(heap_.begin(), heap_.end(), predicate{});
                 heap_.pop_back();
 
-                // call with how much cycles the event has been later
+                LOG_TRACE("executing event with handle {}", handle);
+
+                // call with how much cycles the event has been late
                 callback(now_ - timestamp);
             }
         }
