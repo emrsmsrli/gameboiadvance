@@ -74,8 +74,6 @@ void get_time(array<u8, 7>& container, bool hour24_mode) noexcept
 
 u8 rtc::read(const u32 address) const noexcept
 {
-    if(!read_allowed_) { return 0x0_u8; }
-
     switch(address.get()) {
         case port_data: return pin_states_;
         case port_direction: return directions_;
