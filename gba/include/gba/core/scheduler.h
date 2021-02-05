@@ -49,6 +49,15 @@ public:
         return next_event_handle;
     }
 
+    [[nodiscard]] bool has_event(const event::handle handle)
+    {
+        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const event& e) {
+            return e.h == handle;
+        });
+
+        return it != heap_.end();
+    }
+
     void remove_event(const event::handle handle)
     {
         const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const event& e) {
@@ -61,7 +70,7 @@ public:
         }
     }
 
-    void add_cycles(const u32 cycles) noexcept
+    void add_cycles(const u64 cycles) noexcept
     {
         now_ += cycles;
         if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
