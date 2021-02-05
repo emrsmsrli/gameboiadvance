@@ -8,21 +8,27 @@
 #ifndef GAMEBOIADVANCE_EVENT_H
 #define GAMEBOIADVANCE_EVENT_H
 
-#include <vector>
+#include <algorithm>
 
 #include <gba/core/event/delegate.h>
+#include <gba/core/container.h>
 
 namespace gba {
 
 template<typename... Args>
 class event {
-    std::vector<delegate<void(Args...)>> delegates;
+    vector<delegate<void(Args...)>> delegates;
 
 public:
     event() = default;
 
     void add_delegate(delegate<void(Args...)> d) { delegates.push_back(d); }
     void clear_delegates() noexcept { delegates.clear(); }
+
+    void remove_delegate(delegate<void(Args...)> d) noexcept
+    {
+        delegates.erase(std::remove(delegates.begin(), delegates.end(), d), delegates.end());
+    }
 
     template<typename... TArgs>
     void operator()(TArgs&&... args) const
