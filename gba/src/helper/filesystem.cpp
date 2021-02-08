@@ -31,8 +31,7 @@ vector<u8> read_file(const path& path)
 
 void write_file(const path& path, const vector<u8>& data)
 {
-    std::ofstream stream{path, std::ios::binary | std::ios::out};
-    stream.unsetf(std::ios::skipws);
+    std::ofstream stream{path, std::ios::binary};
     if(!stream.is_open()) {
         LOG_CRITICAL("output file stream could not be opened: {}", path.string());
         std::terminate();
