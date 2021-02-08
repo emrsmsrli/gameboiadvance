@@ -19,11 +19,11 @@ vector<u8> read_file(const path& path)
         std::terminate();
     }
 
-    const std::ifstream::pos_type pos = stream.tellg();
+    const std::ifstream::pos_type file_size = stream.tellg();
 
-    vector<u8> bytes{static_cast<usize::type>(pos)};
+    vector<u8> bytes{static_cast<usize::type>(file_size)};
     stream.seekg(0, std::ios::beg);
-    stream.read(reinterpret_cast<char*>(bytes.data()), pos); // NOLINT
+    stream.read(reinterpret_cast<char*>(bytes.data()), file_size); // NOLINT
 
     LOG_TRACE("read {} bytes from {}", bytes.size(), path.string());
     return bytes;
