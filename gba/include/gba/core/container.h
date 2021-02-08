@@ -148,7 +148,7 @@ public:
         new (storage_.ptr(size_++)) T(t); // NOLINT
     }
 
-    constexpr void push_back(const T&& t) noexcept
+    constexpr void push_back(T&& t) noexcept
     {
         ASSERT(size_ < Capacity);
         new (storage_.ptr(size_++)) T(std::move(t)); // NOLINT
@@ -185,9 +185,11 @@ public:
 private:
     void destroy_range(T* b, T* e)
     {
-        while(b != e) {
-            b->~T();
-            ++b; // NOLINT
+        if constexpr(!std::is_trivially_destructible_v<T>) {
+            while(b != e) {
+                b->~T();
+                ++b; // NOLINT
+            }
         }
     }
 };
