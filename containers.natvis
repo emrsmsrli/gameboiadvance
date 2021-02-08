@@ -7,6 +7,16 @@
         <DisplayString>{data_}</DisplayString>
         <Expand><ExpandedItem>data_</ExpandedItem></Expand>
     </Type>
+    <Type Name="gba::static_vector&lt;*&gt;">
+        <DisplayString>{storage_} size={size_}</DisplayString>
+        <Expand>
+        <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
+            <ArrayItems>
+              <Size>size_.value_</Size>
+              <ValuePointer>($T1*)this</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
     <Type Name="gba::array&lt;*&gt;">
         <DisplayString>{_data}</DisplayString>
         <Expand><ExpandedItem>_data</ExpandedItem></Expand>
