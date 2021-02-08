@@ -124,6 +124,7 @@ void gamepak::detect_backup_type() noexcept
         if(pak_str.find(name) != std::string_view::npos) {
             backup_type_ = type;
             backup_ = make_backup_from_type(backup_type_, path_);
+            break;
         }
     }
 
