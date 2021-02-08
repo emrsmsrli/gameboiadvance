@@ -119,7 +119,7 @@ public:
         } else if(size == 128_kb) {
             device_id_ = {0xC2_u8, 0x09_u8};
         } else {
-            LOG_ERROR("incorrect flash size");
+            LOG_ERROR(backup::flash, "incorrect flash size");
         }
     }
 

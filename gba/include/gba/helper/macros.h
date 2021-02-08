@@ -10,15 +10,15 @@
 
 #include <spdlog/spdlog.h>
 
-#define LOG_CRITICAL(...) SPDLOG_CRITICAL(__VA_ARGS__) /*NOLINT*/
-#define LOG_ERROR(...) SPDLOG_ERROR(__VA_ARGS__) /*NOLINT*/
-#define LOG_WARN(...) SPDLOG_WARN(__VA_ARGS__) /*NOLINT*/
-#define LOG_INFO(...) SPDLOG_INFO(__VA_ARGS__) /*NOLINT*/
-#define LOG_DEBUG(...) SPDLOG_DEBUG(__VA_ARGS__) /*NOLINT*/
-#define LOG_TRACE(...) SPDLOG_TRACE(__VA_ARGS__) /*NOLINT*/
+#define LOG_CRITICAL(category, ...) SPDLOG_CRITICAL("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define LOG_ERROR(category, ...) SPDLOG_ERROR("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define LOG_WARN(category, ...) SPDLOG_WARN("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define LOG_INFO(category, ...) SPDLOG_INFO("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define LOG_DEBUG(category, ...) SPDLOG_DEBUG("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define LOG_TRACE(category, ...) SPDLOG_TRACE("[" #category "] " __VA_ARGS__) /*NOLINT*/
 
 #if DEBUG
-  #define ASSERT(x) do { if(!(x)) { LOG_ERROR("assertion failure: " # x); std::terminate(); } } while(0)
+  #define ASSERT(x) do { if(!(x)) { LOG_ERROR(assert, "assertion failure: " # x); std::terminate(); } } while(0)
 #else
   #define ASSERT(x)
 #endif
@@ -27,7 +27,7 @@
   #define FORCEINLINE __forceinline
   #define UNREACHABLE()                                                         \
     do {                                                                        \
-        LOG_CRITICAL("unreachable code hit");                                   \
+        LOG_CRITICAL(assert, "unreachable code hit");                           \
         __assume(0);                                                            \
     } while(0)
   #define LIKELY(x) (x)
@@ -37,7 +37,7 @@
   #define FORCEINLINE inline __attribute__ ((__always_inline__))
   #define UNREACHABLE()                                                         \
     do {                                                                        \
-        LOG_CRITICAL("unreachable code hit");                                   \
+        LOG_CRITICAL(assert, "unreachable code hit");                           \
         __builtin_unreachable();                                                \
     } while(0)
   #define LIKELY(x) __builtin_expect(!!(x),1)
@@ -46,7 +46,7 @@
   #define FORCEINLINE inline
   #define UNREACHABLE()                                                         \
     do {                                                                        \
-        LOG_CRITICAL("unreachable code hit");                                   \
+        LOG_CRITICAL(assert, "unreachable code hit");                           \
         std::terminate();                                                       \
     } while(0)
   #define LIKELY(x) (x)

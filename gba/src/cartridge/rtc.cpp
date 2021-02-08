@@ -177,7 +177,7 @@ void rtc::process_byte() noexcept
         if((bit_buffer_ & 0xF_u8) == 0b0110_u8) {
             current_cmd_ = rtc_command{bit_buffer_};
             remaining_bytes_ = parameter_bytes[static_cast<u8::type>(current_cmd_.cmd_type)];
-            LOG_TRACE("RTC cmd: {}", to_string_view(current_cmd_.type));
+            LOG_TRACE(rtc, "RTC cmd: {}", to_string_view(current_cmd_.type));
 
             switch(current_cmd_.cmd_type) {
                 case rtc_command::type::reset:
@@ -196,7 +196,7 @@ void rtc::process_byte() noexcept
                     break;
             }
         } else {
-            LOG_WARN("invalid RTC cmd: {:02X}", bit_buffer_);
+            LOG_WARN(rtc, "invalid RTC cmd: {:02X}", bit_buffer_);
         }
     } else {
         switch(current_cmd_.cmd_type) {
@@ -223,7 +223,7 @@ void rtc::process_byte() noexcept
 u8 rtc::get_output_byte() noexcept
 {
     if (current_cmd_.cmd_type == rtc_command::type::none) {
-        LOG_ERROR("reading RTC without cmd");
+        LOG_ERROR(rtc, "reading RTC without cmd");
         return 0_u8;
     }
 

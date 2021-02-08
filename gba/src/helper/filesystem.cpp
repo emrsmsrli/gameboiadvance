@@ -15,7 +15,7 @@ vector<u8> read_file(const path& path)
 {
     std::ifstream stream{path, std::ios::binary | std::ios::ate};
     if(!stream.is_open()) {
-        LOG_CRITICAL("input file stream could not be opened: {}", path.string());
+        LOG_CRITICAL(fs, "input file stream could not be opened: {}", path.string());
         std::terminate();
     }
 
@@ -25,7 +25,7 @@ vector<u8> read_file(const path& path)
     stream.seekg(0, std::ios::beg);
     stream.read(reinterpret_cast<char*>(bytes.data()), file_size); // NOLINT
 
-    LOG_TRACE("read {} bytes from {}", bytes.size(), path.string());
+    LOG_TRACE(fs, "read {} bytes from {}", bytes.size(), path.string());
     return bytes;
 }
 
@@ -33,12 +33,12 @@ void write_file(const path& path, const vector<u8>& data)
 {
     std::ofstream stream{path, std::ios::binary};
     if(!stream.is_open()) {
-        LOG_CRITICAL("output file stream could not be opened: {}", path.string());
+        LOG_CRITICAL(fs, "output file stream could not be opened: {}", path.string());
         std::terminate();
     }
 
     stream.write(reinterpret_cast<const char*>(data.data()), data.size().get()); // NOLINT
-    LOG_TRACE("wrote {} bytes to {}", data.size(), path.string());
+    LOG_TRACE(fs, "wrote {} bytes to {}", data.size(), path.string());
 }
 
 } // namespace gba::fs

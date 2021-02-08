@@ -77,7 +77,7 @@ window::window(gba* g) noexcept
     ImGui::SFML::Init(window_);
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
-    LOG_TRACE("OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
+    LOG_TRACE(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
 
     // todo register to gba events
 }

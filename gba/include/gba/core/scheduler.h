@@ -80,7 +80,7 @@ public:
                 std::pop_heap(heap_.begin(), heap_.end(), predicate{});
                 heap_.pop_back();
 
-                LOG_TRACE("executing event with handle {}", handle);
+                LOG_TRACE(scheduler, "executing event with handle {}", handle);
 
                 // call with how much cycles the event has been late
                 callback(now_ - timestamp);

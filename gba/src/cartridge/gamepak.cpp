@@ -69,26 +69,26 @@ void gamepak::load(const fs::path& path)
     }
     calculated_checksum -= 0x19_u8;
 
-    LOG_INFO("------ gamepak ------");
-    LOG_INFO("path: {}", path_.string());
-    LOG_INFO("title: {}", game_title_);
-    LOG_INFO("game code: AGB-{}", game_code_);
-    LOG_INFO("maker code: {}", maker_code_);
-    LOG_INFO("main unit code: {}", main_unit_code_);
-    LOG_INFO("software version: {}", software_version_);
+    LOG_TRACE(gamepak, "------ gamepak ------");
+    LOG_TRACE(gamepak, "path: {}", path_.string());
+    LOG_TRACE(gamepak, "title: {}", game_title_);
+    LOG_TRACE(gamepak, "game code: AGB-{}", game_code_);
+    LOG_TRACE(gamepak, "maker code: {}", maker_code_);
+    LOG_TRACE(gamepak, "main unit code: {}", main_unit_code_);
+    LOG_TRACE(gamepak, "software version: {}", software_version_);
 
     if(calculated_checksum != checksum_) {
-        LOG_WARN("checksum: {:02X} - mismatch, found: {:02X}", calculated_checksum, checksum_);
+        LOG_WARN(gamepak, "checksum: {:02X} - mismatch, found: {:02X}", calculated_checksum, checksum_);
     } else {
-        LOG_INFO("checksum: {:02X}", calculated_checksum);
+        LOG_TRACE(gamepak, "checksum: {:02X}", calculated_checksum);
     }
 
     detect_backup_type();
 
-    LOG_INFO("rtc: {}", has_rtc_);
-    LOG_INFO("address mirroring: {}", has_mirroring_);
+    LOG_TRACE(gamepak, "rtc: {}", has_rtc_);
+    LOG_TRACE(gamepak, "address mirroring: {}", has_mirroring_);
 
-    LOG_INFO("---------------------");
+    LOG_TRACE(gamepak, "---------------------");
 
     on_load_(path);
 }
@@ -105,7 +105,7 @@ void gamepak::detect_backup_type() noexcept
         // todo init rtc
 
         backup_ = make_backup_from_type(backup_type_, path_);
-        LOG_INFO("backup: {} (database entry)", to_string_view(backup_type_));
+        LOG_TRACE(gamepak, "backup: {} (database entry)", to_string_view(backup_type_));
         return;
     }
 
@@ -131,9 +131,9 @@ void gamepak::detect_backup_type() noexcept
     if(backup_type_ == backup::type::detect) {
         backup_type_ = backup::type::sram;
         backup_ = std::make_unique<backup_sram>(path_);
-        LOG_WARN("backup: {} (fallback)", to_string_view(backup_type_));
+        LOG_WARN(gamepak, "backup: {} (fallback)", to_string_view(backup_type_));
     } else {
-        LOG_INFO("backup: {}", to_string_view(backup_type_));
+        LOG_INFO(gamepak, "backup: {}", to_string_view(backup_type_));
     }
 }
 
