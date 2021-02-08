@@ -22,13 +22,19 @@ class event {
 public:
     event() = default;
 
-    void add_delegate(delegate<void(Args...)> d) { delegates.push_back(d); }
-    void clear_delegates() noexcept { delegates.clear(); }
+    void add_delegate(delegate<void(Args...)> d)
+    {
+        if(std::find(delegates.begin(), delegates.end().d) == delegates.end()) {
+            delegates.push_back(d);
+        }
+    }
 
     void remove_delegate(delegate<void(Args...)> d) noexcept
     {
         delegates.erase(std::remove(delegates.begin(), delegates.end(), d), delegates.end());
     }
+
+    void clear_delegates() noexcept { delegates.clear(); }
 
     template<typename... TArgs>
     void operator()(TArgs&&... args) const
