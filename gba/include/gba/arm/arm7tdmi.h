@@ -168,6 +168,8 @@ class arm7tdmi {
     vector<u8> wait_32{256_usize * 2_usize}; // cycle counts for 32bit r/w, nonseq and seq access
 
 public:
+    static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
+
     explicit arm7tdmi(gba* gba) : arm7tdmi(gba, {}) {}
     arm7tdmi(gba* gba, vector<u8> bios)
       : gba_{gba},
