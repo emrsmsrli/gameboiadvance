@@ -43,6 +43,7 @@ int main(int argc, char** argv) {
 #if SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
     spdlog::set_default_logger(spdlog::stdout_color_st("  core  "));
     spdlog::set_pattern("[%H:%M:%S:%e] [%s:%#] [%^%L%$] %v");
+    spdlog::set_level(spdlog::level::trace);
 #endif
 
     gba::vector<gba::u8> bios;
