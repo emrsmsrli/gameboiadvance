@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include <gba/core/scheduler.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
 #include <gba/helper/lookup_table.h>
@@ -116,6 +117,12 @@ struct waitstate_control {
     bool prefetch_buffer_enable;
 };
 
+enum halt_control {
+    halted,
+    stopped,
+    running,
+};
+
 enum class instruction_mode { arm, thumb };
 enum class mem_access { non_seq, seq };
 
@@ -126,7 +133,7 @@ struct pipeline {
 };
 
 class arm7tdmi {
-   gba* gba_;
+    gba* gba_;
 
     vector<u8> bios_{16_kb};
     vector<u8> wram_{256_kb};
@@ -157,6 +164,8 @@ class arm7tdmi {
     banked_mode_regs irq_;
     banked_mode_regs und_;
 
+    halt_control haltcnt_{halt_control::running};
+    scheduler::event::handle interrupt_delay_handle_;
     u16 ie_;
     u16 if_;
     bool ime_ = false;
@@ -232,7 +241,11 @@ private:
 
     void update_waitstate_table() noexcept;
 
-    void tick_internal() noexcept { /*todo used in internal cycles*/ }
+    [[nodiscard]] bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
+    void process_interrupts(bool has_interrupt) noexcept;
+    void process_interrupts_delayed(u64 /*cycles_late*/) noexcept;
+    void tick_internal() noexcept;
+    void tick_components(u64 cycles) noexcept;
 
     // ARM instructions
     void data_processing_imm_shifted_reg(u32 instr) noexcept;

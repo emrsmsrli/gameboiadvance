@@ -6,34 +6,94 @@
  */
 
 #include <gba/arm/arm7tdmi.h>
+#include <gba/gba.h>
 
 namespace gba::arm {
 
 void arm7tdmi::tick() noexcept
 {
-    u32& pc = r(15_u8);
-    const u32 instruction = pipeline_.executing;
-    pipeline_.executing = pipeline_.decoding;
+    const bool has_interrupt = interrupt_available();
+    if(UNLIKELY(haltcnt_ == halt_control::halted && has_interrupt)) {
+        haltcnt_ = halt_control::running;
+    }
+
+    if(LIKELY(haltcnt_ == halt_control::running)) {
+        process_interrupts(has_interrupt);
+
+        u32& pc = r(15_u8);
+        const u32 instruction = pipeline_.executing;
+        pipeline_.executing = pipeline_.decoding;
+
+        if(cpsr().t) {
+            pc = bit::clear(pc, 0_u8); // halfword align
+            pipeline_.decoding = read_16(pc, pipeline_.fetch_type);
+            auto func = thumb_table_[instruction >> 6_u32];
+            ASSERT(func.is_valid());
+            func(this, narrow<u16>(instruction));
+        } else {
+            pc = mask::clear(pc, 0b11_u32); // word align
+            pipeline_.decoding = read_32(pc, pipeline_.fetch_type);
+
+            if(condition_met(instruction >> 28_u32)) {
+                auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
+                ASSERT(func.is_valid());
+                func(this, instruction);
+            } else {
+                pipeline_.fetch_type = mem_access::seq;
+                pc += 4_u32;
+            }
+        }
+     } else {
+        tick_components(gba_->schdlr.remaining_cycles_to_next_event());
+    }
+}
+
+void arm7tdmi::process_interrupts(const bool has_interrupt) noexcept
+{
+    if(ime_ && has_interrupt) {
+        if(!gba_->schdlr.has_event(interrupt_delay_handle_)) {
+            gba_->schdlr.add_event(3_u64, {
+              connect_arg<&arm7tdmi::process_interrupts_delayed>,
+              this
+            });
+        }
+    } else {
+        gba_->schdlr.remove_event(interrupt_delay_handle_);
+    }
+}
+
+void arm7tdmi::process_interrupts_delayed(const u64 /*cycles_late*/) noexcept
+{
+    if(cpsr().i) {
+        return;
+    }
+
+    irq_.spsr = cpsr();
+    cpsr().mode = privilege_mode::irq;
+    cpsr().i = true;
 
     if(cpsr().t) {
-        pc = bit::clear(pc, 0_u8); // halfword align
-        pipeline_.decoding = read_16(pc, pipeline_.fetch_type);
-        auto func = thumb_table_[instruction >> 6_u32];
-        ASSERT(func.is_valid());
-        func(this, narrow<u16>(instruction));
+        cpsr().t = false;
+        r14_ = r15_ - 2_u32; // fixme 2 necessary?
     } else {
-        pc = mask::clear(pc, 0b11_u32); // word align
-        pipeline_.decoding = read_32(pc, pipeline_.fetch_type);
-
-        if(condition_met(instruction >> 28_u32)) {
-            auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
-            ASSERT(func.is_valid());
-            func(this, instruction);
-        } else {
-            pipeline_.fetch_type = mem_access::seq;
-            pc += 4_u32;
-        }
+        r14_ = r15_ - 4_u32;
     }
+
+    r15_ = 0x0000'0018_u32;
+    pipeline_flush<instruction_mode::arm>();
+}
+
+void arm7tdmi::tick_internal() noexcept
+{
+    tick_components(1_u64);
+}
+
+void arm7tdmi::tick_components(u64 cycles) noexcept
+{
+    // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
+    // todo do dma
+
+    gba_->schdlr.add_cycles(cycles);
 }
 
 u32& arm7tdmi::r(const u8 index) noexcept

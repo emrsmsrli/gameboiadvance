@@ -23,11 +23,16 @@ struct gba {
     ppu::engine ppu;
     keypad::keypad keypad;
 
-    gba(vector<u8> bios) : pak{}, arm(this, std::move(bios)) {}
+    gba() : gba(vector<u8>{}) { LOG_ERROR(core, "no BIOS file provided"); }
+    gba(vector<u8> bios)
+      : pak{},
+        arm(this, std::move(bios)),
+        ppu(&schdlr) {}
 
     void tick(u64 cycles = 1_u8) noexcept
     {
-        for(u64 i = 0_u64; i < cycles; ++i) {
+        const u64 until = schdlr.now() + cycles;
+        while (schdlr.now() < until) {
             arm.tick();
         }
     }

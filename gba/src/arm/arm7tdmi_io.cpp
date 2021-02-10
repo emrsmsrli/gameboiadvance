@@ -86,8 +86,7 @@ u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
 u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_32, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_32, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = mask::clear(addr, 0b11_u32);
@@ -138,8 +137,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_32, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_32, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = mask::clear(addr, 0b11_u32);
@@ -206,8 +204,7 @@ u32 arm7tdmi::read_16_aligned(const u32 addr, const mem_access access) noexcept
 u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_16, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_16, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = bit::clear(addr, 0_u8);
@@ -260,8 +257,7 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_16, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_16, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
         addr = bit::clear(addr, 0_u8);
@@ -329,8 +325,7 @@ u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
 u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_16, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_16, page, access));
 
     switch(page) {
         case memory_page::bios:
@@ -371,8 +366,7 @@ u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcept
 {
     const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
-    const u32 wait = get_wait_cycles(wait_16, page, access);
-    gba_->schdlr.add_cycles(wait);
+    tick_components(get_wait_cycles(wait_16, page, access));
 
     switch(page) {
         case memory_page::ewram:
@@ -532,6 +526,9 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             waitcnt_.phi = (data >> 3_u8) & 0b11_u8;
             waitcnt_.prefetch_buffer_enable = bit::test(data, 6_u8);
             update_waitstate_table();
+            break;
+        case addr_haltcnt:
+            haltcnt_ = static_cast<halt_control>(bit::extract(data, 0_u8).get());
             break;
     }
 }
