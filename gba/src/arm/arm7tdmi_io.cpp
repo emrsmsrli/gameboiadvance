@@ -64,9 +64,14 @@ FORCEINLINE constexpr bool is_eeprom(const cartridge::backup::type type, const u
       && addr >= 0x0DFF'FF00_u32;
 }
 
-FORCEINLINE u8& get_wait_cycles(vector<u8>& table, const memory_page page, const mem_access access) noexcept
+FORCEINLINE u8& get_wait_cycles(array<u8, 32>& table, const memory_page page, const mem_access access) noexcept
 {
-    return table[static_cast<u32::type>(page) + static_cast<u32::type>(access) * 0xFF_u32];
+    if(UNLIKELY(page > memory_page::pak_sram_2)) {
+        static u8 unused_area = 1_u8;
+        return unused_area;
+    }
+
+    return table[static_cast<u32::type>(page) + static_cast<u32::type>(access) * 16_u32];
 }
 
 } // namespace

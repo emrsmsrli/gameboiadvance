@@ -164,8 +164,14 @@ class arm7tdmi {
     pipeline pipeline_;
 
     waitstate_control waitcnt_;
-    vector<u8> wait_16{256_usize * 2_usize}; // cycle counts for 16bit r/w, nonseq and seq access
-    vector<u8> wait_32{256_usize * 2_usize}; // cycle counts for 32bit r/w, nonseq and seq access
+    array<u8, 32> wait_16{ // cycle counts for 16bit r/w, nonseq and seq access
+      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
+      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
+    };
+    array<u8, 32> wait_32{ // cycle counts for 32bit r/w, nonseq and seq access
+      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
+      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
+    };
 
 public:
     static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
@@ -194,8 +200,6 @@ public:
             ASSERT(bios.size() == 16_kb);
         }
 
-        std::fill(wait_16.begin(), wait_16.end(), 1_u8);
-        std::fill(wait_32.begin(), wait_32.end(), 1_u8);
         update_waitstate_table();
     }
 
