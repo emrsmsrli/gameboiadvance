@@ -113,15 +113,15 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
             addr &= 0x01FF'FFFF_u32;
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
             // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
-                return widen<u32>(gba_->pak.rtc().read(addr + 2_u32)) << 16_u32
-                  | gba_->pak.rtc().read(addr);
+            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
+                return widen<u32>(gba_->pak.rtc_.read(addr + 2_u32)) << 16_u32
+                  | gba_->pak.rtc_.read(addr);
             }
-            return memcpy<u32>(gba_->pak.pak_data(), addr);
+            return memcpy<u32>(gba_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->read(addr) * 0x0101'0101_u32;
+                return gba_->pak.backup_->read(addr) * 0x0101'0101_u32;
             }
             return 0xFFFF'FFFF_u32;
         default:
@@ -163,16 +163,15 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
             addr &= 0x01FF'FFFF_u32;
-            if(is_gpio(addr)) {
-                ASSERT(gba_->pak.has_rtc());
-                gba_->pak.rtc().write(addr, narrow<u8>(data));
-                gba_->pak.rtc().write(addr + 2_u32, narrow<u8>(data >> 16_u32));
+            if(gba_->pak.has_rtc_ && is_gpio(addr)) {
+                gba_->pak.rtc_.write(addr, narrow<u8>(data));
+                gba_->pak.rtc_.write(addr + 2_u32, narrow<u8>(data >> 16_u32));
             }
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
+                return gba_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
             }
             break;
         default:
@@ -223,7 +222,7 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return memcpy<u16>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws2_upper:
             if(is_eeprom(gba_->pak.backup_type(), addr)) {
-                return gba_->pak.backup()->read(addr);
+                return gba_->pak.backup_->read(addr);
             }
             [[fallthrough]];
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
@@ -232,16 +231,16 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             // todo address &= memory.rom.mask;
             addr &= 0x01FF'FFFF_u32;
-            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
-                return gba_->pak.rtc().read(addr);
+            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
+                return gba_->pak.rtc_.read(addr);
             }
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
             // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            return memcpy<u16>(gba_->pak.pak_data(), addr);
+            return memcpy<u16>(gba_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->read(addr) * 0x0101_u16;
+                return gba_->pak.backup_->read(addr) * 0x0101_u16;
             }
             return 0xFFFF_u16;
         default:
@@ -282,28 +281,26 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
             addr &= 0x01FF'FFFF_u32;
-            if(is_gpio(addr)) {
-                ASSERT(gba_->pak.has_rtc());
-                gba_->pak.rtc().write(addr, narrow<u8>(data));
-                gba_->pak.rtc().write(addr + 1_u32, narrow<u8>(data >> 8_u16));
+            if(gba_->pak.has_rtc_ && is_gpio(addr)) {
+                gba_->pak.rtc_.write(addr, narrow<u8>(data));
+                gba_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));
             }
             break;
         case memory_page::pak_ws2_upper:
             if(is_eeprom(gba_->pak.backup_type(), addr)) {
                 // fixme eeprom is only written by dma
-                gba_->pak.backup()->write(addr, narrow<u8>(data));
+                gba_->pak.backup_->write(addr, narrow<u8>(data));
             } else { // fixme???????????????????
                 addr &= 0x01FF'FFFF_u32;
-                if(is_gpio(addr)) {
-                    ASSERT(gba_->pak.has_rtc());
-                    gba_->pak.rtc().write(addr, narrow<u8>(data));
+                if(gba_->pak.has_rtc_ && is_gpio(addr)) {
+                    gba_->pak.rtc_.write(addr, narrow<u8>(data));
                 }
             }
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
+                return gba_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
             }
             break;
         default:
@@ -343,14 +340,14 @@ u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= 0x01FF'FFFF_u32; // todo address &= memory.rom.mask;
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address, the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            if(is_gpio(addr) && gba_->pak.rtc().read_allowed()) {
-                return gba_->pak.rtc().read(addr);
+            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
+                return gba_->pak.rtc_.read(addr);
             }
-            return memcpy<u8>(gba_->pak.pak_data(), addr);
+            return memcpy<u8>(gba_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->read(addr) * 0x0101_u16;
+                return gba_->pak.backup_->read(addr) * 0x0101_u16;
             }
             return 0xFFFF_u16;
         default:
@@ -387,7 +384,7 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup()->write(addr, data);
+                return gba_->pak.backup_->write(addr, data);
             }
             break;
         default:
