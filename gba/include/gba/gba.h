@@ -37,7 +37,7 @@ struct gba {
         }
     }
 
-    void tick_one_frame() noexcept {}
+    void tick_one_frame() noexcept { tick(ppu::engine::cycles_per_frame); }
 
     void release_key(const keypad::keypad::key key) noexcept { keypad.release(key); }
     void press_key(const keypad::keypad::key key) noexcept {

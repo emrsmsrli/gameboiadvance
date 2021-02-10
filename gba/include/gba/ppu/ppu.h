@@ -9,17 +9,54 @@
 #define GAMEBOIADVANCE_PPU_H
 
 #include <gba/core/container.h>
+#include <gba/core/event/event.h>
+#include <gba/ppu/types.h>
 
-namespace gba::ppu {
+namespace gba {
+
+class scheduler;
+
+namespace arm {
+class arm7tdmi;
+} // namespace arm
+
+namespace ppu {
 
 class engine {
-    friend class arm::arm7tdmi;
+    friend arm::arm7tdmi;
+
+    scheduler* scheduler_;
 
     vector<u8> palette_ram_{1_kb};
     vector<u8> vram_{96_kb};
     vector<u8> oam_{1_kb};
 
+    dispcnt dispcnt_;
+    dispstat dispstat_;
+    u8 vcount_;  // current scanline
+
+    bg_regular bg0_{0_u32};
+    bg_regular bg1_{1_u32};
+    bg_affine bg2_{2_u32};
+    bg_affine bg3_{3_u32};
+
+    window win0_{0_u32};
+    window win1_{1_u32};
+    win_in win_in_;
+    win_out win_out_;
+
+    bool green_swap_ = false; // todo emulate
+    mosaic mosaic_;
+    bldcnt bldcnt_;
+    bldalpha bldalpha_;
+    u8 bldy_;
+
 public:
+    static constexpr auto screen_width = 240_u8;
+    static constexpr auto screen_height = 160_u8;
+
+    static constexpr auto cycles_per_frame = 280'896_u64;
+
     static constexpr auto addr_dispcnt = 0x0400'0000_u32;       //  2    R/W  DISPCNT   LCD Control
     static constexpr auto addr_greenswap = 0x0400'0002_u32;     //  2    R/W  -         Undocumented - Green Swap
     static constexpr auto addr_dispstat = 0x0400'0004_u32;      //  2    R/W  DISPSTAT  General LCD Status (STAT,LYC)
@@ -59,9 +96,17 @@ public:
     static constexpr auto addr_bldalpha = 0x0400'0052_u32;      //  2    R/W  BLDALPHA  Alpha Blending Coefficients
     static constexpr auto addr_bldy = 0x0400'0054_u32;          //  2    W    BLDY      Brightness (Fade-In/Out) Coefficient
 
-    engine() = default;
+    event<const array<color, screen_width>&> on_scanline;
+
+    engine(scheduler* scheduler) noexcept;
+
+private:
+    void on_hblank(u64 cycles_late);
+    void on_hdraw(u64 cycles_late);
 };
 
-} // namespace gba::ppu
+} // namespace ppu
+
+} // namespace gba
 
 #endif //GAMEBOIADVANCE_PPU_H
