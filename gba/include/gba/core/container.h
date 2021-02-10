@@ -183,7 +183,7 @@ public:
     constexpr auto cend() const noexcept { return ptr(size_); }
 
 private:
-    void destroy_range(T* b, T* e)
+    void destroy_range([[maybe_unused]] T* b, [[maybe_unused]] T* e)
     {
         if constexpr(!std::is_trivially_destructible_v<T>) {
             while(b != e) {

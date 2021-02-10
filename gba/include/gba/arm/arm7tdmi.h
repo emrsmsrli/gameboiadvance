@@ -13,14 +13,11 @@
 #include <gba/core/scheduler.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
+#include <gba/core/fwd.h>
 #include <gba/helper/lookup_table.h>
 #include <gba/helper/function_ptr.h>
 
-namespace gba {
-
-struct gba;
-
-namespace arm {
+namespace gba::arm {
 
 enum class interrupt_source : u16::type {
     vblank = 1 << 0,
@@ -397,8 +394,6 @@ private:
     };
 };
 
-} // namespace arm
-
-} // namespace gba
+} // namespace gba::arm
 
 #endif //GAMEBOIADVANCE_ARM7TDMI_H

@@ -13,15 +13,14 @@
 
 #include <gba/cartridge/backup.h>
 #include <gba/cartridge/rtc.h>
+#include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
 #include <gba/helper/filesystem.h>
 
 namespace gba::cartridge {
 
-struct gba;
-
 class gamepak {
-    event<const fs::path&> on_load_;
+    friend arm::arm7tdmi;
 
     fs::path path_;
     vector<u8> pak_data_;
@@ -43,9 +42,10 @@ class gamepak {
     bool has_mirroring_ = false;
 
 public:
+    event<const fs::path&> on_load;
+
     void load(const fs::path& path);
 
-    [[nodiscard]] event<const fs::path&>& on_load() noexcept { return on_load_; }
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }
     [[nodiscard]] bool has_rtc() const noexcept { return has_rtc_; }
     [[nodiscard]] backup::type backup_type() const noexcept { return backup_type_; }

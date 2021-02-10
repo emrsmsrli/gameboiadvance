@@ -34,9 +34,6 @@ struct keypad {
         left_shoulder = 9_u8,
     };
 
-    static inline constexpr auto addr_state = 0x0400'0130_u32;
-    static inline constexpr auto addr_control = 0x0400'0132_u32;
-
     u16 keyinput_ = 0x03FF_u16;
     irq_control keycnt_;
 

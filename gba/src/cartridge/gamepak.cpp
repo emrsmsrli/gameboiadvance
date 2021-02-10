@@ -90,7 +90,7 @@ void gamepak::load(const fs::path& path)
 
     LOG_TRACE(gamepak, "---------------------");
 
-    on_load_(path);
+    on_load(path);
 }
 
 void gamepak::detect_backup_type() noexcept

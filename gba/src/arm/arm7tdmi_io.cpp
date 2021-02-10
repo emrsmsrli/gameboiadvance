@@ -6,7 +6,9 @@
  */
 
 #include <gba/arm/arm7tdmi.h>
+
 #include <gba/gba.h>
+#include <gba/arm/mmio_addr.h>
 
 namespace gba::arm {
 
@@ -29,13 +31,6 @@ enum class memory_page {
     pak_sram_1 = 0x0E,
     pak_sram_2 = 0x0F,
 };
-
-constexpr auto addr_ie = 0x400'0200_u32;            //  2    R/W  IE        Interrupt Enable Register
-constexpr auto addr_if = 0x400'0202_u32;            //  2    R/W  IF        Interrupt Request Flags / IRQ Acknowledge
-constexpr auto addr_waitcnt = 0x400'0204_u32;       //  2    R/W  WAITCNT   Game Pak Waitstate Control
-constexpr auto addr_ime = 0x400'0208_u32;           //  2    R/W  IME       Interrupt Master Enable Register
-constexpr auto addr_postboot = 0x400'0300_u32;      //  1    R/W  POSTFLG   Undocumented - Post Boot Flag
-constexpr auto addr_haltcnt = 0x400'0301_u32;       //  1    W    HALTCNT   Undocumented - Power Down Control
 
 constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
 constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
@@ -459,10 +454,10 @@ u32 arm7tdmi::read_unused(const u32 addr) noexcept
 u32 arm7tdmi::read_io(const u32 addr) noexcept
 {
     switch(addr.get()) {
-        case keypad::keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
-        case keypad::keypad::addr_state + 1: return narrow<u8>(gba_->keypad.keyinput_ >> 8_u16);
-        case keypad::keypad::addr_control: return narrow<u8>(gba_->keypad.keycnt_.select);
-        case keypad::keypad::addr_control + 1:
+        case keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
+        case keypad::addr_state + 1: return narrow<u8>(gba_->keypad.keyinput_ >> 8_u16);
+        case keypad::addr_control: return narrow<u8>(gba_->keypad.keycnt_.select);
+        case keypad::addr_control + 1:
             return narrow<u8>(widen<u32>(gba_->keypad.keycnt_.select) >> 8_u32 & 0b11_u32
               | bit::from_bool(gba_->keypad.keycnt_.enabled) << 6_u32
               | static_cast<u32::type>(gba_->keypad.keycnt_.cond_strategy) << 7_u32);
@@ -480,13 +475,13 @@ u32 arm7tdmi::read_io(const u32 addr) noexcept
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 {
     switch(addr.get()) {
-        case keypad::keypad::addr_control:
+        case keypad::addr_control:
             gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0xFF00_u16) | data;
             if(gba_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
             break;
-        case keypad::keypad::addr_control + 1:
+        case keypad::addr_control + 1:
             gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0x00FF_u16)
               | (widen<u16>(data & 0b11_u8) << 8_u16);
             gba_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
