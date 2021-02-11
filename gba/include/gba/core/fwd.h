@@ -13,9 +13,29 @@ namespace gba {
 struct gba;
 class scheduler;
 
+namespace cartridge {
+
+class gamepak;
+
+} // namespace cartridge
+
 namespace arm {
+
 class arm7tdmi;
+
 } // namespace arm
+
+namespace ppu {
+
+class engine;
+
+} // namespace ppu
+
+namespace apu {
+
+class engine;
+
+} // namespace apu
 
 } // namespace gba
 
