@@ -32,7 +32,8 @@ window::window(gba* g) noexcept
     window_event_{},
     gba_{g},
     gamepak_debugger_{&g->pak},
-    arm_debugger_{&g->arm}
+    arm_debugger_{&g->arm},
+    ppu_debugger_{&g->ppu}
 {
     using namespace std::string_view_literals;
     disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(g->pak), 0x0800'0000_u32});
@@ -88,6 +89,38 @@ bool window::draw() noexcept
     while(window_.pollEvent(window_event_)) {
         if(window_event_.type == sf::Event::Closed) { return false; }
         ImGui::SFML::ProcessEvent(window_event_);
+
+        if(window_event_.type == sf::Event::KeyPressed) {
+            switch(window_event_.key.code) {
+                case sf::Keyboard::W: gba_->press_key(keypad::keypad::key::up); break;
+                case sf::Keyboard::A: gba_->press_key(keypad::keypad::key::left); break;
+                case sf::Keyboard::S: gba_->press_key(keypad::keypad::key::down); break;
+                case sf::Keyboard::D: gba_->press_key(keypad::keypad::key::right); break;
+                case sf::Keyboard::K: gba_->press_key(keypad::keypad::key::b); break;
+                case sf::Keyboard::O: gba_->press_key(keypad::keypad::key::a); break;
+                case sf::Keyboard::B: gba_->press_key(keypad::keypad::key::select); break;
+                case sf::Keyboard::N: gba_->press_key(keypad::keypad::key::start); break;
+                case sf::Keyboard::T: gba_->press_key(keypad::keypad::key::left_shoulder); break;
+                case sf::Keyboard::U: gba_->press_key(keypad::keypad::key::right_shoulder); break;
+                default:
+                    break;
+            }
+        } else if(window_event_.type == sf::Event::KeyReleased) {
+            switch(window_event_.key.code) {
+                case sf::Keyboard::W: gba_->release_key(keypad::keypad::key::up); break;
+                case sf::Keyboard::A: gba_->release_key(keypad::keypad::key::left); break;
+                case sf::Keyboard::S: gba_->release_key(keypad::keypad::key::down); break;
+                case sf::Keyboard::D: gba_->release_key(keypad::keypad::key::right); break;
+                case sf::Keyboard::K: gba_->release_key(keypad::keypad::key::b); break;
+                case sf::Keyboard::O: gba_->release_key(keypad::keypad::key::a); break;
+                case sf::Keyboard::B: gba_->release_key(keypad::keypad::key::select); break;
+                case sf::Keyboard::N: gba_->release_key(keypad::keypad::key::start); break;
+                case sf::Keyboard::T: gba_->release_key(keypad::keypad::key::left_shoulder); break;
+                case sf::Keyboard::U: gba_->release_key(keypad::keypad::key::right_shoulder); break;
+                default:
+                    break;
+            }
+        }
     }
 
     if(!window_.hasFocus()) {
@@ -103,6 +136,7 @@ bool window::draw() noexcept
     memory_view_.draw();
     gamepak_debugger_.draw();
     arm_debugger_.draw();
+    ppu_debugger_.draw();
 
     window_.clear(sf::Color::Black);
     ImGui::SFML::Render();

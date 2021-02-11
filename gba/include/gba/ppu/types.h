@@ -19,6 +19,12 @@ struct color {
     u8 g;
     u8 b;
     u8 a;
+
+    [[nodiscard]] u32 to_u32() const noexcept
+    {
+        return widen<u32>(r) << 24_u32 | widen<u32>(g) << 16_u32
+             | widen<u32>(b) << 8_u32  | widen<u32>(a);
+    }
 };
 
 /*0-2   BG Mode                    (0-5=Video Mode 0-5, 6-7=Prohibited)

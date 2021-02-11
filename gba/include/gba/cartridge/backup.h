@@ -71,6 +71,10 @@ class backup_eeprom : public backup {
     mutable state state_{state::accepting_commands};
 
 public:
+#if WITH_DEBUGGER
+    using state_debugger = state;
+#endif
+
     explicit backup_eeprom(const fs::path& pak_path, const usize size)
       : backup(pak_path, size),
         bus_width_{size == 8_kb ? 14_u8 : 6_u8} {}
@@ -109,6 +113,12 @@ class backup_flash : public backup {
     cmd current_cmds_{cmd::none};
 
 public:
+#if WITH_DEBUGGER
+    using state_debugger = state;
+    using cmd_debugger = cmd;
+    using device_id_debugger = array<u8, 2>;
+#endif
+
     explicit backup_flash(const fs::path& pak_path, const usize size)
       : backup(pak_path, size)
     {

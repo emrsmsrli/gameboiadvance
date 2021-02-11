@@ -8,13 +8,9 @@
 #ifndef GAMEBOIADVANCE_GAMEPAK_DEBUGGER_H
 #define GAMEBOIADVANCE_GAMEPAK_DEBUGGER_H
 
-namespace gba {
+#include <gba/core/fwd.h>
 
-namespace cartridge {
-class gamepak;
-} // namespace cartridge
-
-namespace debugger {
+namespace gba::debugger {
 
 struct gamepak_debugger {
     cartridge::gamepak* pak = nullptr;
@@ -22,8 +18,6 @@ struct gamepak_debugger {
     void draw() const noexcept;
 };
 
-} // namespace debugger
-
-} // namespace gba
+} // namespace gba::debugger
 
 #endif //GAMEBOIADVANCE_GAMEPAK_DEBUGGER_H

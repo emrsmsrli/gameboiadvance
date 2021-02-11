@@ -50,7 +50,8 @@ public:
 
     static constexpr auto cycles_per_frame = 280'896_u64;
 
-    event<const array<color, screen_width>&> on_scanline;
+    event<u8, const array<color, screen_width>&> event_on_hblank;
+    event<> event_on_vblank;
 
     engine(scheduler* scheduler) noexcept;
 

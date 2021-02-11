@@ -15,6 +15,7 @@
 #include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
 #include <gba_debugger/arm_debugger.h>
+#include <gba_debugger/ppu_debugger.h>
 
 namespace gba {
 
@@ -32,6 +33,7 @@ class window {
     memory_view memory_view_;
     gamepak_debugger gamepak_debugger_;
     arm_debugger arm_debugger_;
+    ppu_debugger ppu_debugger_;
 
 public:
     explicit window(gba* g) noexcept;

@@ -51,6 +51,11 @@ class rtc {
     u8 control_ = 0x40_u8;
 
 public:
+#if WITH_DEBUGGER
+    using transfer_state_debugger = transfer_state;
+    using time_regs_debugger = array<u8, 7>;
+  #endif
+
     static inline constexpr auto port_data = 0xC4_u32;
     static inline constexpr auto port_direction = 0xC6_u32;
     static inline constexpr auto port_control = 0xC8_u32;
