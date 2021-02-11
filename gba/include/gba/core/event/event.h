@@ -24,7 +24,7 @@ public:
 
     void add_delegate(delegate<void(Args...)> d)
     {
-        if(std::find(delegates.begin(), delegates.end().d) == delegates.end()) {
+        if(std::find(delegates.begin(), delegates.end(), d) == delegates.end()) {
             delegates.push_back(d);
         }
     }
