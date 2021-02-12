@@ -84,9 +84,17 @@ void gamepak::load(const fs::path& path)
     }
 
     detect_backup_type();
+    if(has_mirroring_) {
+        mirror_mask_ = 0_u32;
+        while(mirror_mask_ < pak_data_.size()) {
+            mirror_mask_ <<= 1_u32;
+        }
+    } else {
+        mirror_mask_ = 0x01FF'FFFF_u32;
+    }
 
     LOG_TRACE(gamepak, "rtc: {}", has_rtc_);
-    LOG_TRACE(gamepak, "address mirroring: {}", has_mirroring_);
+    LOG_TRACE(gamepak, "address mirroring: {}, mask: {:08X}", has_mirroring_, mirror_mask_);
 
     LOG_TRACE(gamepak, "---------------------");
 

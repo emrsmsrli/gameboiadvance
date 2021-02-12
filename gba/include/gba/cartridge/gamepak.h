@@ -40,6 +40,7 @@ class gamepak {
     bool loaded_ = false;
     bool has_rtc_ = false;
     bool has_mirroring_ = false;
+    u32 mirror_mask_;
 
 public:
     event<const fs::path&> on_load;
