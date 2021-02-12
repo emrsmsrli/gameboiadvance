@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include <gba/arm/timer.h>
 #include <gba/core/scheduler.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
@@ -130,6 +131,8 @@ struct pipeline {
 };
 
 class arm7tdmi {
+    friend timer;
+
     gba* gba_;
 
     vector<u8> bios_{16_kb};
@@ -168,6 +171,8 @@ class arm7tdmi {
     u16 if_;
     bool ime_ = false;
 
+    array<timer, 4> timers_;
+
     pipeline pipeline_;
 
     waitstate_control waitcnt_;
@@ -183,32 +188,8 @@ class arm7tdmi {
 public:
     static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
 
-    explicit arm7tdmi(gba* gba) : arm7tdmi(gba, {}) {}
-    arm7tdmi(gba* gba, vector<u8> bios)
-      : gba_{gba},
-        bios_{std::move(bios)},
-        pipeline_{
-          mem_access::non_seq,
-          0xF000'0000_u32,
-          0xF000'0000_u32
-        }
-    {
-        if(bios_.empty()) {
-            r0_ = 0x0000'0CA5_u32;
-            r13_ = 0x0300'7F00_u32;
-            r14_ = 0x0800'0000_u32;
-            r15_ = 0x0800'0000_u32;
-            irq_.r13 = 0x0300'7FA0_u32;
-            svc_.r13 = 0x0300'7FE0_u32;
-            irq_.spsr.mode = privilege_mode::usr;
-            svc_.spsr.mode = privilege_mode::usr;
-            cpsr().mode = privilege_mode::sys;
-        } else {
-            ASSERT(bios.size() == 16_kb);
-        }
-
-        update_waitstate_table();
-    }
+    explicit arm7tdmi(gba* gba) noexcept : arm7tdmi(gba, {}) {}
+    arm7tdmi(gba* gba, vector<u8> bios) noexcept;
 
     void tick() noexcept;
     void request_interrupt(const interrupt_source irq) noexcept { if_ |= static_cast<u16::type>(irq); }

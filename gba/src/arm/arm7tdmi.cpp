@@ -10,6 +10,38 @@
 
 namespace gba::arm {
 
+arm7tdmi::arm7tdmi(gba* gba, vector<u8> bios) noexcept
+  : gba_{gba},
+    bios_{std::move(bios)},
+    timers_{
+      timer{0_u32, this, &gba_->schdlr},
+      timer{1_u32, this, &gba_->schdlr},
+      timer{2_u32, this, &gba_->schdlr},
+      timer{3_u32, this, &gba_->schdlr}
+    },
+    pipeline_{
+      mem_access::non_seq,
+      0xF000'0000_u32,
+      0xF000'0000_u32
+    }
+{
+    if(bios_.empty()) {
+        r0_ = 0x0000'0CA5_u32;
+        r13_ = 0x0300'7F00_u32;
+        r14_ = 0x0800'0000_u32;
+        r15_ = 0x0800'0000_u32;
+        irq_.r13 = 0x0300'7FA0_u32;
+        svc_.r13 = 0x0300'7FE0_u32;
+        irq_.spsr.mode = privilege_mode::usr;
+        svc_.spsr.mode = privilege_mode::usr;
+        cpsr().mode = privilege_mode::sys;
+    } else {
+        ASSERT(bios_.size() == 16_kb);
+    }
+
+    update_waitstate_table();
+}
+
 void arm7tdmi::tick() noexcept
 {
     const bool has_interrupt = interrupt_available();

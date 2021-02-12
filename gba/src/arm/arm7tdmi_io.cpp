@@ -55,6 +55,8 @@ FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
 
 FORCEINLINE constexpr bool is_eeprom(const cartridge::backup::type type, const u32 addr) noexcept
 {
+    // todo return (~memory.rom.size & 0x0200 0000) || address >= 0x0DFF FF00;
+    // todo same as  (rom.size == 32_mb) || address >= 0x0DFF FF00;
     return (type == cartridge::backup::type::eeprom_64 || type == cartridge::backup::type::eeprom_4)
       && addr >= 0x0DFF'FF00_u32;
 }
@@ -459,6 +461,23 @@ u32 arm7tdmi::read_io(const u32 addr) noexcept
               | bit::from_bool(gba_->keypad.keycnt_.enabled) << 6_u32
               | static_cast<u32::type>(gba_->keypad.keycnt_.cond_strategy) << 7_u32);
 
+        case addr_tm0cnt_l:     return timers_[0_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm0cnt_l + 1: return timers_[0_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm0cnt_h:     return timers_[0_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm0cnt_h + 1: return 0_u32;
+        case addr_tm1cnt_l:     return timers_[1_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm1cnt_l + 1: return timers_[1_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm1cnt_h:     return timers_[1_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm1cnt_h + 1: return 0_u32;
+        case addr_tm2cnt_l:     return timers_[2_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm2cnt_l + 1: return timers_[2_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm2cnt_h:     return timers_[2_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm2cnt_h + 1: return 0_u32;
+        case addr_tm3cnt_l:     return timers_[3_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm3cnt_l + 1: return timers_[3_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm3cnt_h:     return timers_[3_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm3cnt_h + 1: return 0_u32;
+
         case addr_ime: return bit::from_bool<u8>(ime_);
         case addr_ie: return narrow<u8>(ie_);
         case addr_ie + 1: return narrow<u8>(ie_ >> 8_u8);
@@ -501,6 +520,20 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
                 request_interrupt(arm::interrupt_source::keypad);
             }
             break;
+
+        // cnt_h_msb is unused
+        case addr_tm0cnt_l:     timers_[0_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm0cnt_l + 1: timers_[0_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm0cnt_h:     timers_[0_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm1cnt_l:     timers_[1_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm1cnt_l + 1: timers_[1_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm1cnt_h:     timers_[1_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm2cnt_l:     timers_[2_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm2cnt_l + 1: timers_[2_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm2cnt_h:     timers_[2_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm3cnt_l:     timers_[3_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm3cnt_l + 1: timers_[3_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm3cnt_h:     timers_[3_usize].write(timer::register_type::cnt_h_lsb, data); break;
 
         case addr_ime:
             ime_ = bit::test(data, 0_u8);
