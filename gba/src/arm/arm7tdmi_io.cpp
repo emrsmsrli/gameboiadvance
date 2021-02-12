@@ -206,7 +206,7 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 
     switch(page) {
         case memory_page::bios:
-            return read_bios(addr);
+            return read_bios(addr) & 0xFFFF_u16;
         case memory_page::ewram:
             return memcpy<u16>(wram_, addr & 0x0003'FFFF_u32);
         case memory_page::iwram:
@@ -244,7 +244,7 @@ u32 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             }
             return 0xFFFF_u16;
         default:
-            return read_unused(addr);
+            return read_unused(addr) & 0xFFFF_u16;
     }
 }
 
@@ -321,7 +321,7 @@ u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 
     switch(page) {
         case memory_page::bios:
-            return read_bios(addr);
+            return read_bios(addr) & 0xFF_u8;
         case memory_page::ewram:
             return memcpy<u8>(wram_, addr & 0x0003'FFFF_u32);
         case memory_page::iwram:
@@ -351,7 +351,7 @@ u32 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
             }
             return 0xFFFF_u16;
         default:
-            return read_unused(addr);
+            return read_unused(addr) & 0xFF_u8;
     }
 }
 
