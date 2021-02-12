@@ -161,6 +161,7 @@ class arm7tdmi {
     banked_mode_regs irq_;
     banked_mode_regs und_;
 
+    u8 post_boot_;
     halt_control haltcnt_{halt_control::running};
     scheduler::event::handle interrupt_delay_handle_;
     u16 ie_;
