@@ -115,7 +115,7 @@ struct waitstate_control {
     bool prefetch_buffer_enable;
 };
 
-enum halt_control {
+enum class halt_control {
     halted,
     stopped,
     running,
