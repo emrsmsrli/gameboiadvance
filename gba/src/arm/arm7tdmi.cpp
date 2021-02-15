@@ -6,18 +6,18 @@
  */
 
 #include <gba/arm/arm7tdmi.h>
-#include <gba/gba.h>
+#include <gba/core.h>
 
 namespace gba::arm {
 
-arm7tdmi::arm7tdmi(gba* gba, vector<u8> bios) noexcept
-  : gba_{gba},
+arm7tdmi::arm7tdmi(core* core, vector<u8> bios) noexcept
+  : core_{core},
     bios_{std::move(bios)},
     timers_{
-      timer{0_u32, this, &gba_->schdlr},
-      timer{1_u32, this, &gba_->schdlr},
-      timer{2_u32, this, &gba_->schdlr},
-      timer{3_u32, this, &gba_->schdlr}
+      timer{0_u32, this, &core_->schdlr},
+      timer{1_u32, this, &core_->schdlr},
+      timer{2_u32, this, &core_->schdlr},
+      timer{3_u32, this, &core_->schdlr}
     },
     pipeline_{
       mem_access::non_seq,
@@ -76,21 +76,21 @@ void arm7tdmi::tick() noexcept
             }
         }
      } else {
-        tick_components(gba_->schdlr.remaining_cycles_to_next_event());
+        tick_components(core_->schdlr.remaining_cycles_to_next_event());
     }
 }
 
 void arm7tdmi::process_interrupts(const bool has_interrupt) noexcept
 {
     if(ime_ && has_interrupt) {
-        if(!gba_->schdlr.has_event(interrupt_delay_handle_)) {
-            gba_->schdlr.add_event(3_u64, {
+        if(!core_->schdlr.has_event(interrupt_delay_handle_)) {
+            core_->schdlr.add_event(3_u64, {
               connect_arg<&arm7tdmi::process_interrupts_delayed>,
               this
             });
         }
     } else {
-        gba_->schdlr.remove_event(interrupt_delay_handle_);
+        core_->schdlr.remove_event(interrupt_delay_handle_);
     }
 }
 
@@ -125,7 +125,7 @@ void arm7tdmi::tick_components(u64 cycles) noexcept
     // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
     // todo do dma
 
-    gba_->schdlr.add_cycles(cycles);
+    core_->schdlr.add_cycles(cycles);
 }
 
 u32& arm7tdmi::r(const u8 index) noexcept

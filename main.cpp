@@ -9,7 +9,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
-#include <gba/gba.h>
+#include <gba/core.h>
 #include <gba/version.h>
 #include <gba_debugger/debugger.h>
 
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
         bios = gba::fs::read_file(parsed["bios"].as<std::string>());
     }
 
-    gba::gba g{std::move(bios)};
+    gba::core g{std::move(bios)};
     g.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
 
     gba::debugger::window window(&g);

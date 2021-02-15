@@ -7,7 +7,7 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-#include <gba/gba.h>
+#include <gba/core.h>
 #include <gba/arm/mmio_addr.h>
 
 namespace gba::arm {
@@ -103,27 +103,27 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
               | (widen<u32>(read_io(addr + 3_u32)) << 8_u32);
         }
         case memory_page::palette_ram:
-            return memcpy<u32>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+            return memcpy<u32>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
-            return memcpy<u32>(gba_->ppu.vram_, adjust_vram_addr(addr));
+            return memcpy<u32>(core_->ppu.vram_, adjust_vram_addr(addr));
         case memory_page::oam_ram:
-            return memcpy<u32>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+            return memcpy<u32>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
-            addr &= gba_->pak.mirror_mask_;
+            addr &= core_->pak.mirror_mask_;
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
             // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
-                return widen<u32>(gba_->pak.rtc_.read(addr + 2_u32)) << 16_u32
-                  | gba_->pak.rtc_.read(addr);
+            if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
+                return widen<u32>(core_->pak.rtc_.read(addr + 2_u32)) << 16_u32
+                  | core_->pak.rtc_.read(addr);
             }
-            return memcpy<u32>(gba_->pak.pak_data_, addr);
+            return memcpy<u32>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->read(addr) * 0x0101'0101_u32;
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->read(addr) * 0x0101'0101_u32;
             }
             return 0xFFFF'FFFF_u32;
         default:
@@ -153,27 +153,27 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
             }
             break;
         case memory_page::palette_ram:
-            memcpy<u32>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            memcpy<u32>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::vram:
-            memcpy<u32>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            memcpy<u32>(core_->ppu.vram_, adjust_vram_addr(addr), data);
             break;
         case memory_page::oam_ram:
-            memcpy<u32>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            memcpy<u32>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
-            addr &= gba_->pak.mirror_mask_;
-            if(gba_->pak.has_rtc_ && is_gpio(addr)) {
-                gba_->pak.rtc_.write(addr, narrow<u8>(data));
-                gba_->pak.rtc_.write(addr + 2_u32, narrow<u8>(data >> 16_u32));
+            addr &= core_->pak.mirror_mask_;
+            if(core_->pak.has_rtc_ && is_gpio(addr)) {
+                core_->pak.rtc_.write(addr, narrow<u8>(data));
+                core_->pak.rtc_.write(addr + 2_u32, narrow<u8>(data >> 16_u32));
             }
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
             }
             break;
         default:
@@ -217,31 +217,31 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return widen<u16>(read_io(addr))
               | (widen<u16>(read_io(addr + 1_u32)) << 8_u16);
         case memory_page::palette_ram:
-            return memcpy<u16>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+            return memcpy<u16>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
-            return memcpy<u16>(gba_->ppu.vram_, adjust_vram_addr(addr));
+            return memcpy<u16>(core_->ppu.vram_, adjust_vram_addr(addr));
         case memory_page::oam_ram:
-            return memcpy<u16>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+            return memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws2_upper:
-            if(is_eeprom(gba_->pak.backup_type(), addr)) {
-                return gba_->pak.backup_->read(addr);
+            if(is_eeprom(core_->pak.backup_type(), addr)) {
+                return core_->pak.backup_->read(addr);
             }
             [[fallthrough]];
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
-            addr &= gba_->pak.mirror_mask_;
-            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
-                return gba_->pak.rtc_.read(addr);
+            addr &= core_->pak.mirror_mask_;
+            if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
+                return core_->pak.rtc_.read(addr);
             }
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
             // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            return memcpy<u16>(gba_->pak.pak_data_, addr);
+            return memcpy<u16>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->read(addr) * 0x0101_u16;
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->read(addr) * 0x0101_u16;
             }
             return 0xFFFF_u16;
         default:
@@ -270,38 +270,38 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
             write_io(addr + 1, narrow<u8>(data >> 8_u16));
             break;
         case memory_page::palette_ram:
-            memcpy<u16>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            memcpy<u16>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::vram:
-            memcpy<u16>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            memcpy<u16>(core_->ppu.vram_, adjust_vram_addr(addr), data);
             break;
         case memory_page::oam_ram:
-            memcpy<u16>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
-            addr &= gba_->pak.mirror_mask_;
-            if(gba_->pak.has_rtc_ && is_gpio(addr)) {
-                gba_->pak.rtc_.write(addr, narrow<u8>(data));
-                gba_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));
+            addr &= core_->pak.mirror_mask_;
+            if(core_->pak.has_rtc_ && is_gpio(addr)) {
+                core_->pak.rtc_.write(addr, narrow<u8>(data));
+                core_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));
             }
             break;
         case memory_page::pak_ws2_upper:
-            if(is_eeprom(gba_->pak.backup_type(), addr)) {
+            if(is_eeprom(core_->pak.backup_type(), addr)) {
                 // fixme eeprom is only written by dma
-                gba_->pak.backup_->write(addr, narrow<u8>(data));
+                core_->pak.backup_->write(addr, narrow<u8>(data));
             } else { // fixme???????????????????
-                addr &= gba_->pak.mirror_mask_;
-                if(gba_->pak.has_rtc_ && is_gpio(addr)) {
-                    gba_->pak.rtc_.write(addr, narrow<u8>(data));
+                addr &= core_->pak.mirror_mask_;
+                if(core_->pak.has_rtc_ && is_gpio(addr)) {
+                    core_->pak.rtc_.write(addr, narrow<u8>(data));
                 }
             }
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
             }
             break;
         default:
@@ -330,25 +330,25 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
         case memory_page::io:
             return read_io(addr);
         case memory_page::palette_ram:
-            return memcpy<u8>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
+            return memcpy<u8>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
-            return memcpy<u8>(gba_->ppu.vram_, adjust_vram_addr(addr));
+            return memcpy<u8>(core_->ppu.vram_, adjust_vram_addr(addr));
         case memory_page::oam_ram:
-            return memcpy<u8>(gba_->ppu.oam_, addr & 0x0000'03FF_u32);
+            return memcpy<u8>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
-            addr &= gba_->pak.mirror_mask_;
+            addr &= core_->pak.mirror_mask_;
             // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address, the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
-            if(is_gpio(addr) && gba_->pak.rtc_.read_allowed()) {
-                return gba_->pak.rtc_.read(addr);
+            if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
+                return core_->pak.rtc_.read(addr);
             }
-            return memcpy<u8>(gba_->pak.pak_data_, addr);
+            return memcpy<u8>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->read(addr);
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->read(addr);
             }
             return 0xFF_u8;
         default:
@@ -373,19 +373,19 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
             break;
         case memory_page::palette_ram:
             // todo check gbatek Writing 8bit Data to Video Memory
-            memcpy<u8>(gba_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            memcpy<u8>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::vram:
             // todo check gbatek Writing 8bit Data to Video Memory
-            memcpy<u8>(gba_->ppu.vram_, adjust_vram_addr(addr), data);
+            memcpy<u8>(core_->ppu.vram_, adjust_vram_addr(addr), data);
             break;
         case memory_page::oam_ram:
-            memcpy<u8>(gba_->ppu.oam_, addr & 0x0000'03FF_u32, data);
+            memcpy<u8>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(gba_->pak.backup_type() == cartridge::backup::type::sram) {
-                return gba_->pak.backup_->write(addr, data);
+            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+                return core_->pak.backup_->write(addr, data);
             }
             break;
         default:
@@ -452,13 +452,13 @@ u32 arm7tdmi::read_unused(const u32 addr) noexcept
 u8 arm7tdmi::read_io(const u32 addr) noexcept
 {
     switch(addr.get()) {
-        case keypad::addr_state: return narrow<u8>(gba_->keypad.keyinput_);
-        case keypad::addr_state + 1: return narrow<u8>(gba_->keypad.keyinput_ >> 8_u16);
-        case keypad::addr_control: return narrow<u8>(gba_->keypad.keycnt_.select);
+        case keypad::addr_state: return narrow<u8>(core_->keypad.keyinput_);
+        case keypad::addr_state + 1: return narrow<u8>(core_->keypad.keyinput_ >> 8_u16);
+        case keypad::addr_control: return narrow<u8>(core_->keypad.keycnt_.select);
         case keypad::addr_control + 1:
-            return narrow<u8>(widen<u32>(gba_->keypad.keycnt_.select) >> 8_u32 & 0b11_u32
-              | bit::from_bool(gba_->keypad.keycnt_.enabled) << 6_u32
-              | static_cast<u32::type>(gba_->keypad.keycnt_.cond_strategy) << 7_u32);
+            return narrow<u8>(widen<u32>(core_->keypad.keycnt_.select) >> 8_u32 & 0b11_u32
+              | bit::from_bool(core_->keypad.keycnt_.enabled) << 6_u32
+              | static_cast<u32::type>(core_->keypad.keycnt_.cond_strategy) << 7_u32);
 
         case addr_tm0cnt_l:     return timers_[0_usize].read(timer::register_type::cnt_l_lsb);
         case addr_tm0cnt_l + 1: return timers_[0_usize].read(timer::register_type::cnt_l_msb);
@@ -504,18 +504,18 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 {
     switch(addr.get()) {
         case keypad::addr_control:
-            gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0xFF00_u16) | data;
-            if(gba_->keypad.interrupt_available()) {
+            core_->keypad.keycnt_.select = (core_->keypad.keycnt_.select & 0xFF00_u16) | data;
+            if(core_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
             break;
         case keypad::addr_control + 1:
-            gba_->keypad.keycnt_.select = (gba_->keypad.keycnt_.select & 0x00FF_u16)
+            core_->keypad.keycnt_.select = (core_->keypad.keycnt_.select & 0x00FF_u16)
               | (widen<u16>(data & 0b11_u8) << 8_u16);
-            gba_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
-            gba_->keypad.keycnt_.cond_strategy =
+            core_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
+            core_->keypad.keycnt_.cond_strategy =
               static_cast<keypad::keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8).get());
-            if(gba_->keypad.interrupt_available()) {
+            if(core_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
             break;
@@ -569,6 +569,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             break;
         case addr_postboot:
             post_boot_ = bit::extract(data, 0_u8);
+            break;
     }
 }
 

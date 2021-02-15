@@ -13,7 +13,7 @@
 #include <access_private.h>
 #include <imgui-SFML.h>
 
-#include <gba/gba.h>
+#include <gba/core.h>
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
@@ -27,38 +27,38 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, oam_)
 
 namespace gba::debugger {
 
-window::window(gba* g) noexcept
+window::window(core* core) noexcept
   : window_{sf::VideoMode{1000u, 1000u}, "GBA Debugger"},
     window_event_{},
-    gba_{g},
-    gamepak_debugger_{&g->pak},
-    arm_debugger_{&g->arm},
-    ppu_debugger_{&g->ppu}
+    core_{core},
+    gamepak_debugger_{&core->pak},
+    arm_debugger_{&core->arm},
+    ppu_debugger_{&core->ppu}
 {
     using namespace std::string_view_literals;
-    disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(g->pak), 0x0800'0000_u32});
-    disassembly_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(g->arm), 0x0200'0000_u32});
-    disassembly_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(g->arm), 0x0300'0000_u32});
+    disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
+    disassembly_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(core->arm), 0x0200'0000_u32});
+    disassembly_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(core->arm), 0x0300'0000_u32});
 
-    memory_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(g->pak), 0x0800'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(g->arm), 0x0200'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(g->arm), 0x0300'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, &access_private::palette_ram_(g->ppu), 0x0500'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"VRAM"sv, &access_private::vram_(g->ppu), 0x0600'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"OAM"sv, &access_private::oam_(g->ppu), 0x0700'0000_u32});
-    switch(g->pak.backup_type()) {
+    memory_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(core->arm), 0x0200'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(core->arm), 0x0300'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, &access_private::palette_ram_(core->ppu), 0x0500'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"VRAM"sv, &access_private::vram_(core->ppu), 0x0600'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"OAM"sv, &access_private::oam_(core->ppu), 0x0700'0000_u32});
+    switch(core->pak.backup_type()) {
         case cartridge::backup::type::eeprom_4:
         case cartridge::backup::type::eeprom_64:
             memory_view_.add_entry(memory_view_entry{
               "EEPROM"sv,
-              &access_private::backup_(g->pak)->data(),
+              &access_private::backup_(core->pak)->data(),
               0x0DFF'FF00_u32
             });
             break;
         case cartridge::backup::type::sram:
             memory_view_.add_entry(memory_view_entry{
               "SRAM"sv,
-              &access_private::backup_(g->pak)->data(),
+              &access_private::backup_(core->pak)->data(),
               0x0E00'0000_u32
             });
             break;
@@ -66,7 +66,7 @@ window::window(gba* g) noexcept
         case cartridge::backup::type::flash_128:
             memory_view_.add_entry(memory_view_entry{
               "FLASH"sv,
-              &access_private::backup_(g->pak)->data(),
+              &access_private::backup_(core->pak)->data(),
               0x0E00'0000_u32
             });
         case cartridge::backup::type::none:
@@ -92,31 +92,31 @@ bool window::draw() noexcept
 
         if(window_event_.type == sf::Event::KeyPressed) {
             switch(window_event_.key.code) {
-                case sf::Keyboard::W: gba_->press_key(keypad::keypad::key::up); break;
-                case sf::Keyboard::A: gba_->press_key(keypad::keypad::key::left); break;
-                case sf::Keyboard::S: gba_->press_key(keypad::keypad::key::down); break;
-                case sf::Keyboard::D: gba_->press_key(keypad::keypad::key::right); break;
-                case sf::Keyboard::K: gba_->press_key(keypad::keypad::key::b); break;
-                case sf::Keyboard::O: gba_->press_key(keypad::keypad::key::a); break;
-                case sf::Keyboard::B: gba_->press_key(keypad::keypad::key::select); break;
-                case sf::Keyboard::N: gba_->press_key(keypad::keypad::key::start); break;
-                case sf::Keyboard::T: gba_->press_key(keypad::keypad::key::left_shoulder); break;
-                case sf::Keyboard::U: gba_->press_key(keypad::keypad::key::right_shoulder); break;
+                case sf::Keyboard::W: core_->press_key(keypad::keypad::key::up); break;
+                case sf::Keyboard::A: core_->press_key(keypad::keypad::key::left); break;
+                case sf::Keyboard::S: core_->press_key(keypad::keypad::key::down); break;
+                case sf::Keyboard::D: core_->press_key(keypad::keypad::key::right); break;
+                case sf::Keyboard::K: core_->press_key(keypad::keypad::key::b); break;
+                case sf::Keyboard::O: core_->press_key(keypad::keypad::key::a); break;
+                case sf::Keyboard::B: core_->press_key(keypad::keypad::key::select); break;
+                case sf::Keyboard::N: core_->press_key(keypad::keypad::key::start); break;
+                case sf::Keyboard::T: core_->press_key(keypad::keypad::key::left_shoulder); break;
+                case sf::Keyboard::U: core_->press_key(keypad::keypad::key::right_shoulder); break;
                 default:
                     break;
             }
         } else if(window_event_.type == sf::Event::KeyReleased) {
             switch(window_event_.key.code) {
-                case sf::Keyboard::W: gba_->release_key(keypad::keypad::key::up); break;
-                case sf::Keyboard::A: gba_->release_key(keypad::keypad::key::left); break;
-                case sf::Keyboard::S: gba_->release_key(keypad::keypad::key::down); break;
-                case sf::Keyboard::D: gba_->release_key(keypad::keypad::key::right); break;
-                case sf::Keyboard::K: gba_->release_key(keypad::keypad::key::b); break;
-                case sf::Keyboard::O: gba_->release_key(keypad::keypad::key::a); break;
-                case sf::Keyboard::B: gba_->release_key(keypad::keypad::key::select); break;
-                case sf::Keyboard::N: gba_->release_key(keypad::keypad::key::start); break;
-                case sf::Keyboard::T: gba_->release_key(keypad::keypad::key::left_shoulder); break;
-                case sf::Keyboard::U: gba_->release_key(keypad::keypad::key::right_shoulder); break;
+                case sf::Keyboard::W: core_->release_key(keypad::keypad::key::up); break;
+                case sf::Keyboard::A: core_->release_key(keypad::keypad::key::left); break;
+                case sf::Keyboard::S: core_->release_key(keypad::keypad::key::down); break;
+                case sf::Keyboard::D: core_->release_key(keypad::keypad::key::right); break;
+                case sf::Keyboard::K: core_->release_key(keypad::keypad::key::b); break;
+                case sf::Keyboard::O: core_->release_key(keypad::keypad::key::a); break;
+                case sf::Keyboard::B: core_->release_key(keypad::keypad::key::select); break;
+                case sf::Keyboard::N: core_->release_key(keypad::keypad::key::start); break;
+                case sf::Keyboard::T: core_->release_key(keypad::keypad::key::left_shoulder); break;
+                case sf::Keyboard::U: core_->release_key(keypad::keypad::key::right_shoulder); break;
                 default:
                     break;
             }
@@ -132,7 +132,7 @@ bool window::draw() noexcept
     ImGui::SFML::Update(window_, dt_.restart());
 
     // todo draw debugger components
-    disassembly_view_.draw_with_mode(access_private::cpsr_(gba_->arm).t);
+    disassembly_view_.draw_with_mode(access_private::cpsr_(core_->arm).t);
     memory_view_.draw();
     gamepak_debugger_.draw();
     arm_debugger_.draw();

@@ -11,7 +11,7 @@
 #include <doctest.h>
 #include <access_private.h>
 
-#include <gba/gba.h>
+#include <gba/core.h>
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
@@ -21,7 +21,7 @@ TEST_CASE("test roms")
      for(const auto& file : gba::fs::directory_iterator{gba::fs::current_path() / "res"}) {
          const auto& path = file.path();
          if(auto ext = path.extension(); ext == ".gba") {
-             gba::gba g{{}};
+             gba::core g{{}};
              g.load_pak(path);
 
              REQUIRE(g.pak.loaded());

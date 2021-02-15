@@ -5,8 +5,8 @@
  * Refer to the included LICENSE file.
  */
 
-#ifndef GAMEBOIADVANCE_GBA_H
-#define GAMEBOIADVANCE_GBA_H
+#ifndef GAMEBOIADVANCE_CORE_H
+#define GAMEBOIADVANCE_CORE_H
 
 #include <gba/core/scheduler.h>
 #include <gba/arm/arm7tdmi.h>
@@ -16,15 +16,15 @@
 
 namespace gba {
 
-struct gba {
+struct core {
     scheduler schdlr;
     cartridge::gamepak pak;
     arm::arm7tdmi arm;
     ppu::engine ppu;
     keypad::keypad keypad;
 
-    gba() : gba(vector<u8>{}) { LOG_ERROR(core, "no BIOS file provided"); }
-    gba(vector<u8> bios)
+    core() : core(vector<u8>{}) { LOG_ERROR(core, "no BIOS file provided"); }
+    core(vector<u8> bios)
       : pak{},
         arm(this, std::move(bios)),
         ppu(&schdlr) {}
@@ -48,8 +48,12 @@ struct gba {
     }
 
     void load_pak(const fs::path& path) { pak.load(path); }
+
+private:
+    // todo = now - start - cycles_per_frame
+    u64 frame_cycle_overshoot;
 };
 
 } // namespace gba
 
-#endif //GAMEBOIADVANCE_GBA_H
+#endif //GAMEBOIADVANCE_CORE_H

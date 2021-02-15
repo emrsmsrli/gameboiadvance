@@ -10,7 +10,7 @@
 
 namespace gba {
 
-struct gba;
+struct core;
 class scheduler;
 
 namespace cartridge {

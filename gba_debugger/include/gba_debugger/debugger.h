@@ -12,23 +12,20 @@
 #include <SFML/System/Clock.hpp>
 #include <SFML/Window/Event.hpp>
 
+#include <gba/core/fwd.h>
 #include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
 #include <gba_debugger/arm_debugger.h>
 #include <gba_debugger/ppu_debugger.h>
 
-namespace gba {
-
-struct gba;
-
-namespace debugger {
+namespace gba::debugger {
 
 class window {
     sf::RenderWindow window_;
     sf::Event window_event_;
     sf::Clock dt_;
 
-    gba* gba_;
+    core* core_;
     disassembly_view disassembly_view_;
     memory_view memory_view_;
     gamepak_debugger gamepak_debugger_;
@@ -36,12 +33,11 @@ class window {
     ppu_debugger ppu_debugger_;
 
 public:
-    explicit window(gba* g) noexcept;
+    explicit window(core* core) noexcept;
 
     [[nodiscard]] bool draw() noexcept;
 };
 
-} // namespace debugger
-} // namespace gba
+} // namespace gba::debugger
 
 #endif //GAMEBOIADVANCE_DEBUGGER_H

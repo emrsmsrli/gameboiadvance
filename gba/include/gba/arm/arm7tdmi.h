@@ -133,7 +133,7 @@ struct pipeline {
 class arm7tdmi {
     friend timer;
 
-    gba* gba_;
+    core* core_;
 
     vector<u8> bios_{16_kb};
     vector<u8> wram_{256_kb};
@@ -188,8 +188,8 @@ class arm7tdmi {
 public:
     static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
 
-    explicit arm7tdmi(gba* gba) noexcept : arm7tdmi(gba, {}) {}
-    arm7tdmi(gba* gba, vector<u8> bios) noexcept;
+    explicit arm7tdmi(core* core) noexcept : arm7tdmi(core, {}) {}
+    arm7tdmi(core* core, vector<u8> bios) noexcept;
 
     void tick() noexcept;
     void request_interrupt(const interrupt_source irq) noexcept { if_ |= static_cast<u16::type>(irq); }
