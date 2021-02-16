@@ -37,10 +37,10 @@ void timer::write(const register_type reg, const u8 data) noexcept
 {
     switch(reg) {
         case register_type::cnt_l_lsb:
-            reload_ = (reload_ & 0xFF00_u16) | data;
+            reload_ = bit::set_byte(reload_, 0_u8, data);
             break;
         case register_type::cnt_l_msb:
-            reload_ = (reload_ & 0x00FF_u16) | (widen<u16>(data) << 8_u16);
+            reload_ = bit::set_byte(reload_, 1_u8, data);
             break;
         case register_type::cnt_h_lsb: {
             const bool was_enabled = control_.enabled;

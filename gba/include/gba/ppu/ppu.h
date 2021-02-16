@@ -41,8 +41,7 @@ class engine {
     bool green_swap_ = false; // todo emulate
     mosaic mosaic_;
     bldcnt bldcnt_;
-    bldalpha bldalpha_;
-    u8 bldy_;
+    blend_settings blend_settings_;
 
 public:
     static constexpr auto screen_width = 240_u8;

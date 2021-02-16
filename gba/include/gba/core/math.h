@@ -21,6 +21,7 @@ template<typename T = u32>
 template<typename T = u32>
 [[nodiscard]] FORCEINLINE constexpr T bit(const u8 b) noexcept { return narrow<T>(1_u32 << b); }
 
+// todo bit::field::extract(T, lsb, msb)
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T extract(const T t, const u8 b) noexcept { return (t >> b) & 0x1_u8; }
 
@@ -32,6 +33,21 @@ template<typename T>
 
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T clear(const T t, const u8 b) noexcept { return t & ~bit<T>(b); }
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr T set_byte(const T t, const u8 n, const u8 byte) noexcept
+{
+    ASSERT(sizeof(T) > n.get());
+    constexpr u8 byte_mask = 0xFF_u8;
+    return (t & (widen<T>(byte_mask) << n)) | (widen<T>(byte) << (8_u8 * n));
+}
+
+template<typename T>
+[[nodiscard]] FORCEINLINE constexpr u8 extract_byte(const T t, const u8 n) noexcept
+{
+    ASSERT(sizeof(T) > n.get());
+    return narrow<u8>((t >> (n * 8_u8)) & 0xFF_u8);
+}
 
 } // namespace bit
 
