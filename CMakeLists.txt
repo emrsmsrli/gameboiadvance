@@ -14,12 +14,23 @@ option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(WITH_WARNINGS "Enable compiler warnings" ON)
+option(LOG_LEVEL "Log level" "")
+
+set(LOG_LEVELS "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "CRITICAL" "OFF")
+list(FIND LOG_LEVELS ${LOG_LEVEL} LOG_LEVEL_IDX)
+
+message(STATUS "Log level: ${LOG_LEVEL} (${LOG_LEVEL_IDX})")
+if(${LOG_LEVEL_IDX} EQUAL -1)
+    message(WARNING "Unknown log level, turning off logs")
+    set(LOG_LEVEL_IDX 6)
+endif()
 
 add_library(project_options INTERFACE)
 target_compile_features(project_options INTERFACE cxx_std_17)
 target_compile_definitions(project_options INTERFACE
         DEBUG=$<CONFIG:Debug>
-        WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>)
+        WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>
+        SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL_IDX})
 
 if(NOT MSVC)
     option(WITH_LIBCXX "Use libc++" OFF)
