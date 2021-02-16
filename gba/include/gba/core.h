@@ -40,7 +40,8 @@ struct core {
     void tick_one_frame() noexcept { tick(ppu::engine::cycles_per_frame); }
 
     void release_key(const keypad::keypad::key key) noexcept { keypad.release(key); }
-    void press_key(const keypad::keypad::key key) noexcept {
+    void press_key(const keypad::keypad::key key) noexcept
+    {
         keypad.press(key);
         if(keypad.interrupt_available()) {
             arm.request_interrupt(arm::interrupt_source::keypad);

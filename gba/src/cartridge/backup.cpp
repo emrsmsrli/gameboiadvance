@@ -8,6 +8,9 @@
 #include <gba/cartridge/backup.h>
 
 #include <gba/core/math.h>
+#include <gba/helper/bitflags.h>
+
+ENABLE_BITFLAG_OPS(gba::cartridge::backup_flash::cmd);
 
 namespace gba::cartridge {
 
@@ -153,13 +156,13 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
                 } else if(value == cmd_select_bank && size() == 128_kb) {
                     state_ = state::cmd_phase3;
                     current_cmds_ |= cmd::select_bank;
-                } else if((current_cmds_ & cmd::erase) == cmd::erase && value == cmd_erase_chip) {
+                } else if(bitflags::is_set(current_cmds_, cmd::erase) && value == cmd_erase_chip) {
                     current_cmds_ &= ~cmd::erase;
                     std::fill(data().begin(), data().end(), 0xFF_u8);
                 }
             } else if(
               (address & ~0x0000'F000_u32) == 0x0E00'0000_u32 && // 0x0E00'n000 -> erase 4kb sector n
-              (current_cmds_ & cmd::erase) == cmd::erase &&
+              bitflags::is_set(current_cmds_, cmd::erase) &&
               value == cmd_erase_sector) {
                 current_cmds_ &= ~cmd::erase;
                 std::fill_n(data().begin() + physical_addr(address & 0xF000_u32).get(), (4_kb).get(), 0xFF_u8);
@@ -168,7 +171,7 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
         case state::cmd_phase3:
             state_ = state::accept_cmd;
 
-            if((current_cmds_ & cmd::select_bank) == cmd::select_bank && address == 0x0E00'0000_u32) {
+            if(bitflags::is_set(current_cmds_, cmd::select_bank) && address == 0x0E00'0000_u32) {
                 current_bank_ = bit::extract(value, 0_u8);
                 current_cmds_ &= ~cmd::select_bank;
             } else {
@@ -184,7 +187,7 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
 u8 backup_flash::read(u32 address) const noexcept
 {
     address &= 0xFFFF_u32;
-    if((current_cmds_ & cmd::device_id) == cmd::device_id && address < 2_u32) {
+    if(bitflags::is_set(current_cmds_, cmd::device_id) && address < 2_u32) {
         return device_id_[address];
     }
 

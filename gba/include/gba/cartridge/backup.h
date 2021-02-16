@@ -10,12 +10,9 @@
 
 #include <algorithm>
 
-#include <gba/helper/bitflags.h>
 #include <gba/helper/filesystem.h>
 
-namespace gba {
-
-namespace cartridge {
+namespace gba::cartridge {
 
 class backup {
     fs::path path_;
@@ -155,10 +152,6 @@ constexpr std::string_view to_string_view(const backup::type type) noexcept
     }
 }
 
-} // namespace cartridge
-
-ENABLE_BITFLAG_OPS(cartridge::backup_flash::cmd);
-
-} // namespace gba
+} // namespace cartridge::gba
 
 #endif //GAMEBOIADVANCE_BACKUP_H
