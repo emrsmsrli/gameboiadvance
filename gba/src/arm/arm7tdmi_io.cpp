@@ -99,8 +99,8 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
         case memory_page::io: {
             return widen<u32>(read_io(addr))
               | (widen<u32>(read_io(addr + 1_u32)) << 8_u32)
-              | (widen<u32>(read_io(addr + 2_u32)) << 8_u32)
-              | (widen<u32>(read_io(addr + 3_u32)) << 8_u32);
+              | (widen<u32>(read_io(addr + 2_u32)) << 16_u32)
+              | (widen<u32>(read_io(addr + 3_u32)) << 24_u32);
         }
         case memory_page::palette_ram:
             return memcpy<u32>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
