@@ -587,7 +587,8 @@ std::string swi(const u32 /*addr*/, const u16 instr) noexcept
 
 std::string branch(const u32 addr, const u16 instr) noexcept
 {
-    return fmt::format("B 0x{:08X}", addr + 4_u32 + make_signed(instr & 0x7FF_u16) * 2_i16);
+    const i32 offset = math::sign_extend<11>(widen<u32>((instr & 0x3FF_u16)) << 1_u32);
+    return fmt::format("B 0x{:08X}", addr + 4_u32 + offset);
 }
 
 std::string long_branch_link(const u32 /*addr*/, const u16 instr) noexcept
