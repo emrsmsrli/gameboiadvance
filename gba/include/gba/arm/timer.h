@@ -46,8 +46,8 @@ public:
     event<timer*> on_overflow;
 
     timer(const u32 id, arm7tdmi* arm, scheduler* scheduler) noexcept
-      : id_{id},
-        arm_{arm},
+      : arm_{arm},
+        id_{id},
         scheduler_{scheduler} {}
 
     [[nodiscard]] u8 read(register_type reg) const noexcept;
