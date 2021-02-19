@@ -13,7 +13,14 @@
 #include <gba/version.h>
 #include <gba_debugger/debugger.h>
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
+#if SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
+    spdlog::set_level(spdlog::level::trace);
+    spdlog::set_pattern("[%H:%M:%S:%e] [%s:%#] [%^%L%$] %v");
+    spdlog::set_default_logger(spdlog::stdout_color_st("core"));
+#endif // SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
+
     cxxopts::Options options("gameboiadvance", "An excellent Gameboy Advance emulator");
     options
       .show_positional_help()
@@ -39,12 +46,6 @@ int main(int argc, char** argv) {
         fmt::print(stdout, "{}", options.help());
         return 0;
     }
-
-#if SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
-    spdlog::set_default_logger(spdlog::stdout_color_st("  core  "));
-    spdlog::set_pattern("[%H:%M:%S:%e] [%s:%#] [%^%L%$] %v");
-    spdlog::set_level(spdlog::level::trace);
-#endif
 
     gba::vector<gba::u8> bios;
     if(parsed["bios"].count() != 0) {
