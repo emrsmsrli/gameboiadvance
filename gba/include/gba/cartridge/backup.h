@@ -70,7 +70,7 @@ class backup_eeprom : public backup {
 public:
 #if WITH_DEBUGGER
     using state_debugger = state;
-#endif
+#endif // WITH_DEBUGGER
 
     explicit backup_eeprom(const fs::path& pak_path, const usize size)
       : backup(pak_path, size),
@@ -114,7 +114,7 @@ public:
     using state_debugger = state;
     using cmd_debugger = cmd;
     using device_id_debugger = array<u8, 2>;
-#endif
+#endif // WITH_DEBUGGER
 
     explicit backup_flash(const fs::path& pak_path, const usize size)
       : backup(pak_path, size)
