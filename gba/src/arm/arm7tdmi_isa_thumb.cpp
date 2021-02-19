@@ -541,12 +541,12 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
         }
     } else {
         const u32 final_addr = address + 4_u32 * narrow<u32>(rlist.size());
-        write_32(address, rlist[0_usize], mem_access::non_seq);
+        write_32(address, r(rlist[0_usize]), mem_access::non_seq);
         rb_reg = final_addr;
         address += 4_u32;
 
         for(u32 i = 1_u32; i < rlist.size(); ++i) {
-            write_32(address, rlist[i], mem_access::seq);
+            write_32(address, r(rlist[i]), mem_access::seq);
             address += 4_u32;
         }
     }
