@@ -8,13 +8,9 @@
 #ifndef GAMEBOIADVANCE_ARM_DEBUGGER_H
 #define GAMEBOIADVANCE_ARM_DEBUGGER_H
 
-namespace gba {
+#include <gba/core/fwd.h>
 
-namespace arm {
-class arm7tdmi;
-} // namespace arm
-
-namespace debugger {
+namespace gba::debugger {
 
 struct arm_debugger {
     arm::arm7tdmi* arm;
@@ -22,8 +18,6 @@ struct arm_debugger {
     void draw() const noexcept;
 };
 
-} // namespace debugger
-
-} // namespace gba
+} // namespace gba::debugger
 
 #endif //GAMEBOIADVANCE_ARM_DEBUGGER_H
