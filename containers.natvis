@@ -10,10 +10,10 @@
     <Type Name="gba::static_vector&lt;*&gt;">
         <DisplayString>{storage_} size={size_}</DisplayString>
         <Expand>
-        <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
+            <Item Name="[capacity]" ExcludeView="simple">$T2</Item>
             <ArrayItems>
               <Size>size_.value_</Size>
-              <ValuePointer>($T1*)this</ValuePointer>
+              <ValuePointer>($T1*)storage_._data</ValuePointer>
             </ArrayItems>
         </Expand>
     </Type>
