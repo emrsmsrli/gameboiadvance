@@ -34,6 +34,7 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                     state_ = state::transmitting_addr;
                 }
 
+                LOG_TRACE(eeprom, "new state: transmitting_addr, read mode: {}", read_mode_);
                 reset_buffer();
             }
             break;
@@ -47,8 +48,10 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                 if(!read_mode_) {
                     memcpy(data(), address_, 0_u64);
                     state_ = state::transmitting_data;
+                    LOG_TRACE(eeprom, "new state: transmitting_data in write mode, erasing {:08X}", address_);
                 } else {
                     state_ = state::waiting_finish_bit;
+                    LOG_TRACE(eeprom, "new state: waiting_finish_bit in read mode");
                 }
             }
             break;
@@ -58,14 +61,17 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                 memcpy(data(), address_, buffer_);
                 reset_buffer();
                 state_ = state::waiting_finish_bit;
+                LOG_TRACE(eeprom, "new state: waiting_finish_bit after transmitting");
             }
             break;
         }
         case state::waiting_finish_bit: {
             if(!read_mode_) {
                 state_ = state::accepting_commands;
+                LOG_TRACE(eeprom, "new state: accepting_commands");
             } else {
                 state_ = state::transmitting_ignored_bits;
+                LOG_TRACE(eeprom, "new state: transmitting_ignored_bits");
             }
 
             reset_buffer();
@@ -83,6 +89,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
             ++transmission_count_;
             if(transmission_count_ == 4) {
                 state_ = state::transmitting_data;
+                LOG_TRACE(eeprom, "new state: transmitting_data");
                 transmission_count_ = 0_u8;
                 buffer_ = memcpy<u64>(data(), address_);
             }
@@ -96,6 +103,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
 
             if(transmission_count_ == 64_u8) {
                 state_ = state::accepting_commands;
+                LOG_TRACE(eeprom, "new state: accepting_commands");
                 reset_buffer();
             }
 
@@ -133,11 +141,13 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
         case state::accept_cmd:
             if(address == cmd_addr1 && value == 0xAA_u8) {
                 state_ = state::cmd_phase1;
+                LOG_TRACE(flash, "cmd phase 1");
             }
             break;
         case state::cmd_phase1:
             if(address == cmd_addr2 && value == 0x55_u8) {
                 state_ = state::cmd_phase2;
+                LOG_TRACE(flash, "cmd phase 2");
             }
             break;
         case state::cmd_phase2:
@@ -146,19 +156,24 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
 
                 if(value == cmd_devid_start) {
                     current_cmds_ |= cmd::device_id;
+                    LOG_TRACE(flash, "adding device_id cmd");
                 } else if(value == cmd_devid_end) {
                     current_cmds_ &= ~cmd::device_id;
                 } else if(value == cmd_erase) {
                     current_cmds_ |= cmd::erase;
+                    LOG_TRACE(flash, "adding erase cmd");
                 } else if(value == cmd_write_byte) {
                     state_ = state::cmd_phase3;
                     current_cmds_ |= cmd::write_byte;
+                    LOG_TRACE(flash, "adding write_byte cmd");
                 } else if(value == cmd_select_bank && size() == 128_kb) {
                     state_ = state::cmd_phase3;
                     current_cmds_ |= cmd::select_bank;
+                    LOG_TRACE(flash, "adding select_bank cmd");
                 } else if(bitflags::is_set(current_cmds_, cmd::erase) && value == cmd_erase_chip) {
                     current_cmds_ &= ~cmd::erase;
                     std::fill(data().begin(), data().end(), 0xFF_u8);
+                    LOG_TRACE(flash, "erasing chip, removing erase cmd");
                 }
             } else if(
               (address & ~0x0000'F000_u32) == 0x0E00'0000_u32 && // 0x0E00'n000 -> erase 4kb sector n
@@ -166,6 +181,7 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
               value == cmd_erase_sector) {
                 current_cmds_ &= ~cmd::erase;
                 std::fill_n(data().begin() + physical_addr(address & 0xF000_u32).get(), (4_kb).get(), 0xFF_u8);
+                LOG_TRACE(flash, "erasing sector {:X}, removing erase cmd", (address & 0xF000_u32) >> 12_u32);
             }
             break;
         case state::cmd_phase3:
@@ -174,9 +190,11 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
             if(bitflags::is_set(current_cmds_, cmd::select_bank) && address == 0x0E00'0000_u32) {
                 current_bank_ = bit::extract(value, 0_u8);
                 current_cmds_ &= ~cmd::select_bank;
+                LOG_TRACE(flash, "bank {}, removing select_bank cmd", current_bank_);
             } else {
                 data()[physical_addr(address & 0xFFFF_u32)] = value;
                 current_cmds_ &= ~cmd::write_byte;
+                LOG_TRACE(flash, "removing write_byte cmd", current_bank_);
             }
             break;
         default:
