@@ -45,6 +45,11 @@ struct array {
 
     [[nodiscard]] constexpr usize size() const noexcept { return N; }
 
+    T& front() noexcept { return at(0_usize); }
+    const T& front() const noexcept { return at(0_usize); }
+    T& back() noexcept { return at(size() - 1_usize); }
+    const T& back() const noexcept { return at(size() - 1_usize); }
+
     constexpr auto begin() noexcept { return std::begin(_data); }
     constexpr auto end() noexcept { return std::end(_data); }
     constexpr auto begin() const noexcept { return std::begin(_data); }
@@ -81,6 +86,11 @@ public:
 
     [[nodiscard]] bool empty() const noexcept { return data_.empty(); }
     [[nodiscard]] usize size() const noexcept { return data_.size(); }
+
+    T& front() noexcept { return at(0_usize); }
+    const T& front() const noexcept { return at(0_usize); }
+    T& back() noexcept { return at(size() - 1_usize); }
+    const T& back() const noexcept { return at(size() - 1_usize); }
 
     auto erase(typename std::vector<T>::iterator pos) { return data_.erase(pos); }
     auto erase(typename std::vector<T>::const_iterator pos) { return data_.erase(pos); }
@@ -157,6 +167,11 @@ public:
     [[nodiscard]] constexpr bool empty() const noexcept { return size_ == 0_usize; }
     [[nodiscard]] constexpr usize size() const noexcept { return size_; }
     [[nodiscard]] constexpr usize capacity() const noexcept { return Capacity; }
+
+    T& front() noexcept { return at(0_usize); }
+    const T& front() const noexcept { return at(0_usize); }
+    T& back() noexcept { return at(size() - 1_usize); }
+    const T& back() const noexcept { return at(size() - 1_usize); }
 
     void erase(T* first, T* last) noexcept
     {
