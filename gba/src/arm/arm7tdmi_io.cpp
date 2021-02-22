@@ -545,6 +545,15 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
         case addr_tm3cnt_h:     return timers_[3_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm3cnt_h + 1: return 0_u8;
 
+        case addr_dma0cnt_h:     return dma_controller_.channels[0_usize].read_cnt_l();
+        case addr_dma0cnt_h + 1: return dma_controller_.channels[0_usize].read_cnt_h();
+        case addr_dma1cnt_h:     return dma_controller_.channels[1_usize].read_cnt_l();
+        case addr_dma1cnt_h + 1: return dma_controller_.channels[1_usize].read_cnt_h();
+        case addr_dma2cnt_h:     return dma_controller_.channels[2_usize].read_cnt_l();
+        case addr_dma2cnt_h + 1: return dma_controller_.channels[2_usize].read_cnt_h();
+        case addr_dma3cnt_h:     return dma_controller_.channels[3_usize].read_cnt_l();
+        case addr_dma3cnt_h + 1: return dma_controller_.channels[3_usize].read_cnt_h();
+
         case addr_ime: return bit::from_bool<u8>(ime_);
         case addr_ie: return narrow<u8>(ie_);
         case addr_ie + 1: return narrow<u8>(ie_ >> 8_u8);
@@ -734,6 +743,55 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case addr_tm3cnt_l:     timers_[3_usize].write(timer::register_type::cnt_l_lsb, data); break;
         case addr_tm3cnt_l + 1: timers_[3_usize].write(timer::register_type::cnt_l_msb, data); break;
         case addr_tm3cnt_h:     timers_[3_usize].write(timer::register_type::cnt_h_lsb, data); break;
+
+        case addr_dma0sad:       dma_controller_.channels[0_usize].write_src(0_u8, data); break;
+        case addr_dma0sad + 1:   dma_controller_.channels[0_usize].write_src(1_u8, data); break;
+        case addr_dma0sad + 2:   dma_controller_.channels[0_usize].write_src(2_u8, data); break;
+        case addr_dma0sad + 3:   dma_controller_.channels[0_usize].write_src(3_u8, data); break;
+        case addr_dma0dad:       dma_controller_.channels[0_usize].write_dst(0_u8, data); break;
+        case addr_dma0dad + 1:   dma_controller_.channels[0_usize].write_dst(1_u8, data); break;
+        case addr_dma0dad + 2:   dma_controller_.channels[0_usize].write_dst(2_u8, data); break;
+        case addr_dma0dad + 3:   dma_controller_.channels[0_usize].write_dst(3_u8, data); break;
+        case addr_dma0cnt_l:     dma_controller_.channels[0_usize].write_count(0_u8, data); break;
+        case addr_dma0cnt_l + 1: dma_controller_.channels[0_usize].write_count(1_u8, data); break;
+        case addr_dma0cnt_h:     dma_controller_.write_cnt_l(0_usize, data); break;
+        case addr_dma0cnt_h + 1: dma_controller_.write_cnt_h(0_usize, data); break;
+        case addr_dma1sad:       dma_controller_.channels[1_usize].write_src(0_u8, data); break;
+        case addr_dma1sad + 1:   dma_controller_.channels[1_usize].write_src(1_u8, data); break;
+        case addr_dma1sad + 2:   dma_controller_.channels[1_usize].write_src(2_u8, data); break;
+        case addr_dma1sad + 3:   dma_controller_.channels[1_usize].write_src(3_u8, data); break;
+        case addr_dma1dad:       dma_controller_.channels[1_usize].write_dst(0_u8, data); break;
+        case addr_dma1dad + 1:   dma_controller_.channels[1_usize].write_dst(1_u8, data); break;
+        case addr_dma1dad + 2:   dma_controller_.channels[1_usize].write_dst(2_u8, data); break;
+        case addr_dma1dad + 3:   dma_controller_.channels[1_usize].write_dst(3_u8, data); break;
+        case addr_dma1cnt_l:     dma_controller_.channels[1_usize].write_count(0_u8, data); break;
+        case addr_dma1cnt_l + 1: dma_controller_.channels[1_usize].write_count(1_u8, data); break;
+        case addr_dma1cnt_h:     dma_controller_.write_cnt_l(1_usize, data); break;
+        case addr_dma1cnt_h + 1: dma_controller_.write_cnt_h(1_usize, data); break;
+        case addr_dma2sad:       dma_controller_.channels[2_usize].write_src(0_u8, data); break;
+        case addr_dma2sad + 1:   dma_controller_.channels[2_usize].write_src(1_u8, data); break;
+        case addr_dma2sad + 2:   dma_controller_.channels[2_usize].write_src(2_u8, data); break;
+        case addr_dma2sad + 3:   dma_controller_.channels[2_usize].write_src(3_u8, data); break;
+        case addr_dma2dad:       dma_controller_.channels[2_usize].write_dst(0_u8, data); break;
+        case addr_dma2dad + 1:   dma_controller_.channels[2_usize].write_dst(1_u8, data); break;
+        case addr_dma2dad + 2:   dma_controller_.channels[2_usize].write_dst(2_u8, data); break;
+        case addr_dma2dad + 3:   dma_controller_.channels[2_usize].write_dst(3_u8, data); break;
+        case addr_dma2cnt_l:     dma_controller_.channels[2_usize].write_count(0_u8, data); break;
+        case addr_dma2cnt_l + 1: dma_controller_.channels[2_usize].write_count(1_u8, data); break;
+        case addr_dma2cnt_h:     dma_controller_.write_cnt_l(2_usize, data); break;
+        case addr_dma2cnt_h + 1: dma_controller_.write_cnt_h(2_usize, data); break;
+        case addr_dma3sad:       dma_controller_.channels[3_usize].write_src(0_u8, data); break;
+        case addr_dma3sad + 1:   dma_controller_.channels[3_usize].write_src(1_u8, data); break;
+        case addr_dma3sad + 2:   dma_controller_.channels[3_usize].write_src(2_u8, data); break;
+        case addr_dma3sad + 3:   dma_controller_.channels[3_usize].write_src(3_u8, data); break;
+        case addr_dma3dad:       dma_controller_.channels[3_usize].write_dst(0_u8, data); break;
+        case addr_dma3dad + 1:   dma_controller_.channels[3_usize].write_dst(1_u8, data); break;
+        case addr_dma3dad + 2:   dma_controller_.channels[3_usize].write_dst(2_u8, data); break;
+        case addr_dma3dad + 3:   dma_controller_.channels[3_usize].write_dst(3_u8, data); break;
+        case addr_dma3cnt_l:     dma_controller_.channels[3_usize].write_count(0_u8, data); break;
+        case addr_dma3cnt_l + 1: dma_controller_.channels[3_usize].write_count(1_u8, data); break;
+        case addr_dma3cnt_h:     dma_controller_.write_cnt_l(3_usize, data); break;
+        case addr_dma3cnt_h + 1: dma_controller_.write_cnt_h(3_usize, data); break;
 
         case addr_ime:
             ime_ = bit::test(data, 0_u8);

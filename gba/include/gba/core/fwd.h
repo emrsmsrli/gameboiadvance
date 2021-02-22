@@ -8,6 +8,8 @@
 #ifndef GAMEBOIADVANCE_FWD_H
 #define GAMEBOIADVANCE_FWD_H
 
+#include <gba/core/integer.h>
+
 namespace gba {
 
 struct core;
@@ -22,6 +24,7 @@ class gamepak;
 namespace arm {
 
 class arm7tdmi;
+enum class mem_access : u32::type;
 
 } // namespace arm
 

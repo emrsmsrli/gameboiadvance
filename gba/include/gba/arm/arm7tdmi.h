@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include <gba/arm/dma_controller.h>
 #include <gba/arm/timer.h>
 #include <gba/core/scheduler.h>
 #include <gba/core/container.h>
@@ -17,6 +18,7 @@
 #include <gba/core/fwd.h>
 #include <gba/helper/lookup_table.h>
 #include <gba/helper/function_ptr.h>
+#include <gba/helper/bitflags.h>
 
 namespace gba::arm {
 
@@ -122,7 +124,14 @@ enum class halt_control {
 };
 
 enum class instruction_mode { arm, thumb };
-enum class mem_access { non_seq, seq };
+enum class mem_access : u32::type {
+    none = 0,
+    non_seq = 1,
+    seq = 2,
+    pak_prefetch = 4, // todo implement gamepak fetch with this
+    dma = 8,
+    dry_run = 16
+};
 
 struct pipeline {
     mem_access fetch_type{mem_access::non_seq};
@@ -132,6 +141,7 @@ struct pipeline {
 
 class arm7tdmi {
     friend timer;
+    friend dma::controller;
 
     core* core_;
 
@@ -172,6 +182,7 @@ class arm7tdmi {
     bool ime_ = false;
 
     array<timer, 4> timers_;
+    dma::controller dma_controller_{this};
 
     pipeline pipeline_;
 
@@ -377,5 +388,7 @@ private:
 };
 
 } // namespace gba::arm
+
+ENABLE_BITFLAG_OPS(gba::arm::mem_access);
 
 #endif //GAMEBOIADVANCE_ARM7TDMI_H
