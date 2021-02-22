@@ -123,8 +123,9 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= core_->pak.mirror_mask_;
-            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
-            // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            if (addr >= core_->pak.pak_data_.size()) {
+                return ((addr / 2_u32) & 0xFFFF_u32) | (((addr + 2_u32) / 2_u32) << 16_u32);
+            }
             if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
                 return widen<u32>(core_->pak.rtc_.read(addr + 2_u32)) << 16_u32
                   | core_->pak.rtc_.read(addr);
@@ -250,8 +251,9 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
                 return core_->pak.rtc_.read(addr);
             }
-            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address,
-            // the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            if (addr >= core_->pak.pak_data_.size()) {
+                return narrow<u16>(addr / 2_u32);
+            }
             return memcpy<u16>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
@@ -356,7 +358,9 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
             // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= core_->pak.mirror_mask_;
-            // todo Because Gamepak uses the same signal-lines for both 16bit data and for lower 16bit halfword address, the entire gamepak ROM area is effectively filled by incrementing 16bit values (Address/2 AND FFFFh).
+            if (addr >= core_->pak.pak_data_.size()) {
+                return narrow<u8>((addr / 2_u32) >> (bit::extract(addr, 1_u8) * 8_u32));
+            }
             if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
                 return core_->pak.rtc_.read(addr);
             }
