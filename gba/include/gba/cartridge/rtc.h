@@ -14,7 +14,7 @@
 namespace gba::cartridge {
 
 struct rtc_command  {
-    enum class type : u16::type {
+    enum class type : u8::type {
         none = 0b0001'0000_u16,
         reset = 0b0000_u16,
         date_time = 0b0010_u16,
@@ -29,7 +29,7 @@ struct rtc_command  {
     rtc_command() = default;
     explicit rtc_command(u8 cmd)
     {
-        cmd_type = static_cast<type>((cmd >> 4_u8).get() & 0x7_u8);
+        cmd_type = to_enum<type>((cmd >> 4_u8) & 0x7_u8);
         is_access_read = bit::test(cmd, 7_u8);
     }
 };

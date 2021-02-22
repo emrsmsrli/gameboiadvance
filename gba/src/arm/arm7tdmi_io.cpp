@@ -14,7 +14,7 @@ namespace gba::arm {
 
 namespace {
 
-enum class memory_page {
+enum class memory_page : u32::type {
     bios = 0x00,
     ewram = 0x02,
     iwram = 0x03,
@@ -68,7 +68,7 @@ FORCEINLINE u8& get_wait_cycles(array<u8, 32>& table, const memory_page page, co
         return unused_area;
     }
 
-    return table[static_cast<u32::type>(page) + static_cast<u32::type>(access) * 16_u32];
+    return table[from_enum<u32>(page) + (from_enum<u32>(access) - 1_u32) * 16_u32];
 }
 
 } // namespace
@@ -82,7 +82,7 @@ u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
 
 u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_32, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -133,7 +133,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_32, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -199,7 +199,7 @@ u32 arm7tdmi::read_16_aligned(const u32 addr, const mem_access access) noexcept
 
 u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_16, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -251,7 +251,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_16, page, access));
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -317,7 +317,7 @@ u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
 
 u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_16, page, access));
 
     switch(page) {
@@ -358,7 +358,7 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcept
 {
-    const auto page = static_cast<memory_page>(addr.get() >> 24_u32);
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
     tick_components(get_wait_cycles(wait_16, page, access));
 
     switch(page) {
@@ -413,7 +413,7 @@ u32 arm7tdmi::read_unused(const u32 addr) noexcept
 {
     u32 data;
     if(cpsr().t) {
-        const auto current_page = static_cast<memory_page>(r15_.get() >> 24_u32);
+        const auto current_page = to_enum<memory_page>(r15_ >> 24_u32);
         switch(current_page) {
             case memory_page::ewram:
             case memory_page::palette_ram: case memory_page::vram:
@@ -469,7 +469,7 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
         case keypad::addr_control + 1:
             return narrow<u8>(widen<u32>(core_->keypad.keycnt_.select) >> 8_u32 & 0b11_u32
               | bit::from_bool(core_->keypad.keycnt_.enabled) << 6_u32
-              | static_cast<u32::type>(core_->keypad.keycnt_.cond_strategy) << 7_u32);
+              | from_enum<u32>(core_->keypad.keycnt_.cond_strategy) << 7_u32);
 
         case ppu::addr_dispcnt:
             return bit::from_bool<u8>(ppu.dispcnt_.forced_blank) << 7_u8
@@ -517,7 +517,7 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
               | bit::from_bool<u8>(ppu.bldcnt_.first.bg[3_usize]) << 3_u8
               | bit::from_bool<u8>(ppu.bldcnt_.first.obj) << 4_u8
               | bit::from_bool<u8>(ppu.bldcnt_.first.backdrop) << 5_u8
-              | u8(static_cast<u8::type>(ppu.bldcnt_.effect_type)) << 6_u8;
+              | from_enum<u8>(ppu.bldcnt_.effect_type) << 6_u8;
         case ppu::addr_bldcnt + 1:
             return bit::from_bool<u8>(ppu.bldcnt_.second.bg[0_usize])
               | bit::from_bool<u8>(ppu.bldcnt_.second.bg[1_usize]) << 1_u8
@@ -592,7 +592,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             core_->keypad.keycnt_.select = bit::set_byte(core_->keypad.keycnt_.select, 1_u8, data & 0b11_u8);
             core_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
             core_->keypad.keycnt_.cond_strategy =
-              static_cast<keypad::keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8).get());
+              to_enum<keypad::keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8));
             if(core_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }
@@ -707,7 +707,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             ppu.bldcnt_.first.bg[3_usize] = bit::test(data, 3_u8);
             ppu.bldcnt_.first.obj = bit::test(data, 4_u8);
             ppu.bldcnt_.first.backdrop = bit::test(data, 5_u8);
-            ppu.bldcnt_.effect_type = static_cast<ppu::bldcnt::effect>(((data >> 6_u8) & 0b11_u8).get());
+            ppu.bldcnt_.effect_type = to_enum<ppu::bldcnt::effect>((data >> 6_u8) & 0b11_u8);
             break;
         case ppu::addr_bldcnt + 1:
             ppu.bldcnt_.second.bg[0_usize] = bit::test(data, 0_u8);
@@ -766,7 +766,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             update_waitstate_table();
             break;
         case addr_haltcnt:
-            haltcnt_ = static_cast<halt_control>(bit::extract(data, 0_u8).get());
+            haltcnt_ = to_enum<halt_control>(bit::extract(data, 0_u8));
             break;
         case addr_postboot:
             post_boot_ = bit::extract(data, 0_u8);

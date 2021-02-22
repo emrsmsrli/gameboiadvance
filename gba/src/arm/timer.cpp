@@ -108,9 +108,8 @@ void timer::overflow_internal() noexcept
     counter_ = reload_;
 
     if(control_.irq_enabled) {
-        arm_->request_interrupt(
-          static_cast<interrupt_source>(
-            static_cast<u32::type>(interrupt_source::timer_0_overflow) << id_.get()));
+        arm_->request_interrupt(to_enum<interrupt_source>(
+          from_enum<u32>(interrupt_source::timer_0_overflow) << id_));
     }
 
     on_overflow(this);

@@ -268,6 +268,24 @@ FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T>
     return make_unsigned(static_cast<T>(i));
 }
 
+// enum ops
+
+template<typename Integer, typename Enum>
+[[nodiscard]] FORCEINLINE constexpr Integer from_enum(const Enum e) noexcept
+{
+    using underlying_t = std::underlying_type_t<Enum>;
+    static_assert(std::is_enum_v<Enum>);
+    return Integer{static_cast<underlying_t>(e)};
+}
+
+template<typename Enum, typename Integer>
+[[nodiscard]] FORCEINLINE constexpr Enum to_enum(const Integer i) noexcept
+{
+    using underlying_t = std::underlying_type_t<Enum>;
+    static_assert(std::is_enum_v<Enum>);
+    return static_cast<Enum>(i.get());
+}
+
 // arithmetic ops
 
 template<typename A, typename B>

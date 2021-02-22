@@ -59,7 +59,7 @@ struct psr {
 
     explicit operator u32() const noexcept
     {
-        return u32(static_cast<u32::type>(mode))
+        return from_enum<u32>(mode)
           | bit::from_bool(t) << 5_u32
           | bit::from_bool(f) << 6_u32
           | bit::from_bool(i) << 7_u32
@@ -71,7 +71,7 @@ struct psr {
 
     psr& operator=(const u32 data) noexcept
     {
-        mode = static_cast<privilege_mode>((data & 0x1F_u32).get());
+        mode = to_enum<privilege_mode>(data & 0x1F_u32);
         t = bit::test(data, 5_u8);
         f = bit::test(data, 6_u8);
         i = bit::test(data, 7_u8);

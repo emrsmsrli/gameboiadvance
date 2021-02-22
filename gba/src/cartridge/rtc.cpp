@@ -176,7 +176,7 @@ void rtc::process_byte() noexcept
     if(current_cmd_.cmd_type == rtc_command::type::none) {
         if((bit_buffer_ & 0xF_u8) == 0b0110_u8) {
             current_cmd_ = rtc_command{bit_buffer_};
-            remaining_bytes_ = parameter_bytes[static_cast<u8::type>(current_cmd_.cmd_type)];
+            remaining_bytes_ = parameter_bytes[from_enum<u8>(current_cmd_.cmd_type)];
             LOG_TRACE(rtc, "RTC cmd: {}", to_string_view(current_cmd_.cmd_type));
 
             switch(current_cmd_.cmd_type) {
