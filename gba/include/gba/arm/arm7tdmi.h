@@ -197,6 +197,10 @@ class arm7tdmi {
     };
 
 public:
+#if WITH_DEBUGGER
+    using timers_debugger = array<timer, 4>;
+#endif // WITH_DEBUGGER
+
     static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
 
     explicit arm7tdmi(core* core) noexcept : arm7tdmi(core, {}) {}

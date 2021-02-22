@@ -7,10 +7,12 @@
 
 #include <gba_debugger/arm_debugger.h>
 
+#include <sstream>
+
 #include <imgui.h>
 #include <access_private.h>
 
-#include <gba/arm/arm7tdmi.h>
+#include <gba/core.h>
 #include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/disassembler.h>
 
@@ -40,6 +42,29 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::pipeline, pipeline_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_)
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::waitstate_control, waitcnt_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::halt_control, haltcnt_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u8, post_boot_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::scheduler::event::handle, interrupt_delay_handle_)
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::arm7tdmi::timers_debugger, timers_)
+ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, id_)
+ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, counter_)
+ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u16, reload_)
+ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::arm::timer_control, control_)
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::dma::controller, dma_controller_)
+ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::u32, latch_)
+ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, running_channels_)
+ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, scheduled_channels_)
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, bios_)
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::core*, core_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::vector<gba::u8>, pak_data_)
 
 namespace gba::debugger {
 
@@ -221,59 +246,207 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
 void arm_debugger::draw() const noexcept
 {
     if(ImGui::Begin("ARM")) {
-        draw_regs(arm);
+        if(ImGui::BeginTabBar("#arm_tab")) {
+            if(ImGui::BeginTabItem("Registers")) {
+                draw_regs(arm);
 
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
 
-        ImGui::TextUnformatted("Pipeline");
-        ImGui::Separator();
-        ImGui::Text("executing: %08X", access_private::pipeline_(arm).executing.get());
-        if(ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            if(access_private::cpsr_(arm).t) {
-                ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                  access_private::r15_(arm) - 4u,
-                  narrow<u16>(access_private::pipeline_(arm).executing)).c_str());
-            } else {
-                ImGui::TextUnformatted(disassembler::disassemble_arm(
-                  access_private::r15_(arm) - 8u,
-                  access_private::pipeline_(arm).executing).c_str());
+                ImGui::TextUnformatted("Pipeline");
+                ImGui::Separator();
+                const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
+                    ImGui::Text("%s: %08X", name, instr.get());
+                    if(ImGui::IsItemHovered()) {
+                        ImGui::BeginTooltip();
+                        if(access_private::cpsr_(arm).t) {
+                            ImGui::TextUnformatted(disassembler::disassemble_thumb(
+                              access_private::r15_(arm) - offset * 4_u32,
+                              narrow<u16>(instr)).c_str());
+                        } else {
+                            ImGui::TextUnformatted(disassembler::disassemble_arm(
+                              access_private::r15_(arm) - offset * 2_u32,
+                              instr).c_str());
+                        }
+                        ImGui::EndTooltip();
+                    }
+                };
+
+                ImGui::BeginGroup(); {
+                    draw_pipeline_instr("executing", access_private::pipeline_(arm).executing, 1_u32);
+                    draw_pipeline_instr("decoding", access_private::pipeline_(arm).decoding, 2_u32);
+                    ImGui::Text("fetch: %s", [&]() {
+                        switch(access_private::pipeline_(arm).fetch_type) {
+                            case arm::mem_access::non_seq: return "non seq";
+                            case arm::mem_access::seq: return "seq";
+                            default: UNREACHABLE();
+                        }
+                    }());
+
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+
+                    ImGui::Text("postboot: %X", access_private::post_boot_(arm).get());
+                    ImGui::Text("haltcnt: %s", [&]() {
+                        switch(access_private::haltcnt_(arm)) {
+                            case arm::halt_control::halted: return "halted";
+                            case arm::halt_control::stopped: return "stopped";
+                            case arm::halt_control::running: return "running";
+                            default: UNREACHABLE();
+                        }
+                    }());
+
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+
+                    ImGui::Text("ie: %04X", access_private::ie_(arm).get());
+                    ImGui::Text("if: %04X", access_private::if_(arm).get());
+                    ImGui::Text("ime: %s", fmt_bool(access_private::ime_(arm)));
+                    ImGui::EndGroup();
+                }
+
+                ImGui::SameLine(0.f, 75.f);
+
+                ImGui::BeginGroup(); {
+                    ImGui::TextUnformatted("waitcnt");
+                    ImGui::Separator();
+                    ImGui::Text("sram %d", access_private::waitcnt_(arm).sram.get());
+                    ImGui::Text("ws0_nonseq %d", access_private::waitcnt_(arm).ws0_nonseq.get());
+                    ImGui::Text("ws0_seq %d", access_private::waitcnt_(arm).ws0_seq.get());
+                    ImGui::Text("ws1_nonseq %d", access_private::waitcnt_(arm).ws1_nonseq.get());
+                    ImGui::Text("ws1_seq %d", access_private::waitcnt_(arm).ws1_seq.get());
+                    ImGui::Text("ws2_nonseq %d", access_private::waitcnt_(arm).ws2_nonseq.get());
+                    ImGui::Text("ws2_seq %d", access_private::waitcnt_(arm).ws2_seq.get());
+                    ImGui::Text("phi %d", access_private::waitcnt_(arm).phi.get());
+                    ImGui::Text("prefetch %s", fmt_bool(access_private::waitcnt_(arm).prefetch_buffer_enable));
+                    ImGui::EndGroup();
+                }
+
+                ImGui::EndTabItem();
             }
-            ImGui::EndTooltip();
+
+            if(ImGui::BeginTabItem("Timers")) {
+                for(auto& timer : access_private::timers_(arm)) {
+                    ImGui::Text("Timer %d", access_private::id_(timer).get());
+                    ImGui::Separator();
+                    ImGui::Text("counter: %04X reload: %04X",
+                      access_private::counter_(timer).get(),
+                      access_private::reload_(timer).get());
+
+                    auto& cnt = access_private::control_(timer);
+                    constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
+
+                    ImGui::Text("prescalar: F/%d", 1_u32 << prescalar_shifts[cnt.prescalar]);
+                    ImGui::Text("cascaded: %s", fmt_bool(cnt.cascaded));
+                    ImGui::Text("irq: %s", fmt_bool(cnt.irq_enabled));
+                    ImGui::Text("enabled: %s", fmt_bool(cnt.enabled));
+
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                }
+
+                ImGui::EndTabItem();
+            }
+
+            if(ImGui::BeginTabItem("DMAs")) {
+                const auto get_addr_control = [](dma::channel::control::address_control control) {
+                    switch(control) {
+                        case dma::channel::control::address_control::increment: return "increment";
+                        case dma::channel::control::address_control::decrement: return "decrement";
+                        case dma::channel::control::address_control::fixed: return "fixed";
+                        case dma::channel::control::address_control::inc_reload: return "inc_reload";
+                        default:
+                            UNREACHABLE();
+                    }
+                };
+
+                const auto fmt_channels = [](gba::dma::controller::channels_debugger& channels) -> std::string {
+                    if(channels.empty()) { return "none"; }
+
+                    std::stringstream s;
+                    std::string_view delim = "";
+                    for(auto* c : channels) {
+                        s << delim << c;
+                        delim = ", ";
+                    }
+                    return s.str();
+                };
+
+                auto& controller = access_private::dma_controller_(arm);
+
+                ImGui::Text("Scheduled channels: %s",
+                  fmt_channels(access_private::scheduled_channels_(controller)).c_str());
+                ImGui::Text("Running channels: %s",
+                  fmt_channels(access_private::running_channels_(controller)).c_str());
+
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
+
+                for(dma::channel& channel : controller.channels) {
+                    ImGui::Text("DMA %d", channel.id.get());
+                    ImGui::Separator();
+                    ImGui::BeginGroup(); {
+                        ImGui::Text("enabled: %s", fmt_bool(channel.cnt.enabled));
+                        ImGui::Text("repeat: %s", fmt_bool(channel.cnt.repeat));
+                        ImGui::Text("irq: %s", fmt_bool(channel.cnt.irq));
+                        ImGui::Text("drq: %s", fmt_bool(channel.cnt.drq));
+                        ImGui::Text("dst control: %s", get_addr_control(channel.cnt.dst_control));
+                        ImGui::Text("src control: %s", get_addr_control(channel.cnt.src_control));
+                        ImGui::Text("timing: %s", [&]() {
+                            switch(channel.cnt.when) {
+                                case dma::channel::control::timing::immediately: return "immediately";
+                                case dma::channel::control::timing::vblank: return "vblank";
+                                case dma::channel::control::timing::hblank: return "hblank";
+                                case dma::channel::control::timing::special: return "special";
+                                default:
+                                    UNREACHABLE();
+                            }
+                        }());
+                        ImGui::Text("size: %s", [&]() {
+                            switch(channel.cnt.size) {
+                                case dma::channel::control::transfer_size::hword: return "hword";
+                                case dma::channel::control::transfer_size::word: return "word";
+                                default:
+                                    UNREACHABLE();
+                            }
+                        }());
+                        ImGui::EndGroup();
+                    }
+
+                    ImGui::SameLine(0.f, 75.f);
+
+                    ImGui::BeginGroup(); {
+                        ImGui::TextUnformatted("Data"); ImGui::Separator();
+                        ImGui::Text("src: %08X", channel.src.get());
+                        ImGui::Text("dst: %08X", channel.dst.get());
+                        ImGui::Text("count: %05X", channel.count.get());
+
+                        ImGui::Spacing();
+                        ImGui::Spacing();
+
+                        ImGui::TextUnformatted("Internal Data"); ImGui::Separator();
+                        ImGui::Text("src: %08X", channel.internal.src.get());
+                        ImGui::Text("dst: %08X", channel.internal.dst.get());
+                        ImGui::Text("count: %05X", channel.internal.count.get());
+                        ImGui::EndGroup();
+                    }
+
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                }
+
+                ImGui::EndTabItem();
+            }
+
+            ImGui::EndTabBar();
         }
-        ImGui::Text("decoding: %08X", access_private::pipeline_(arm).decoding.get());
-        if(ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            if(access_private::cpsr_(arm).t) {
-                ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                  access_private::r15_(arm) - 2u,
-                  narrow<u16>(access_private::pipeline_(arm).decoding)).c_str());
-            } else {
-                ImGui::TextUnformatted(disassembler::disassemble_arm(
-                  access_private::r15_(arm) - 4u,
-                  access_private::pipeline_(arm).decoding).c_str());
-            }
-            ImGui::EndTooltip();
-        }
-        ImGui::Text("fetch: %s", [&]() {
-            switch(access_private::pipeline_(arm).fetch_type) {
-                case arm::mem_access::non_seq: return "non seq";
-                case arm::mem_access::seq: return "seq";
-                default: UNREACHABLE();
-            }
-        }());
-
-        ImGui::Separator();
-        ImGui::Spacing();
-        ImGui::Spacing();
-        ImGui::Spacing();
-
-        ImGui::Text("ie: %04X", access_private::ie_(arm).get());
-        ImGui::Text("if: %04X", access_private::if_(arm).get());
-        ImGui::Text("ime: %s", fmt_bool(access_private::ime_(arm)));
     }
+
     ImGui::End();
 }
 

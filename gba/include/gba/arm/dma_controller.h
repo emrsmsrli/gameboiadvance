@@ -49,14 +49,7 @@ struct channel : data {
     u32 id;
 
     control cnt;
-    data internal; // fixme implement
-    /*Source and Destination Address and Word Count Registers
-    The SAD, DAD, and CNT_L registers are holding the initial start addresses, and initial length.
-     The hardware does NOT change the content of these registers during or after the transfer.
-    The actual transfer takes place by using internal pointer/counter registers.
-     The initial values are copied into internal regs under the following circumstances:
-    Upon DMA Enable (Bit 15) changing from 0 to 1: Reloads SAD, DAD, CNT_L.
-    Upon Repeat: Reloads CNT_L, and optionally DAD (Increment+Reload).*/
+    data internal;
 
     arm::mem_access next_access_type;
 
@@ -74,7 +67,7 @@ struct channel : data {
 // todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
 public:
-    enum class occasion { vblank, hblank, video, fifo_a, fifo_b };
+    enum class occasion { vblank, hblank, video /*todo implement this in ppu*/, fifo_a, fifo_b };
 
 private:
     arm::arm7tdmi* arm_;
@@ -83,6 +76,10 @@ private:
     static_vector<channel*, channel_count_> scheduled_channels_;
 
 public:
+#if WITH_DEBUGGER
+    using channels_debugger = static_vector<channel*, channel_count_>;
+#endif // WITH_DEBUGGER
+
     array<channel, channel_count_> channels{
       channel{0_u32},
       channel{1_u32},
