@@ -114,8 +114,8 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 
 void controller::run_channels() noexcept
 {
-    // already running
-    if(!running_channels_.empty()) {
+    // already running or won't run at all
+    if(UNLIKELY(!running_channels_.empty()) || scheduled_channels_.empty()) {
         return;
     }
 
@@ -147,7 +147,7 @@ void controller::run_channels() noexcept
                     arm_->tick_internal();
                 }
 
-                arm_->write_16(channel->internal.src, narrow<u16>(latch_), channel->next_access_type);
+                arm_->write_16(channel->internal.dst, narrow<u16>(latch_), channel->next_access_type);
 
                 static constexpr array modify_offsets{2_i32, -2_i32, 0_i32, 2_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];
@@ -161,7 +161,7 @@ void controller::run_channels() noexcept
                     arm_->tick_internal();
                 }
 
-                arm_->write_32(channel->internal.src, latch_, channel->next_access_type);
+                arm_->write_32(channel->internal.dst, latch_, channel->next_access_type);
 
                 static constexpr array modify_offsets{4_i32, -4_i32, 0_i32, 4_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];
