@@ -35,6 +35,12 @@ void sort_by_priority(static_vector<channel*, channel_count_>& channels) noexcep
       (channel->id == 1_u32 || channel->id == 2_u32);
 }
 
+[[nodiscard]] FORCEINLINE bool addr_in_rom_area(const u32 addr) noexcept
+{
+    const u32 page = addr >> 24_u32;
+    return 0x08_u32 <= page && page <= 0x0D_u32;
+}
+
 } // namespace
 
 void channel::write_dst(const u8 n, const u8 data) noexcept
@@ -113,15 +119,10 @@ void controller::run_channels() noexcept
         return;
     }
 
-    // After changing the Enable bit from 0 to 1, wait 2 clock cycles before accessing any DMA related registers.
-    // TODO: I don't know how the internal processing time for DMA is supposed to work.
-    // This is what works best so far, but I don't think that it's correct. Needs revision.
-    // auto src_page = GetUnaliasedMemoryArea(running_channels_.back()->src >> 24u);
-    // auto dst_page = GetUnaliasedMemoryArea(running_channels_.back()->dst >> 24u);
-    // if(src_page != 0x08 || dst_page != 0x08) {
-    //     arm_->tick_internal();
-    //     arm_->tick_internal();
-    // }
+    if(!addr_in_rom_area(running_channels_.back()->src) || !addr_in_rom_area(running_channels_.back()->dst)) {
+        arm_->tick_internal();
+        arm_->tick_internal();
+    }
 
     while(!running_channels_.empty()) {
         channel* channel = running_channels_.back(); // always has highest priority
