@@ -53,12 +53,17 @@ FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
     return 0xC4_u32 <= addr && addr < 0xCA_u32;
 }
 
-FORCEINLINE constexpr bool is_eeprom(const cartridge::backup::type type, const u32 addr) noexcept
+FORCEINLINE constexpr bool is_eeprom(const usize pak_size, const cartridge::backup::type type, const u32 addr) noexcept
 {
-    // todo return (~memory.rom.size & 0x0200 0000) || address >= 0x0DFF FF00;
-    // todo same as  (rom.size == 32_mb) || address >= 0x0DFF FF00;
     return (type == cartridge::backup::type::eeprom_64 || type == cartridge::backup::type::eeprom_4)
-      && addr >= 0x0DFF'FF00_u32;
+      && (pak_size < (32_u32 * 1024_kb) || addr >= 0x0DFF'FF00_u32);
+}
+
+FORCEINLINE constexpr bool is_sram_flash(const cartridge::backup::type type) noexcept
+{
+    return type == cartridge::backup::type::sram
+        || type == cartridge::backup::type::flash_64
+        || type == cartridge::backup::type::flash_128;
 }
 
 FORCEINLINE u8& get_wait_cycles(array<u8, 32>& table, const memory_page page, const mem_access access) noexcept
@@ -172,7 +177,7 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
             }
             break;
@@ -223,7 +228,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
         case memory_page::oam_ram:
             return memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws2_upper:
-            if(is_eeprom(core_->pak.backup_type(), addr)) {
+            if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
                 return core_->pak.backup_->read(addr);
             }
             [[fallthrough]];
@@ -240,7 +245,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return memcpy<u16>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->read(addr) * 0x0101_u16;
             }
             return 0xFFFF_u16;
@@ -278,6 +283,13 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
         case memory_page::oam_ram:
             memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
+        case memory_page::pak_ws2_upper:
+            if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)
+              && bitflags::is_set(access, mem_access::dma)) {
+                core_->pak.backup_->write(addr, narrow<u8>(data));
+                break;
+            }
+            [[fallthrough]];
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
@@ -287,20 +299,9 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
                 core_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));
             }
             break;
-        case memory_page::pak_ws2_upper:
-            if(is_eeprom(core_->pak.backup_type(), addr)) {
-                // fixme eeprom is only written by dma
-                core_->pak.backup_->write(addr, narrow<u8>(data));
-            } else { // fixme???????????????????
-                addr &= core_->pak.mirror_mask_;
-                if(core_->pak.has_rtc_ && is_gpio(addr)) {
-                    core_->pak.rtc_.write(addr, narrow<u8>(data));
-                }
-            }
-            break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
             }
             break;
@@ -347,7 +348,7 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
             return memcpy<u8>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->read(addr);
             }
             return 0xFF_u8;
@@ -384,7 +385,7 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->write(addr, data);
             }
             break;
@@ -528,6 +529,46 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
         case ppu::addr_bldalpha: return ppu.blend_settings_.eva;
         case ppu::addr_bldalpha + 1: return ppu.blend_settings_.evb;
 
+        case apu::addr_sound1cnt_l:
+        case apu::addr_sound1cnt_l + 1:
+        case apu::addr_sound1cnt_h:
+        case apu::addr_sound1cnt_h + 1:
+        case apu::addr_sound1cnt_x:
+        case apu::addr_sound1cnt_x + 1:
+        case apu::addr_sound2cnt_l:
+        case apu::addr_sound2cnt_l + 1:
+        case apu::addr_sound2cnt_h:
+        case apu::addr_sound2cnt_h + 1:
+        case apu::addr_sound3cnt_l:
+        case apu::addr_sound3cnt_l + 1:
+        case apu::addr_sound3cnt_h:
+        case apu::addr_sound3cnt_h + 1:
+        case apu::addr_sound3cnt_x:
+        case apu::addr_sound3cnt_x + 1:
+        case apu::addr_sound4cnt_l:
+        case apu::addr_sound4cnt_l + 1:
+        case apu::addr_sound4cnt_h:
+        case apu::addr_sound4cnt_h + 1:
+        case apu::addr_soundcnt_l:
+        case apu::addr_soundcnt_l + 1:
+        case apu::addr_soundcnt_h:
+        case apu::addr_soundcnt_h + 1:
+        case apu::addr_soundcnt_x:
+        case apu::addr_soundcnt_x + 1:
+        case apu::addr_soundbias:
+        case apu::addr_soundbias + 1:
+        case apu::addr_wave_ram:
+        case apu::addr_wave_ram + 1: //???
+        case apu::addr_fifo_a:
+        case apu::addr_fifo_a + 1:
+        case apu::addr_fifo_a + 2:
+        case apu::addr_fifo_a + 3:
+        case apu::addr_fifo_b:
+        case apu::addr_fifo_b + 1:
+        case apu::addr_fifo_b + 2:
+        case apu::addr_fifo_b + 3:
+            return 0_u8;
+
         case addr_tm0cnt_l:     return timers_[0_usize].read(timer::register_type::cnt_l_lsb);
         case addr_tm0cnt_l + 1: return timers_[0_usize].read(timer::register_type::cnt_l_msb);
         case addr_tm0cnt_h:     return timers_[0_usize].read(timer::register_type::cnt_h_lsb);
@@ -554,10 +595,10 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
         case addr_dma3cnt_h:     return dma_controller_.channels[3_usize].read_cnt_l();
         case addr_dma3cnt_h + 1: return dma_controller_.channels[3_usize].read_cnt_h();
 
-        case addr_ime: return bit::from_bool<u8>(ime_);
-        case addr_ie: return narrow<u8>(ie_);
+        case addr_ime:    return bit::from_bool<u8>(ime_);
+        case addr_ie:     return narrow<u8>(ie_);
         case addr_ie + 1: return narrow<u8>(ie_ >> 8_u8);
-        case addr_if: return narrow<u8>(if_);
+        case addr_if:     return narrow<u8>(if_);
         case addr_if + 1: return narrow<u8>(if_ >> 8_u8);
         case addr_waitcnt:
             return waitcnt_.sram

@@ -203,7 +203,7 @@ public:
     arm7tdmi(core* core, vector<u8> bios) noexcept;
 
     void tick() noexcept;
-    void request_interrupt(const interrupt_source irq) noexcept { if_ |= static_cast<u16::type>(irq); }
+    void request_interrupt(const interrupt_source irq) noexcept { if_ |= from_enum<u16>(irq); }
 
     u32& r(u8 index) noexcept;
     psr& cpsr() noexcept { return cpsr_; }
