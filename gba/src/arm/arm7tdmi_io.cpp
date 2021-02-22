@@ -373,15 +373,16 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
             write_io(addr, narrow<u8>(data));
             break;
         case memory_page::palette_ram:
-            // todo check gbatek Writing 8bit Data to Video Memory
-            memcpy<u8>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32, data);
+            memcpy<u16>(core_->ppu.palette_ram_, addr & 0x0000'03FE_u32, data * 0x0101_u16);
             break;
-        case memory_page::vram:
-            // todo check gbatek Writing 8bit Data to Video Memory
-            memcpy<u8>(core_->ppu.vram_, adjust_vram_addr(addr), data);
+        case memory_page::vram: {
+            const u32 limit = core_->ppu.dispcnt_.bg_mode > 2 ? 0x1'4000_u32 : 0x1'0000_u32;
+            if(const u32 adjusted_addr = adjust_vram_addr(addr); adjusted_addr < limit) {
+                memcpy<u16>(core_->ppu.vram_, bit::clear(adjusted_addr, 0_u8), data * 0x0101_u16);
+            }
             break;
+        }
         case memory_page::oam_ram:
-            memcpy<u8>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
