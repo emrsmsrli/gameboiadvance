@@ -124,8 +124,8 @@ void arm7tdmi::tick_components(const u64 cycles) noexcept
 {
     // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
 
-    core_->schdlr.add_cycles(cycles);
     dma_controller_.run_channels();
+    core_->schdlr.add_cycles(cycles);
 }
 
 u32& arm7tdmi::r(const u8 index) noexcept

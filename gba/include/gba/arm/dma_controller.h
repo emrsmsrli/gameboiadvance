@@ -95,6 +95,8 @@ public:
     void run_channels() noexcept;
     void request(occasion occasion) noexcept;
 
+    [[nodiscard]] u32 latch() const noexcept { return latch_; }
+
 private:
     u32 latch_;
 

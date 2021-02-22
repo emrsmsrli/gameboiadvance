@@ -118,10 +118,10 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
         case memory_page::iwram:
             return memcpy<u32>(iwram_, addr & 0x0000'7FFF_u32);
         case memory_page::io: {
-            return widen<u32>(read_io(addr))
-              | (widen<u32>(read_io(addr + 1_u32)) << 8_u32)
-              | (widen<u32>(read_io(addr + 2_u32)) << 16_u32)
-              | (widen<u32>(read_io(addr + 3_u32)) << 24_u32);
+            return widen<u32>(read_io(addr, access))
+              | (widen<u32>(read_io(addr + 1_u32, access)) << 8_u32)
+              | (widen<u32>(read_io(addr + 2_u32, access)) << 16_u32)
+              | (widen<u32>(read_io(addr + 3_u32, access)) << 24_u32);
         }
         case memory_page::palette_ram:
             return memcpy<u32>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
@@ -148,7 +148,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
             }
             return 0xFFFF'FFFF_u32;
         default:
-            return read_unused(addr);
+            return read_unused(addr, access);
     }
 }
 
@@ -240,8 +240,8 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
         case memory_page::iwram:
             return memcpy<u16>(iwram_, addr & 0x0000'7FFF_u32);
         case memory_page::io:
-            return widen<u16>(read_io(addr))
-              | (widen<u16>(read_io(addr + 1_u32)) << 8_u16);
+            return widen<u16>(read_io(addr, access))
+              | (widen<u16>(read_io(addr + 1_u32, access)) << 8_u16);
         case memory_page::palette_ram:
             return memcpy<u16>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
@@ -271,7 +271,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             }
             return 0xFFFF_u16;
         default:
-            return narrow<u16>(read_unused(addr));
+            return narrow<u16>(read_unused(addr, access));
     }
 }
 
@@ -355,7 +355,7 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
         case memory_page::iwram:
             return memcpy<u8>(iwram_, addr & 0x0000'7FFF_u32);
         case memory_page::io:
-            return read_io(addr);
+            return read_io(addr, mem_access::none);
         case memory_page::palette_ram:
             return memcpy<u8>(core_->ppu.palette_ram_, addr & 0x0000'03FF_u32);
         case memory_page::vram:
@@ -380,7 +380,7 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
             }
             return 0xFF_u8;
         default:
-            return narrow<u8>(read_unused(addr));
+            return narrow<u8>(read_unused(addr, mem_access::none));
     }
 }
 
@@ -440,8 +440,12 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
     return bios_last_read_ >> shift;
 }
 
-u32 arm7tdmi::read_unused(const u32 addr) noexcept
+u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
 {
+    if(UNLIKELY(bitflags::is_set(access, mem_access::dma))) {
+        return dma_controller_.latch() >> ((addr & 0b11_u32) << 3_u32);
+    }
+
     u32 data;
     if(cpsr().t) {
         const auto current_page = to_enum<memory_page>(r15_ >> 24_u32);
@@ -479,7 +483,7 @@ u32 arm7tdmi::read_unused(const u32 addr) noexcept
     return data >> ((addr & 0b11_u32) << 3_u32);
 }
 
-u8 arm7tdmi::read_io(const u32 addr) noexcept
+u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
 {
     auto& ppu = core_->ppu;
 
@@ -644,7 +648,7 @@ u8 arm7tdmi::read_io(const u32 addr) noexcept
             return post_boot_;
     }
 
-    return narrow<u8>(read_unused(addr));
+    return narrow<u8>(read_unused(addr, access));
 }
 
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
