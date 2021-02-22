@@ -187,7 +187,7 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
-            addr &= core_->pak.mirror_mask_;
+            addr &= cartridge::gamepak::default_mirror_mask;
             if(core_->pak.has_rtc_ && is_gpio(addr)) {
                 core_->pak.rtc_.write(addr, narrow<u8>(data));
                 core_->pak.rtc_.write(addr + 2_u32, narrow<u8>(data >> 16_u32));
@@ -316,7 +316,7 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
-            addr &= core_->pak.mirror_mask_;
+            addr &= cartridge::gamepak::default_mirror_mask;
             if(core_->pak.has_rtc_ && is_gpio(addr)) {
                 core_->pak.rtc_.write(addr, narrow<u8>(data));
                 core_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));

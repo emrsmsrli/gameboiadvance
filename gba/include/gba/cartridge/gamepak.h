@@ -43,6 +43,8 @@ class gamepak {
     u32 mirror_mask_;
 
 public:
+    static constexpr u32 default_mirror_mask = 0x01FF'FFFF_u32;
+
     event<const fs::path&> on_load;
 
     void load(const fs::path& path);

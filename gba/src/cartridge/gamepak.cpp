@@ -90,7 +90,7 @@ void gamepak::load(const fs::path& path)
             mirror_mask_ <<= 1_u32;
         }
     } else {
-        mirror_mask_ = 0x01FF'FFFF_u32;
+        mirror_mask_ = default_mirror_mask;
     }
 
     LOG_TRACE(gamepak, "rtc: {}", has_rtc_);
