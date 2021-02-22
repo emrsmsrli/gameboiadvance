@@ -275,7 +275,7 @@ template<typename Integer, typename Enum>
 {
     using underlying_t = std::underlying_type_t<Enum>;
     static_assert(std::is_enum_v<Enum>);
-    return Integer{static_cast<underlying_t>(e)};
+    return Integer{static_cast<typename Integer::type>(static_cast<underlying_t>(e))};
 }
 
 template<typename Enum, typename Integer>
