@@ -78,6 +78,17 @@ FORCEINLINE u8& get_wait_cycles(array<u8, 32>& table, const memory_page page, co
     return table[from_enum<u32>(page) + access_offset];
 }
 
+FORCEINLINE mem_access get_actual_access(const memory_page page, const u32 addr, mem_access default_access) noexcept
+{
+    if(page >= memory_page::pak_ws0_lower
+      && page <= memory_page::pak_ws2_upper
+      && (addr & 0x1'FFFF_u32) != 0_u32) { // force nonseq access on 128kb boundaries in rom
+        return (default_access & ~mem_access::seq) | mem_access::non_seq;
+    }
+
+    return default_access;
+}
+
 } // namespace
 
 u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
@@ -92,7 +103,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
-        tick_components(get_wait_cycles(wait_32, page, access));
+        tick_components(get_wait_cycles(wait_32, page, get_actual_access(page, addr, access)));
     }
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -121,7 +132,6 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
-            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= core_->pak.mirror_mask_;
             if (addr >= core_->pak.pak_data_.size()) {
                 return ((addr / 2_u32) & 0xFFFF_u32) | (((addr + 2_u32) / 2_u32) << 16_u32);
@@ -215,7 +225,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
-        tick_components(get_wait_cycles(wait_16, page, access));
+        tick_components(get_wait_cycles(wait_16, page, get_actual_access(page, addr, access)));
     }
 
     if(page != memory_page::pak_sram_1 && page != memory_page::pak_sram_2) {
@@ -246,7 +256,6 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower:
-            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= core_->pak.mirror_mask_;
             if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
                 return core_->pak.rtc_.read(addr);
@@ -335,7 +344,7 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
-        tick_components(get_wait_cycles(wait_16, page, access));
+        tick_components(get_wait_cycles(wait_16, page, get_actual_access(page, addr, access)));
     }
 
     switch(page) {
@@ -356,7 +365,6 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
         case memory_page::pak_ws1_lower: case memory_page::pak_ws1_upper:
         case memory_page::pak_ws2_lower: case memory_page::pak_ws2_upper:
-            // todo The GBA forcefully uses non-sequential timing at the beginning of each 128K-block of gamepak ROM
             addr &= core_->pak.mirror_mask_;
             if (addr >= core_->pak.pak_data_.size()) {
                 return narrow<u8>((addr / 2_u32) >> (bit::extract(addr, 1_u8) * 8_u32));
