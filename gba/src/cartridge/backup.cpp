@@ -202,7 +202,7 @@ u8 backup_flash::read(u32 address) const noexcept
         return device_id_[address];
     }
 
-    return data()[physical_addr(address & 0xFFFF_u32)];
+    return data()[physical_addr(address)];
 }
 
 } // namespace gba::cartridge
