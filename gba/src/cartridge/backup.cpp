@@ -151,9 +151,9 @@ void backup_flash::write(const u32 address, const u8 value) noexcept
             }
             break;
         case state::cmd_phase2:
-            if(address == cmd_addr1) {
-                state_ = state::accept_cmd;
+            state_ = state::accept_cmd;
 
+            if(address == cmd_addr1) {
                 if(value == cmd_devid_start) {
                     current_cmds_ |= cmd::device_id;
                     LOG_TRACE(flash, "adding device_id cmd");
@@ -209,7 +209,7 @@ u8 backup_flash::read(u32 address) const noexcept
         return device_id_[address];
     }
 
-    return data()[physical_addr(address)];
+    return data()[physical_addr(address & 0xFFFF_u32)];
 }
 
 } // namespace gba::cartridge
