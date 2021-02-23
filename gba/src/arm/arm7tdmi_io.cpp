@@ -143,7 +143,7 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
             return memcpy<u32>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
-            if(core_->pak.backup_type() == cartridge::backup::type::sram) {
+            if(is_sram_flash(core_->pak.backup_type())) {
                 return core_->pak.backup_->read(addr) * 0x0101'0101_u32;
             }
             return 0xFFFF'FFFF_u32;
