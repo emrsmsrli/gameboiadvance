@@ -114,12 +114,16 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 
 void controller::run_channels() noexcept
 {
-    // already running or won't run at all
-    if(UNLIKELY(!running_channels_.empty()) || scheduled_channels_.empty()) {
+    // already running
+    if(is_running_) {
         return;
     }
 
-    if(!addr_in_rom_area(running_channels_.back()->src) || !addr_in_rom_area(running_channels_.back()->dst)) {
+    is_running_ = true;
+
+    if(!running_channels_.empty()
+      && (!addr_in_rom_area(running_channels_.back()->src)
+      || !addr_in_rom_area(running_channels_.back()->dst))) {
         arm_->tick_internal();
         arm_->tick_internal();
     }
@@ -188,6 +192,8 @@ void controller::run_channels() noexcept
             }
         }
     }
+
+    is_running_ = false;
 }
 
 void controller::request(const occasion occasion) noexcept {

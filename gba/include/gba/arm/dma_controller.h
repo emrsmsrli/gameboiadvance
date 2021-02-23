@@ -24,7 +24,7 @@ struct channel : data {
             increment,
             decrement,
             fixed,
-            inc_reload /* prohibited for src*/
+            inc_reload
         };
 
         enum class timing : u8::type {
@@ -40,8 +40,8 @@ struct channel : data {
         address_control src_control{address_control::increment};
         timing when{timing::immediately};
         bool repeat = false;
-        transfer_size size{transfer_size::hword}; // 0: 16bit 1: 32bit
-        bool drq = false; // - DMA3 only -  (0=Normal, 1=DRQ <from> Game Pak, DMA3)
+        transfer_size size{transfer_size::hword};
+        bool drq = false;
         bool irq = false;
         bool enabled = false;
     };
@@ -99,6 +99,7 @@ public:
 
 private:
     u32 latch_;
+    bool is_running_ = false;
 
     static void latch(channel& channel, bool for_repeat, bool for_fifo) noexcept;
 

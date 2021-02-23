@@ -110,8 +110,6 @@ void gamepak::detect_backup_type() noexcept
         has_mirroring_ = entry->has_mirroring;
         has_rtc_ = entry->has_rtc;
 
-        // todo init rtc
-
         backup_ = make_backup_from_type(backup_type_, path_);
         LOG_TRACE(gamepak, "backup: {} (database entry)", to_string_view(backup_type_));
         return;

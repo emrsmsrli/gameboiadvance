@@ -32,13 +32,17 @@ struct keypad {
         down = 7_u8,
         right_shoulder = 8_u8,
         left_shoulder = 9_u8,
+
+#if WITH_DEBUGGER
+        max = 10_u8
+#endif // WITH_DEBUGGER
     };
 
     u16 keyinput_ = 0x03FF_u16;
     irq_control keycnt_;
 
-    void release(const key k) noexcept { keyinput_ = bit::set(keyinput_, static_cast<u8::type>(k)); }
-    void press(const key k) noexcept { keyinput_ = bit::clear(keyinput_, static_cast<u8::type>(k)); }
+    void release(const key k) noexcept { keyinput_ = bit::set(keyinput_, from_enum<u8>(k)); }
+    void press(const key k) noexcept { keyinput_ = bit::clear(keyinput_, from_enum<u8>(k)); }
 
     [[nodiscard]] bool interrupt_available() const noexcept
     {
