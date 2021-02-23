@@ -33,7 +33,8 @@ window::window(core* core) noexcept
     core_{core},
     gamepak_debugger_{&core->pak},
     arm_debugger_{&core->arm},
-    ppu_debugger_{&core->ppu}
+    ppu_debugger_{&core->ppu},
+    keypad_debugger_{&core->keypad}
 {
     using namespace std::string_view_literals;
     disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
@@ -137,6 +138,7 @@ bool window::draw() noexcept
     gamepak_debugger_.draw();
     arm_debugger_.draw();
     ppu_debugger_.draw();
+    keypad_debugger_.draw();
 
     window_.clear(sf::Color::Black);
     ImGui::SFML::Render();

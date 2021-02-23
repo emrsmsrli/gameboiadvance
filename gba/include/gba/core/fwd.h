@@ -21,6 +21,12 @@ class gamepak;
 
 } // namespace cartridge
 
+namespace keypad {
+
+struct keypad;
+
+} // namespace keypad
+
 namespace arm {
 
 class arm7tdmi;
