@@ -46,7 +46,6 @@ public:
     {
         heap_.push_back(event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
-        LOG_TRACE(scheduler, "adding event {} to be executed at {}", next_event_handle, now_ + delay);
         return next_event_handle;
     }
 
@@ -66,7 +65,6 @@ public:
         });
 
         if(it != heap_.end()) {
-            LOG_TRACE(scheduler, "removing event {}", it->h);
             heap_.erase(it);
             std::make_heap(heap_.begin(), heap_.end(), predicate{});
         }
@@ -81,8 +79,6 @@ public:
 
                 std::pop_heap(heap_.begin(), heap_.end(), predicate{});
                 heap_.pop_back();
-
-                LOG_TRACE(scheduler, "executing event with handle {} at {}", handle, timestamp);
 
                 // call with how much cycles the event has been late
                 callback(now_ - timestamp);
