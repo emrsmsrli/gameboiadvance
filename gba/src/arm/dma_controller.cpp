@@ -114,22 +114,23 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 
 void controller::run_channels() noexcept
 {
-    // already running
-    if(is_running_) {
+    if(LIKELY(is_running_ || running_channels_.empty())) {
         return;
     }
 
     is_running_ = true;
 
-    if(!running_channels_.empty()
-      && (!addr_in_rom_area(running_channels_.back()->src)
-      || !addr_in_rom_area(running_channels_.back()->dst))) {
-        arm_->tick_internal();
-        arm_->tick_internal();
-    }
+    array<bool, channel_count_> first_run{false, false, false, false};
 
     while(!running_channels_.empty()) {
         channel* channel = running_channels_.back(); // always has highest priority
+
+        if(first_run[channel->id]
+          && (!addr_in_rom_area(running_channels_.back()->src)
+          || !addr_in_rom_area(running_channels_.back()->dst))) {
+            arm_->tick_internal();
+            arm_->tick_internal();
+        }
 
         const bool for_fifo = is_for_fifo(channel);
 
