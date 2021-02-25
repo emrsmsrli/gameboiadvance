@@ -12,6 +12,7 @@
 
 #include <gba/arm/dma_controller.h>
 #include <gba/arm/timer.h>
+#include <gba/arm/irq_controller_handle.h>
 #include <gba/core/scheduler.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
@@ -21,23 +22,6 @@
 #include <gba/helper/bitflags.h>
 
 namespace gba::arm {
-
-enum class interrupt_source : u16::type {
-    vblank = 1 << 0,
-    hblank = 1 << 1,
-    vcounter_match = 1 << 2,
-    timer_0_overflow = 1 << 3,
-    timer_1_overflow = 1 << 4,
-    timer_2_overflow = 1 << 5,
-    timer_3_overflow = 1 << 6,
-    serial_io = 1 << 7,
-    dma_0 = 1 << 8,
-    dma_1 = 1 << 9,
-    dma_2 = 1 << 10,
-    dma_3 = 1 << 11,
-    keypad = 1 << 12,
-    gamepak = 1 << 13,
-};
 
 enum class privilege_mode : u8::type {
     usr = 0x10,  // user
@@ -207,7 +191,10 @@ public:
     arm7tdmi(core* core, vector<u8> bios) noexcept;
 
     void tick() noexcept;
+
     void request_interrupt(const interrupt_source irq) noexcept { if_ |= from_enum<u16>(irq); }
+    irq_controller_handle get_interrupt_handle() noexcept { return irq_controller_handle{&if_}; }
+    dma::controller_handle get_dma_cnt_handle() noexcept { return dma::controller_handle{&dma_controller_}; }
 
     u32& r(u8 index) noexcept;
     psr& cpsr() noexcept { return cpsr_; }

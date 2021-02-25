@@ -10,6 +10,7 @@
 
 #include <gba/core/container.h>
 #include <gba/core/math.h>
+#include <gba/arm/irq_controller_handle.h>
 
 namespace gba::cartridge {
 
@@ -50,6 +51,8 @@ class rtc {
     array<u8, 7> time_regs_;
     u8 control_ = 0x40_u8;
 
+    arm::irq_controller_handle irq_;
+
 public:
 #if WITH_DEBUGGER
     using transfer_state_debugger = transfer_state;
@@ -64,6 +67,8 @@ public:
     void write(u32 address, u8 value) noexcept;
 
     [[nodiscard]] bool read_allowed() const noexcept { return read_allowed_; }
+
+    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
 
 private:
     void read_pins() noexcept;

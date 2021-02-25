@@ -107,6 +107,15 @@ private:
     void schedule_internal(channel& channel, channel::control::timing timing) noexcept;
 };
 
+class controller_handle {
+    controller* controller_;
+
+public:
+    controller_handle() = default;
+    explicit controller_handle(controller* controller) noexcept : controller_{controller} {}
+    void request_dma(const controller::occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
+};
+
 } // namespace gba::arm
 
 #endif //GAMEBOIADVANCE_DMA_CONTROLLER_H
