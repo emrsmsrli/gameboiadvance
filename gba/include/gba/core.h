@@ -27,7 +27,17 @@ struct core {
     core(vector<u8> bios)
       : pak{},
         arm(this, std::move(bios)),
-        ppu(&schdlr) {}
+        ppu(&schdlr)
+    {
+        // ppu.set_dma_controller_handle(arm.get_dma_cnt_handle());
+        // ppu.set_irq_controller_handle(arm.get_interrupt_handle());
+        pak.set_irq_controller_handle(arm.get_interrupt_handle());
+        //apu.set_irq_controller_handle(arm.get_interrupt_handle());
+        //sio.set_irq_controller_handle(arm.get_interrupt_handle());
+        //timers.set_irq_controller_handle(arm.get_interrupt_handle());
+
+        // todo make timer controller, set prevs(cascade) here and irq controller here
+    }
 
     void tick(u64 cycles = 1_u8) noexcept
     {
