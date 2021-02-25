@@ -182,6 +182,7 @@ void rtc::process_byte() noexcept
             switch(current_cmd_.cmd_type) {
                 case rtc_command::type::reset:
                     // no-op since we update the clock based on system clock
+                    break;
                 case rtc_command::type::force_irq:
                     irq_.request_interrupt(arm::interrupt_source::gamepak);
                     break;
