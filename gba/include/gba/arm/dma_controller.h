@@ -116,6 +116,6 @@ public:
     void request_dma(const controller::occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
 };
 
-} // namespace gba::arm
+} // namespace gba::dma
 
 #endif //GAMEBOIADVANCE_DMA_CONTROLLER_H
