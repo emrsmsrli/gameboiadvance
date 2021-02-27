@@ -103,8 +103,8 @@ private:
 
     static void latch(channel& channel, bool for_repeat, bool for_fifo) noexcept;
 
-    void channel_start_internal(const u64 /*late_cycles*/) noexcept;
-    void schedule_internal(channel& channel, channel::control::timing timing) noexcept;
+    void on_channel_start(const u64 /*late_cycles*/) noexcept;
+    void schedule(channel& channel, const channel::control::timing timing) noexcept;
 };
 
 class controller_handle {

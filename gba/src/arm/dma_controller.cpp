@@ -109,7 +109,7 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
     }
 
     latch(channel, false, is_for_fifo(&channel));
-    schedule_internal(channel, channel::control::timing::immediately);
+    schedule(channel, channel::control::timing::immediately);
 }
 
 void controller::run_channels() noexcept
@@ -204,16 +204,15 @@ void controller::request(const occasion occasion) noexcept {
     switch(occasion) {
         case occasion::vblank:
             for(channel& channel : channels) {
-                schedule_internal(channel, channel::control::timing::vblank);
+                schedule(channel, channel::control::timing::vblank);
             }
             break;
         case occasion::hblank:
             for(channel& channel : channels) {
-                schedule_internal(channel, channel::control::timing::hblank);
+                schedule(channel, channel::control::timing::hblank);
             }
             break;
-        case occasion::video:
-            schedule_internal(channels[3_usize], channel::control::timing::special);
+        case occasion::video:schedule(channels[3_usize], channel::control::timing::special);
             break;
         case occasion::fifo_a:
         case occasion::fifo_b:
@@ -222,7 +221,7 @@ void controller::request(const occasion occasion) noexcept {
 
                 if((occasion == occasion::fifo_a && channel.dst == fifo_addr_a)
                   || (occasion == occasion::fifo_b && channel.dst == fifo_addr_b)) {
-                    schedule_internal(channel, channel::control::timing::special);
+                    schedule(channel, channel::control::timing::special);
                 }
             }
             break;
@@ -261,7 +260,7 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
     }
 }
 
-void controller::channel_start_internal(const u64 /*cycles_late*/) noexcept
+void controller::on_channel_start(const u64 /*cycles_late*/) noexcept
 {
     channel* ch = scheduled_channels_.back();
     scheduled_channels_.pop_back();
@@ -269,11 +268,11 @@ void controller::channel_start_internal(const u64 /*cycles_late*/) noexcept
     sort_by_priority(running_channels_);
 }
 
-void controller::schedule_internal(channel& channel, const channel::control::timing timing) noexcept
+void controller::schedule(channel& channel, const channel::control::timing timing) noexcept
 {
     if(channel.cnt.enabled && channel.cnt.when == timing) {
         arm_->core_->schdlr.add_event(2_usize,
-          {connect_arg<&controller::channel_start_internal>, this});
+          {connect_arg<&controller::on_channel_start>, this});
         scheduled_channels_.push_back(&channel);
         sort_by_priority(scheduled_channels_);
     }
