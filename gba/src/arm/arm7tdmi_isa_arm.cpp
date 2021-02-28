@@ -316,7 +316,6 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
     const u32 rm = r(narrow<u8>(instr & 0xF_u32));
 
-    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32));
     ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != 15_u8);
     ASSERT(narrow<u8>((instr >> 8_u32) & 0xF_u32) != 15_u8);
     ASSERT(narrow<u8>(instr & 0xF_u32) != 15_u8);
