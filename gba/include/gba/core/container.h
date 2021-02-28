@@ -209,6 +209,36 @@ private:
     }
 };
 
+template<typename T>
+class view {
+    const T* entries_;
+    usize size_;
+
+public:
+    template<typename Container>
+    constexpr view(const Container& container) noexcept
+      : entries_{reinterpret_cast<const T*>(container.data())},
+        size_{container.size() / sizeof(T)}
+    {
+        static_assert(std::is_same_v<u8, std::remove_reference_t<decltype(Container{}.front())>>);
+    }
+
+    [[nodiscard]] constexpr const T& operator[](const usize idx) const noexcept { return *ptr(idx); }
+    [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return entries_ + idx.get() * sizeof(T); }
+    [[nodiscard]] constexpr const T& at(const usize idx) const noexcept { ASSERT(idx < size_); return *ptr(idx); }
+    [[nodiscard]] constexpr const T* data() const noexcept { return entries_; }
+
+    [[nodiscard]] constexpr usize size() const noexcept { return size_; }
+
+    constexpr const T& front() const noexcept { return at(0_usize); }
+    constexpr const T& back() const noexcept { return at(size() - 1_usize); }
+
+    constexpr auto begin() const noexcept { return ptr(0_usize); }
+    constexpr auto end() const noexcept { return ptr(size_); }
+    constexpr auto cbegin() const noexcept { return ptr(0_usize); }
+    constexpr auto cend() const noexcept { return ptr(size_); }
+};
+
 template<typename T, typename Container>
 [[nodiscard]] FORCEINLINE T memcpy(Container&& container, const usize offset) noexcept
 {
