@@ -67,7 +67,7 @@ struct channel : data {
 // todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
 public:
-    enum class occasion { vblank, hblank, video /*todo implement this in ppu*/, fifo_a, fifo_b };
+    enum class occasion { vblank, hblank, video, fifo_a, fifo_b };
 
 private:
     arm::arm7tdmi* arm_;
@@ -114,6 +114,7 @@ public:
     controller_handle() = default;
     explicit controller_handle(controller* controller) noexcept : controller_{controller} {}
     void request_dma(const controller::occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
+    void disable_video_transfer() noexcept { controller_->channels[3_usize].cnt.enabled = false; }
 };
 
 } // namespace gba::dma

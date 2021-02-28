@@ -212,7 +212,8 @@ void controller::request(const occasion occasion) noexcept {
                 schedule(channel, channel::control::timing::hblank);
             }
             break;
-        case occasion::video:schedule(channels[3_usize], channel::control::timing::special);
+        case occasion::video:
+            schedule(channels[3_usize], channel::control::timing::special);
             break;
         case occasion::fifo_a:
         case occasion::fifo_b:
