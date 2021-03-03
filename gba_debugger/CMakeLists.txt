@@ -7,7 +7,8 @@ add_library(${PROJECT_NAME} STATIC
         src/memory_debugger.cpp
         src/arm_debugger.cpp
         src/gamepak_debugger.cpp
-        src/ppu_debugger.cpp)
+        src/ppu_debugger.cpp
+        src/keypad_debugger.cpp)
 
 add_library(gba::debugger ALIAS ${PROJECT_NAME})
 
