@@ -39,7 +39,7 @@ template<typename T>
 {
     ASSERT(sizeof(T) > n.get());
     constexpr u8 byte_mask = 0xFF_u8;
-    return (t & (widen<T>(byte_mask) << n)) | (widen<T>(byte) << (8_u8 * n));
+    return (t & ~(widen<T>(byte_mask) << (8_u8 * n))) | (widen<T>(byte) << (8_u8 * n));
 }
 
 template<typename T>
