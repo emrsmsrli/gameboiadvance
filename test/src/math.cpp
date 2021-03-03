@@ -38,11 +38,11 @@ TEST_CASE("bit ops")
     }
 
     SUBCASE("test") {
-          CHECK_FALSE(bit::test(integer, 0_u8));
-          CHECK_FALSE(bit::test(integer, 1_u8));
-          CHECK(bit::test(integer, 4_u8));
-          CHECK(bit::test(integer, 30_u8));
-          CHECK(bit::test(integer, 31_u8));
+        CHECK_FALSE(bit::test(integer, 0_u8));
+        CHECK_FALSE(bit::test(integer, 1_u8));
+        CHECK(bit::test(integer, 4_u8));
+        CHECK(bit::test(integer, 30_u8));
+        CHECK(bit::test(integer, 31_u8));
     }
 
     SUBCASE("set") {
@@ -52,9 +52,16 @@ TEST_CASE("bit ops")
     }
 
     SUBCASE("clear") {
-          CHECK(bit::clear(integer, 4_u8) == 0xFEDC'3200_u32);
-          CHECK(bit::clear(integer, 31_u8) == 0x7EDC'3210_u32);
-          CHECK(bit::clear(integer, 27_u8) == 0xF6DC'3210_u32);
+        CHECK(bit::clear(integer, 4_u8) == 0xFEDC'3200_u32);
+        CHECK(bit::clear(integer, 31_u8) == 0x7EDC'3210_u32);
+        CHECK(bit::clear(integer, 27_u8) == 0xF6DC'3210_u32);
+    }
+
+    SUBCASE("set_byte") {
+        CHECK(bit::set_byte(integer, 0_u8, 0xFF_u8) == 0xFEDC'32FF_u32);
+        CHECK(bit::set_byte(integer, 1_u8, 0xFF_u8)  == 0xFEDC'FF10_u32);
+        CHECK(bit::set_byte(integer, 2_u8, 0xFF_u8)  == 0xFEFF'3210_u32);
+        CHECK(bit::set_byte(integer, 3_u8, 0xFF_u8)  == 0xFFDC'3210_u32);
     }
 }
 
