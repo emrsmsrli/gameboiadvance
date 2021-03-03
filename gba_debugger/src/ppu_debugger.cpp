@@ -346,10 +346,13 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     }
 
     // draw the actual visible area
+    const u32::type xoffset = bg.hoffset.get() % map_total_dot_dimensions.x;
+    const u32::type yoffset = bg.voffset.get() % map_total_dot_dimensions.y;
+
     sf::IntRect first_part(
-      bg.hoffset.get(), bg.voffset.get(),
-      std::min(map_total_dot_dimensions.x - bg.hoffset.get(), ppu::screen_width),
-      std::min(map_total_dot_dimensions.y - bg.voffset.get(), ppu::screen_height)
+      xoffset, yoffset,
+      std::min(map_total_dot_dimensions.x - xoffset, ppu::screen_width),
+      std::min(map_total_dot_dimensions.y - yoffset, ppu::screen_height)
     );
     sf::IntRect second_part(
       0, 0,
