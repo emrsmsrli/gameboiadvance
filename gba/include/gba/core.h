@@ -29,8 +29,8 @@ struct core {
         arm(this, std::move(bios)),
         ppu(&schdlr)
     {
-        // ppu.set_dma_controller_handle(arm.get_dma_cnt_handle());
-        // ppu.set_irq_controller_handle(arm.get_interrupt_handle());
+        ppu.set_dma_controller_handle(arm.get_dma_cnt_handle());
+        ppu.set_irq_controller_handle(arm.get_interrupt_handle());
         pak.set_irq_controller_handle(arm.get_interrupt_handle());
         //apu.set_irq_controller_handle(arm.get_interrupt_handle());
         //sio.set_irq_controller_handle(arm.get_interrupt_handle());

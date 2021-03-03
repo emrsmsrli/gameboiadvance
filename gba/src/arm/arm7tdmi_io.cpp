@@ -526,9 +526,9 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
             return bit::from_bool<u8>(ppu.dispstat_.vblank)
               | bit::from_bool<u8>(ppu.dispstat_.hblank) << 1_u8
               | bit::from_bool<u8>(ppu.dispstat_.vcounter) << 2_u8
-              | bit::from_bool<u8>(ppu.dispstat_.vblank_irq) << 3_u8
-              | bit::from_bool<u8>(ppu.dispstat_.hblank_irq) << 4_u8
-              | bit::from_bool<u8>(ppu.dispstat_.vcounter_irq) << 5_u8;
+              | bit::from_bool<u8>(ppu.dispstat_.vblank_irq_enabled) << 3_u8
+              | bit::from_bool<u8>(ppu.dispstat_.hblank_irq_enabled) << 4_u8
+              | bit::from_bool<u8>(ppu.dispstat_.vcounter_irq_enabled) << 5_u8;
         case ppu::addr_dispstat + 1: return ppu.dispstat_.vcount_setting;
         case ppu::addr_vcount:       return ppu.vcount_;
         case ppu::addr_vcount + 1:   return 0_u8;
@@ -699,9 +699,9 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             break;
         case ppu::addr_greenswap: ppu.green_swap_ = bit::test(data, 0_u8);
         case ppu::addr_dispstat:
-            ppu.dispstat_.vblank_irq = bit::test(data, 3_u8);
-            ppu.dispstat_.hblank_irq = bit::test(data, 4_u8);
-            ppu.dispstat_.vcounter_irq = bit::test(data, 5_u8);
+            ppu.dispstat_.vblank_irq_enabled = bit::test(data, 3_u8);
+            ppu.dispstat_.hblank_irq_enabled = bit::test(data, 4_u8);
+            ppu.dispstat_.vcounter_irq_enabled = bit::test(data, 5_u8);
             break;
         case ppu::addr_dispstat + 1: ppu.dispstat_.vcount_setting = data; break;
         case ppu::addr_bg0cnt:      ppu.bg0_.cnt.write_lower(data); break;
@@ -736,14 +736,14 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_bg2pc + 1:   ppu.bg2_.pc = bit::set_byte(ppu.bg2_.pc, 1_u8, data); break;
         case ppu::addr_bg2pd:       ppu.bg2_.pd = bit::set_byte(ppu.bg2_.pd, 0_u8, data); break;
         case ppu::addr_bg2pd + 1:   ppu.bg2_.pd = bit::set_byte(ppu.bg2_.pd, 1_u8, data); break;
-        case ppu::addr_bg2x:        ppu.bg2_.x_ref.set_byte(0_u8, data); break;
-        case ppu::addr_bg2x + 1:    ppu.bg2_.x_ref.set_byte(1_u8, data); break;
-        case ppu::addr_bg2x + 2:    ppu.bg2_.x_ref.set_byte(2_u8, data); break;
-        case ppu::addr_bg2x + 3:    ppu.bg2_.x_ref.set_byte(3_u8, data); break;
-        case ppu::addr_bg2y:        ppu.bg2_.y_ref.set_byte(0_u8, data); break;
-        case ppu::addr_bg2y + 1:    ppu.bg2_.y_ref.set_byte(1_u8, data); break;
-        case ppu::addr_bg2y + 2:    ppu.bg2_.y_ref.set_byte(2_u8, data); break;
-        case ppu::addr_bg2y + 3:    ppu.bg2_.y_ref.set_byte(3_u8, data); break;
+        case ppu::addr_bg2x:        ppu.bg2_.x_ref.set_byte<0_u8>(data); break;
+        case ppu::addr_bg2x + 1:    ppu.bg2_.x_ref.set_byte<1_u8>(data); break;
+        case ppu::addr_bg2x + 2:    ppu.bg2_.x_ref.set_byte<2_u8>(data); break;
+        case ppu::addr_bg2x + 3:    ppu.bg2_.x_ref.set_byte<3_u8>(data); break;
+        case ppu::addr_bg2y:        ppu.bg2_.y_ref.set_byte<0_u8>(data); break;
+        case ppu::addr_bg2y + 1:    ppu.bg2_.y_ref.set_byte<1_u8>(data); break;
+        case ppu::addr_bg2y + 2:    ppu.bg2_.y_ref.set_byte<2_u8>(data); break;
+        case ppu::addr_bg2y + 3:    ppu.bg2_.y_ref.set_byte<3_u8>(data); break;
         case ppu::addr_bg3pa:       ppu.bg3_.pa = bit::set_byte(ppu.bg3_.pa, 0_u8, data); break;
         case ppu::addr_bg3pa + 1:   ppu.bg3_.pa = bit::set_byte(ppu.bg3_.pa, 1_u8, data); break;
         case ppu::addr_bg3pb:       ppu.bg3_.pb = bit::set_byte(ppu.bg3_.pb, 0_u8, data); break;
@@ -752,36 +752,36 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_bg3pc + 1:   ppu.bg3_.pc = bit::set_byte(ppu.bg3_.pc, 1_u8, data); break;
         case ppu::addr_bg3pd:       ppu.bg3_.pd = bit::set_byte(ppu.bg3_.pd, 0_u8, data); break;
         case ppu::addr_bg3pd + 1:   ppu.bg3_.pd = bit::set_byte(ppu.bg3_.pd, 1_u8, data); break;
-        case ppu::addr_bg3x:        ppu.bg3_.x_ref.set_byte(0_u8, data); break;
-        case ppu::addr_bg3x + 1:    ppu.bg3_.x_ref.set_byte(1_u8, data); break;
-        case ppu::addr_bg3x + 2:    ppu.bg3_.x_ref.set_byte(2_u8, data); break;
-        case ppu::addr_bg3x + 3:    ppu.bg3_.x_ref.set_byte(3_u8, data); break;
-        case ppu::addr_bg3y:        ppu.bg3_.y_ref.set_byte(0_u8, data); break;
-        case ppu::addr_bg3y + 1:    ppu.bg3_.y_ref.set_byte(1_u8, data); break;
-        case ppu::addr_bg3y + 2:    ppu.bg3_.y_ref.set_byte(2_u8, data); break;
-        case ppu::addr_bg3y + 3:    ppu.bg3_.y_ref.set_byte(3_u8, data); break;
+        case ppu::addr_bg3x:        ppu.bg3_.x_ref.set_byte<0_u8>(data); break;
+        case ppu::addr_bg3x + 1:    ppu.bg3_.x_ref.set_byte<1_u8>(data); break;
+        case ppu::addr_bg3x + 2:    ppu.bg3_.x_ref.set_byte<2_u8>(data); break;
+        case ppu::addr_bg3x + 3:    ppu.bg3_.x_ref.set_byte<3_u8>(data); break;
+        case ppu::addr_bg3y:        ppu.bg3_.y_ref.set_byte<0_u8>(data); break;
+        case ppu::addr_bg3y + 1:    ppu.bg3_.y_ref.set_byte<1_u8>(data); break;
+        case ppu::addr_bg3y + 2:    ppu.bg3_.y_ref.set_byte<2_u8>(data); break;
+        case ppu::addr_bg3y + 3:    ppu.bg3_.y_ref.set_byte<3_u8>(data); break;
 
         // todo Garbage values of X2>240 or X1>X2 are interpreted as X2=240.
-        case ppu::addr_win0h:       ppu.win0_.dim_x2 = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
-        case ppu::addr_win0h + 1:   ppu.win0_.dim_x1 = data; break;
-        case ppu::addr_win1h:       ppu.win1_.dim_x2 = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
-        case ppu::addr_win1h + 1:   ppu.win1_.dim_x1 = data; break;
+        case ppu::addr_win0h:       ppu.win0_.bottom_right.x = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win0h + 1:   ppu.win0_.top_left.x = data; break;
+        case ppu::addr_win1h:       ppu.win1_.bottom_right.x = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win1h + 1:   ppu.win1_.top_left.x = data; break;
         // todo Garbage values of Y2>160 or Y1>Y2 are interpreted as Y2=160.
-        case ppu::addr_win0v:       ppu.win0_.dim_y2 = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
-        case ppu::addr_win0v + 1:   ppu.win0_.dim_y1 = data; break;
-        case ppu::addr_win1v:       ppu.win1_.dim_y2 = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
-        case ppu::addr_win1v + 1:   ppu.win1_.dim_y1 = data; break;
+        case ppu::addr_win0v:       ppu.win0_.bottom_right.y = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win0v + 1:   ppu.win0_.top_left.y = data; break;
+        case ppu::addr_win1v:       ppu.win1_.bottom_right.y = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win1v + 1:   ppu.win1_.top_left.y = data; break;
         case ppu::addr_winin:       win_enable_write(ppu.win_in_.win0, data); break;
         case ppu::addr_winin + 1:   win_enable_write(ppu.win_in_.win1, data); break;
         case ppu::addr_winout:      win_enable_write(ppu.win_out_.outside, data); break;
         case ppu::addr_winout + 1:  win_enable_write(ppu.win_out_.obj, data); break;
         case ppu::addr_mosaic:
-            ppu.mosaic_.bg.h = (data & 0xF_u8) + 1_u8;
-            ppu.mosaic_.bg.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu.mosaic_bg_.h = (data & 0xF_u8) + 1_u8;
+            ppu.mosaic_bg_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
             break;
         case ppu::addr_mosaic + 1:
-            ppu.mosaic_.obj.h = (data & 0xF_u8) + 1_u8;
-            ppu.mosaic_.obj.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu.mosaic_obj_.h = (data & 0xF_u8) + 1_u8;
+            ppu.mosaic_obj_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
             break;
         case ppu::addr_bldcnt:
             ppu.bldcnt_.first.bg[0_usize] = bit::test(data, 0_u8);

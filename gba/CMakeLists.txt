@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME} STATIC
         src/arm/dma_controller.cpp
         src/arm/timer.cpp
         src/ppu/ppu.cpp
+        src/ppu/ppu_render.cpp
         src/cartridge/backup.cpp
         src/cartridge/gamepak.cpp
         src/cartridge/rtc.cpp

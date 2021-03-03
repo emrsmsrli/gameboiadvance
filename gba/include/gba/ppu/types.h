@@ -14,17 +14,35 @@
 
 namespace gba::ppu {
 
+struct coord { u8 x; u8 y; };
+struct dimension { u8 h; u8 v; };
+
 struct color {
-    u8 r;
-    u8 g;
-    u8 b;
-    u8 a;
+    static constexpr u16 r_mask = 0x1F_u16;
+    static constexpr u16 g_mask = r_mask << 5_u8;
+    static constexpr u16 b_mask = g_mask << 5_u16;
+
+    u16 val;
 
     [[nodiscard]] u32 to_u32() const noexcept
     {
-        return widen<u32>(r) << 24_u32 | widen<u32>(g) << 16_u32
-             | widen<u32>(b) << 8_u32  | widen<u32>(a);
+        const u32 color = val;
+        const u32 r = (color & r_mask) << 27_u32;
+        const u32 g = (color & g_mask) << 14_u32;
+        const u32 b = (color & b_mask) << 1_u32;
+        const u32 a = (bit::extract(color, 15_u8) ^ 1_u32) * 0xFF_u32;
+        return r | g | b | a;
     }
+
+    void swap_green(color& other) noexcept
+    {
+        const u16 this_green = val & g_mask;
+        val = mask::set(mask::clear(val, g_mask), other.val & g_mask);
+        other.val = mask::set(mask::clear(other.val, g_mask), this_green);
+    }
+
+    static color white() noexcept { return color{0x7FFF_u16}; }
+    static color transparent() noexcept { return color{0x8000_u16}; }
 };
 
 struct dispcnt {
@@ -33,7 +51,7 @@ struct dispcnt {
     bool hblank_interval_free = false;
     bool obj_mapping_1d = false;
     bool forced_blank = false;
-    array<bool, 4> enable_bg;
+    array<bool, 4> enable_bg{false, false, false, false};
     bool enable_obj = false;
     bool enable_w0 = false;
     bool enable_w1 = false;
@@ -44,25 +62,34 @@ struct dispstat {
     bool vblank = false;
     bool hblank = false;
     bool vcounter = false;
-    bool vblank_irq = false;
-    bool hblank_irq = false;
-    bool vcounter_irq = false;
+    bool vblank_irq_enabled = false;
+    bool hblank_irq_enabled = false;
+    bool vcounter_irq_enabled = false;
     u8 vcount_setting;
 };
 
 /*****************/
 
-struct bgcnt_affine_base { bool display_area_overflow = false; };
+struct bgcnt_affine_base { bool wraparound = false; };
 struct bg_regular_base {};
 struct bg_affine_base {
     struct reference_point {
         u32 ref;
         u32 internal;
 
-        FORCEINLINE void set_byte(const u8 n, const u8 data) noexcept
+        FORCEINLINE void latch() noexcept { internal = ref; }
+
+        template<u8::type N>
+        FORCEINLINE void set_byte(const u8 data) noexcept
         {
-            ref = make_unsigned(math::sign_extend<28>(bit::set_byte(ref, n, data) & 0x0FFF'FFFF_u32));
-            internal = ref;
+            static_assert(N < 4_u8);
+
+            ref = bit::set_byte(ref, N, data);
+            if constexpr(N == 3_u8) {
+                ref = make_unsigned(math::sign_extend<28>(ref & 0x0FFF'FFFF_u32));
+            }
+
+            latch();
         }
     };
 
@@ -95,6 +122,7 @@ struct bgcnt : T {
     u8 char_base_block;
     bool mosaic_enabled = false;
     bool color_depth_8bit = false;
+    u8 screen_entry_base_block;
     u8 screen_size;
 
     void write_lower(const u8 data) noexcept
@@ -107,10 +135,10 @@ struct bgcnt : T {
 
     void write_upper(const u8 data) noexcept
     {
-        char_base_block = data & 0x1F_u8;
+        screen_entry_base_block = data & 0x1F_u8;
         screen_size = (data >> 6_u8) & 0b11_u8;
         if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
-            T::display_area_overflow = bit::test(data, 5_u8);
+            T::wraparound = bit::test(data, 5_u8);
         }
     }
 
@@ -124,9 +152,9 @@ struct bgcnt : T {
 
     [[nodiscard]] u8 read_upper() const noexcept
     {
-        u8 data = char_base_block | screen_size << 6_u8;
+        u8 data = screen_entry_base_block | screen_size << 6_u8;
         if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
-            data |= bit::from_bool<u8>(T::display_area_overflow) << 5_u8;
+            data |= bit::from_bool<u8>(T::wraparound) << 5_u8;
         }
         return data;
     }
@@ -151,16 +179,14 @@ using bg_affine = bg<bg_affine_base>;
 
 struct window {
     u32 id;
-    u8 dim_x1;
-    u8 dim_x2;
-    u8 dim_y1;
-    u8 dim_y2;
+    coord top_left;
+    coord bottom_right;
 
     explicit window(u32 i) : id{i} {}
 };
 
 struct win_enable_bits {
-    array<bool, 4> bg_enable;
+    array<bool, 4> bg_enable{false, false, false, false};;
     bool obj_enable = false;
     bool special_effect = false;
 };
@@ -177,11 +203,8 @@ struct win_out {
 
 /*****************/
 
-struct mosaic {
-    struct size { u8 h; u8 v; };
-
-    size bg;
-    size obj;
+struct mosaic : dimension {
+    dimension internal;
 };
 
 /*****************/
@@ -190,9 +213,9 @@ struct bldcnt {
     enum class effect : u8::type { none, alpha_blend, brightness_inc, brightness_dec };
 
     struct target {
-        array<bool, 4> bg;
-        bool obj;
-        bool backdrop;
+        array<bool, 4> bg{false, false, false, false};;
+        bool obj = false;
+        bool backdrop = false;
     };
 
     target first;
@@ -204,6 +227,67 @@ struct blend_settings {
     u8 eva;
     u8 evb;
     u8 evy; // BLDY
+};
+
+/*****************/
+
+struct bg_screen_entry {
+    u16 value;
+
+    [[nodiscard]] u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
+    [[nodiscard]] bool hflipped() const noexcept { return bit::test(value, 10_u8); }
+    [[nodiscard]] bool vflipped() const noexcept { return bit::test(value, 11_u8); }
+    [[nodiscard]] u8 palette_idx() const noexcept { return narrow<u8>((value >> 12_u16) & 0xF_u16); }
+
+    [[nodiscard]] bool operator==(const bg_screen_entry other) const noexcept { return value == other.value; }
+};
+
+struct obj_attr0 {
+    enum class sfx_type { normal, alpha_blending, obj_window };
+    enum class rendering_mode { normal, affine, hidden, affine_double };
+
+    u16 value;
+
+    [[nodiscard]] FORCEINLINE u8 y() const noexcept { return narrow<u8>(value); }
+    [[nodiscard]] FORCEINLINE rendering_mode render_mode() const noexcept { return to_enum<rendering_mode>((value >> 8_u16) & 0b11_u16); }
+    [[nodiscard]] FORCEINLINE sfx_type sfx_mode() const noexcept { return to_enum<sfx_type>((value >> 10_u16) & 0b11_u16); }
+    [[nodiscard]] FORCEINLINE bool mosaic_enabled() const noexcept { return bit::test(value, 12_u8); }
+    [[nodiscard]] FORCEINLINE bool color_depth_8bit() const noexcept { return bit::test(value, 13_u8); }
+    [[nodiscard]] FORCEINLINE u32 shape_idx() const noexcept { return value >> 14_u8; }
+};
+
+struct obj_attr1 {
+    u16 value;
+
+    [[nodiscard]] FORCEINLINE u16 x() const noexcept { return value & 0x1FF_u16; }
+    [[nodiscard]] FORCEINLINE u32 affine_idx() const noexcept { return (value >> 9_u16) & 0x1F_u16; }
+    [[nodiscard]] FORCEINLINE u32 size_idx() const noexcept { return value >> 14_u8; }
+};
+
+struct obj_attr2 {
+    u16 value;
+
+    [[nodiscard]] FORCEINLINE u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
+    [[nodiscard]] FORCEINLINE u32 priority() const noexcept { return (value >> 10_u16) & 0b11_u16; }
+    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>(value >> 12_u16); }
+};
+
+struct obj {
+    obj_attr0 attr0;
+    obj_attr1 attr1;
+    obj_attr2 attr2;
+    [[maybe_unused]] u16 _fill;
+};
+
+struct obj_affine {
+    [[maybe_unused]] array<u16, 3> _fill0;
+    i16 pa;
+    [[maybe_unused]] array<u16, 3> _fill1;
+    i16 pb;
+    [[maybe_unused]] array<u16, 3> _fill2;
+    i16 pc;
+    [[maybe_unused]] array<u16, 3> _fill3;
+    i16 pd;
 };
 
 } // namespace gba::ppu
