@@ -18,15 +18,22 @@ namespace gba::debugger {
 struct ppu_debugger {
     ppu::engine* ppu_engine;
 
-    sf::Image screen_buffer;
-    sf::Texture screen_texture;
+    sf::Image screen_buffer_;
+    sf::Texture screen_texture_;
+
+    array<sf::Image, 4> bg_buffers_;
+    array<sf::Texture, 4> bg_textures_;
 
     explicit ppu_debugger(ppu::engine* engine);
-    void draw() const noexcept;
+    void draw() noexcept;
 
-private:
-    void on_scanline(u8 screen_y, const array<ppu::color, ppu::engine::screen_width>& scanline) noexcept;
+    void on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept;
     void on_update_texture() noexcept;
+
+    void draw_regular_bg_map(const ppu::bg_regular& bg) noexcept;
+    void draw_affine_bg_map(const ppu::bg_affine& bg) noexcept;
+    void draw_bitmap_bg(const ppu::bg_affine& bg, u32 mode) noexcept;
+    void draw_obj() noexcept;
 };
 
 } // namespace gba::debugger
