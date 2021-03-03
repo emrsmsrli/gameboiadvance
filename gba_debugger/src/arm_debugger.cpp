@@ -15,6 +15,7 @@
 #include <gba/core.h>
 #include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/disassembler.h>
+#include <gba/helper/range.h>
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r0_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r1_)
@@ -241,6 +242,40 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
     ImGui::PopStyleVar();
 }
 
+std::string_view to_string_view(const arm::interrupt_source irq) noexcept
+{
+    switch(irq) {
+        case arm::interrupt_source::vblank: return "vblank";
+        case arm::interrupt_source::hblank: return "hblank";
+        case arm::interrupt_source::vcounter_match: return "vcounter_match";
+        case arm::interrupt_source::timer_0_overflow: return "timer_0_overflow";
+        case arm::interrupt_source::timer_1_overflow: return "timer_1_overflow";
+        case arm::interrupt_source::timer_2_overflow: return "timer_2_overflow";
+        case arm::interrupt_source::timer_3_overflow: return "timer_3_overflow";
+        case arm::interrupt_source::serial_io: return "serial_io";
+        case arm::interrupt_source::dma_0: return "dma_0";
+        case arm::interrupt_source::dma_1: return "dma_1";
+        case arm::interrupt_source::dma_2: return "dma_2";
+        case arm::interrupt_source::dma_3: return "dma_3";
+        case arm::interrupt_source::keypad: return "keypad";
+        case arm::interrupt_source::gamepak: return "gamepak";
+        default:
+            UNREACHABLE();
+    }
+}
+
+std::string_view to_string_view(const dma::channel::control::address_control control) noexcept
+{
+    switch(control) {
+        case dma::channel::control::address_control::increment: return "increment";
+        case dma::channel::control::address_control::decrement: return "decrement";
+        case dma::channel::control::address_control::fixed: return "fixed";
+        case dma::channel::control::address_control::inc_reload: return "inc_reload";
+        default:
+            UNREACHABLE();
+    }
+}
+
 } // namespace
 
 void arm_debugger::draw() const noexcept
@@ -302,8 +337,23 @@ void arm_debugger::draw() const noexcept
                     ImGui::Spacing();
                     ImGui::Spacing();
 
-                    ImGui::Text("ie: %04X", access_private::ie_(arm).get());
-                    ImGui::Text("if: %04X", access_private::if_(arm).get());
+                    const auto draw_irq_reg = [](const u16 reg) {
+                        ImGui::Text("ie: %04X", reg.get());
+                        if(ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            for(u16 idx : range(14_u16)) {
+                                u16 irq = 1_u16 << idx;
+                                bool s = (reg & irq) == irq;
+                                ImGui::Text("%s: %s",
+                                  to_string_view(to_enum<arm::interrupt_source>(irq)).data(),
+                                  fmt_bool(s));
+                            }
+                            ImGui::EndTooltip();
+                        }
+                    };
+
+                    draw_irq_reg(access_private::ie_(arm));
+                    draw_irq_reg(access_private::if_(arm));
                     ImGui::Text("ime: %s", fmt_bool(access_private::ime_(arm)));
                     ImGui::EndGroup();
                 }
@@ -352,17 +402,6 @@ void arm_debugger::draw() const noexcept
             }
 
             if(ImGui::BeginTabItem("DMAs")) {
-                const auto get_addr_control = [](dma::channel::control::address_control control) {
-                    switch(control) {
-                        case dma::channel::control::address_control::increment: return "increment";
-                        case dma::channel::control::address_control::decrement: return "decrement";
-                        case dma::channel::control::address_control::fixed: return "fixed";
-                        case dma::channel::control::address_control::inc_reload: return "inc_reload";
-                        default:
-                            UNREACHABLE();
-                    }
-                };
-
                 const auto fmt_channels = [](gba::dma::controller::channels_debugger& channels) -> std::string {
                     if(channels.empty()) { return "none"; }
 
@@ -394,8 +433,8 @@ void arm_debugger::draw() const noexcept
                         ImGui::Text("repeat: %s", fmt_bool(channel.cnt.repeat));
                         ImGui::Text("irq: %s", fmt_bool(channel.cnt.irq));
                         ImGui::Text("drq: %s", fmt_bool(channel.cnt.drq));
-                        ImGui::Text("dst control: %s", get_addr_control(channel.cnt.dst_control));
-                        ImGui::Text("src control: %s", get_addr_control(channel.cnt.src_control));
+                        ImGui::Text("dst control: %s", to_string_view(channel.cnt.dst_control).data());
+                        ImGui::Text("src control: %s", to_string_view(channel.cnt.src_control).data());
                         ImGui::Text("timing: %s", [&]() {
                             switch(channel.cnt.when) {
                                 case dma::channel::control::timing::immediately: return "immediately";
@@ -444,6 +483,68 @@ void arm_debugger::draw() const noexcept
             }
 
             ImGui::EndTabBar();
+        }
+    }
+
+    ImGui::End();
+
+    ImGui::Begin("diss");
+    vector<u8>* memory;
+    unsigned int offset = 0;
+    unsigned int pc;
+    if(auto p = access_private::r15_(arm).get(); p < 0x3FFF) {
+        memory = &access_private::bios_(arm);
+        pc = p;
+    } else if(p < 0x0203FFFF) {
+        memory = &access_private::wram_(arm);
+        pc = p - 0x02000000;
+        offset = 0x02000000;
+    } else if(p < 0x03007FFF) {
+        memory = &access_private::iwram_(arm);
+        pc = p - 0x03000000;
+        offset = 0x03000000;
+    } else if(p < 0x09FFFFFF) {
+        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
+        pc = p - 0x08000000;
+        offset = 0x08000000;
+    } else if(p < 0x0BFFFFFF) {
+        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
+        pc = p - 0x0A000000;
+        offset = 0x08000000;
+    } else if(p < 0x0DFFFFFF) {
+        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
+        pc = p - 0x0C000000;
+        offset = 0x08000000;
+    } else {
+        UNREACHABLE();
+    }
+
+    auto mult = access_private::cpsr_(arm).t ? 2u : 4u;
+    auto i = pc / mult;
+    if(i < 9) {
+        i = 0;
+    } else {
+        i -= 9;
+    }
+
+    auto max = std::min(15ull + i, memory->size().get() / mult);
+    for(; i < max; ++i) {
+        if(access_private::cpsr_(arm).t) {
+            const auto address = 2_u32 * i;
+            u16 inst = memcpy<u16>(*memory, address);
+            if(address == pc - 4) {
+                ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%04X %s", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst).c_str());
+            } else {
+                ImGui::Text("0x%08X|0x%04X %s", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst).c_str());
+            }
+        } else {
+            const auto address = 4_u32 * i;
+            u32 inst = memcpy<u32>(*memory, address);
+            if(address == pc - 8) {
+                ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%08X %s", address + offset, inst.get(), disassembler::disassemble_arm(address, inst).c_str());
+            } else {
+                ImGui::Text("0x%08X|0x%08X %s", address + offset, inst.get(), disassembler::disassemble_arm(address, inst).c_str());
+            }
         }
     }
 
