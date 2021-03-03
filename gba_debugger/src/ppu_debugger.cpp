@@ -235,10 +235,12 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     ImGui::SameLine(0.f, 64.f);
 
     ImGui::BeginGroup();
-    static bool enable_visible_area = true;
-    static bool enable_window_area = true;
-    ImGui::Checkbox("Enable visible area mask", &enable_visible_area);
-    ImGui::Checkbox("Enable window mask", &enable_window_area);
+    static array<bool, 4> enable_visible_area{true, true, true, true};
+    static array<bool, 4> enable_visible_border{true, true, true, true};
+    static array<bool, 4> enable_window_area{true, true, true, true};
+    ImGui::Checkbox("Enable visible area mask", &enable_visible_area[bg.id]);
+    if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable visible area border", &enable_visible_border[bg.id]); }
+    if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable window mask", &enable_window_area[bg.id]); }
     ImGui::Text("voffset: %04X", bg.voffset.get());
     ImGui::Text("hoffset: %04X", bg.hoffset.get());
     ImGui::EndGroup();
@@ -307,7 +309,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
 
     // draw the whole map in half alpha
     const ImVec2 img_start = ImGui::GetCursorScreenPos();
-    ImGui::Image(bg_sprite, !enable_visible_area ? sf::Color::White : sf::Color{0xFFFFFF7F});
+    ImGui::Image(bg_sprite, !enable_visible_area[bg.id] ? sf::Color::White : sf::Color{0xFFFFFF7F});
     const ImVec2 img_end = ImGui::GetCursorScreenPos();
 
     if(ImGui::IsItemHovered()) {
@@ -338,7 +340,8 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
         ImGui::EndTooltip();
     }
 
-    if(!enable_visible_area) {
+    if(!enable_visible_area[bg.id]) {
+        ImGui::EndChild();
         return;
     }
 
@@ -363,7 +366,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
           img_start.x + area.left * draw_scale,
           img_start.y + area.top * draw_scale));
         bg_sprite.setTextureRect(area);
-        ImGui::Image(bg_sprite);
+        ImGui::Image(bg_sprite, sf::Color::White, enable_visible_border[bg.id] ? sf::Color::White : sf::Color::Transparent);
         ImGui::SetCursorScreenPos(img_end);
     };
 
@@ -372,7 +375,8 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     draw_visible_area(third_part);
     draw_visible_area(fourth_part);
 
-    if(!enable_window_area) {
+    if(!enable_window_area[bg.id]) {
+        ImGui::EndChild();
         return;
     }
 
