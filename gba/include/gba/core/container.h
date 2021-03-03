@@ -80,7 +80,7 @@ public:
     [[nodiscard]] const T* data() const noexcept { return data_.data(); }
 
     template<typename... Args>
-    T& emplace_back(Args... args) { return data_.emplace_back(std::forward<Args>(args)...); }
+    T& emplace_back(Args&&... args) { return data_.emplace_back(std::forward<Args>(args)...); }
     void push_back(const T& t) { data_.push_back(t); }
     void push_back(T&& t) { data_.push_back(std::move(t)); }
 
