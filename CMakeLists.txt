@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12.4)
+cmake_minimum_required(VERSION 3.16)
 project(gameboiadvance CXX)
 
 include(cmake/StandardProjectSettings.cmake)

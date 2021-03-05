@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12.4)
+cmake_minimum_required(VERSION 3.16)
 project(gba VERSION 0.0.2 LANGUAGES CXX)
 
 configure_file(cmake/version.h.in
