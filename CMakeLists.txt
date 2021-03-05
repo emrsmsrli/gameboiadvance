@@ -1,4 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
+
+cmake_policy(SET CMP0091 NEW)
 project(gameboiadvance CXX)
 
 include(cmake/StandardProjectSettings.cmake)
@@ -6,8 +8,9 @@ include(cmake/CompilerWarnings.cmake)
 include(cmake/Sanitizers.cmake)
 include(cmake/Doxygen.cmake)
 include(cmake/StaticAnalyzers.cmake)
+
 if(MSVC)
-    include(cmake/StaticLink.cmake)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
