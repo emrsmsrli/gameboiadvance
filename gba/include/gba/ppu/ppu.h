@@ -22,9 +22,6 @@ constexpr auto screen_width = 240_u32;
 constexpr auto screen_height = 160_u32;
 
 constexpr auto tile_dot_count = 8_u32;
-constexpr auto regular_bg_map_block_tile_count = 32_u32;
-
-constexpr usize bitmap_frame_offset = 0xA000_usize;
 
 using scanline_buffer = array<color, screen_width>;
 
@@ -75,41 +72,53 @@ public:
     void set_dma_controller_handle(const dma::controller_handle dma) noexcept { dma_ = dma; }
 
 private:
+    using tile_line = array<color, tile_dot_count>;
+
     void on_hblank(u64 cycles_late) noexcept;
     void on_hdraw(u64 cycles_late) noexcept;
 
     void render_scanline() noexcept;
 
-    [[nodiscard]] FORCEINLINE u32 screen_entry_index(const u32 tile_x, const u32 tile_y, const bg_regular& bg) const noexcept
-    {
-        u32 n = tile_x + tile_y * 32_u32;
-        if(tile_x >= 32_u32) { n += 0x03E0_u32; }
-        if(tile_y >= 32_u32 && bg.cnt.screen_size == 3_u8) { n += 0x0400_u32; }
-        return n;
-    }
-
-    [[nodiscard]] FORCEINLINE color backdrop_color() const noexcept { return palette_color(0_u8); }
-    [[nodiscard]] FORCEINLINE color palette_color(const u8 color_idx, const u8 palette_idx = 0_u8) const noexcept
-    {
-        return color{memcpy<u16>(palette_ram_, (palette_idx * 16_u8 + color_idx) * 2_u16)};
-    }
+    template<typename... BG>
+    void render_bg_regular(BG&... bgs) noexcept;
 
     template<typename... BG>
-    void render_bg_regular(BG&... bg) noexcept;
-
-    template<typename... BG>
-    void render_bg_affine(BG&... bg) noexcept;
+    void render_bg_affine(BG&... bgs) noexcept;
 
     void render_obj() noexcept;
 
     template<typename... BG>
-    void compose(BG&... bg) noexcept;
+    void compose(BG&... bgs) noexcept;
 
     template<typename BG>
     void render_bg_regular_impl(BG& bg) noexcept;
     void render_bg_affine_impl(bg_affine& bg) noexcept;
 
     void compose_impl(const static_vector<u32, 4>& ids) noexcept;
+
+    template<typename BG>
+    [[nodiscard]] static FORCEINLINE u32 map_entry_index(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept
+    {
+        u32 n = tile_x + tile_y * 32_u32;
+        if(tile_x >= 0x20_u32) { n += 0x03E0_u32; }
+        if(tile_y >= 0x20_u32 && bg.cnt.screen_size == 3_u8) { n += 0x0400_u32; }
+        return n;
+    }
+
+    [[nodiscard]] FORCEINLINE color backdrop_color() const noexcept { return palette_color_opaque(0_u8); }
+    [[nodiscard]] FORCEINLINE color palette_color(const u8 color_idx, const u8 palette_idx = 0_u8) const noexcept
+    {
+        if(color_idx == 0_u8) { return color::transparent(); }
+        return palette_color_opaque(color_idx, palette_idx);
+    }
+
+    [[nodiscard]] FORCEINLINE color palette_color_opaque(const u8 color_idx, const u8 palette_idx = 0_u8) const noexcept
+    {
+        return color{memcpy<u16>(palette_ram_, (palette_idx * 16_u8 + color_idx) * 2_u16)};
+    }
+
+    void tile_line_8bpp(tile_line& out_line, u16 y, usize base_addr, bg_map_entry entry) const noexcept;
+    void tile_line_4bpp(tile_line& out_line, u16 y, usize base_addr, bg_map_entry entry) const noexcept;
 };
 
 } // namespace gba::ppu

@@ -15,7 +15,9 @@
 namespace gba::ppu {
 
 struct coord { u8 x; u8 y; };
-struct dimension { u8 h; u8 v; };
+
+template<typename T>
+struct dimension { T h; T v; };
 
 struct color {
     static constexpr u16 r_mask = 0x1F_u16;
@@ -203,8 +205,8 @@ struct win_out {
 
 /*****************/
 
-struct mosaic : dimension {
-    dimension internal;
+struct mosaic : dimension<u8> {
+    dimension<u8> internal;
 };
 
 /*****************/
@@ -231,15 +233,16 @@ struct blend_settings {
 
 /*****************/
 
-struct bg_screen_entry {
+struct bg_map_entry {
     u16 value;
 
-    [[nodiscard]] u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
-    [[nodiscard]] bool hflipped() const noexcept { return bit::test(value, 10_u8); }
-    [[nodiscard]] bool vflipped() const noexcept { return bit::test(value, 11_u8); }
-    [[nodiscard]] u8 palette_idx() const noexcept { return narrow<u8>((value >> 12_u16) & 0xF_u16); }
+    [[nodiscard]] FORCEINLINE u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
+    [[nodiscard]] FORCEINLINE bool hflipped() const noexcept { return bit::test(value, 10_u8); }
+    [[nodiscard]] FORCEINLINE bool vflipped() const noexcept { return bit::test(value, 11_u8); }
+    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>((value >> 12_u16) & 0xF_u16); }
 
-    [[nodiscard]] bool operator==(const bg_screen_entry other) const noexcept { return value == other.value; }
+    [[nodiscard]] bool operator==(const bg_map_entry other) const noexcept { return value == other.value; }
+    [[nodiscard]] bool operator<(const bg_map_entry other) const noexcept { return value < other.value; }
 };
 
 struct obj_attr0 {

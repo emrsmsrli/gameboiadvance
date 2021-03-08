@@ -97,7 +97,8 @@ void engine::render_scanline() noexcept
     }
 
     switch(dispcnt_.bg_mode.get()) {
-        case 0:render_bg_regular(bg0_, bg1_, bg2_, bg3_);
+        case 0:
+            render_bg_regular(bg0_, bg1_, bg2_, bg3_);
             render_obj();
             compose(bg0_, bg1_, bg2_, bg3_);
             break;
@@ -121,8 +122,8 @@ void engine::render_scanline() noexcept
             break;
         case 4:
             for(u32 x : range(screen_width)) {
-                bg_buffers_[2_usize][x] = palette_color(memcpy<u8>(vram_,
-                  dispcnt_.frame_select * bitmap_frame_offset + (vcount_ * screen_width + x)));
+                bg_buffers_[2_usize][x] = palette_color_opaque(memcpy<u8>(vram_,
+                  dispcnt_.frame_select * 40_kb + (vcount_ * screen_width + x)));
             }
             render_obj();
             compose(bg2_);
@@ -132,7 +133,7 @@ void engine::render_scanline() noexcept
                 constexpr u32 small_bitmap_width = 160_u32;
                 for(const u32 x : range(small_bitmap_width)) {
                     bg_buffers_[2_usize][x] = color{memcpy<u16>(vram_,
-                      dispcnt_.frame_select * bitmap_frame_offset + (vcount_ * small_bitmap_width + x) * 2_u32)};
+                      dispcnt_.frame_select * 40_kb + (vcount_ * small_bitmap_width + x) * 2_u32)};
                 }
                 // fill remaining backdrop
                 for(const u32 x : range(small_bitmap_width, u32(screen_width))) {

@@ -35,7 +35,6 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::mosaic, mosaic_obj_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::bldcnt, bldcnt_)
 
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color)
-ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::u32(gba::u32, gba::u32, const gba::ppu::bg_regular&) const noexcept, screen_entry_index)
 
 namespace gba::debugger {
 
@@ -53,6 +52,16 @@ ppu::bg_regular to_regular(const ppu::bg_affine& affine) noexcept
     reg.cnt.screen_entry_base_block = affine.cnt.screen_entry_base_block;
     reg.cnt.screen_size = affine.cnt.screen_size;
     return reg;
+}
+
+// we cannot access private templates
+template<typename BG>
+[[nodiscard]] FORCEINLINE u32 map_entry_index_duplicate(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept
+{
+    u32 n = tile_x + tile_y * 32_u32;
+    if(tile_x >= 0x20_u32) { n += 0x03E0_u32; }
+    if(tile_y >= 0x20_u32 && bg.cnt.screen_size == 3_u8) { n += 0x0400_u32; }
+    return n;
 }
 
 } // namespace
@@ -79,9 +88,13 @@ void ppu_debugger::draw() noexcept
             const auto& palette = access_private::palette_ram_(ppu_engine);
 
             if(ImGui::BeginTabItem("Registers & Buffer")) {
+                static int draw_scale = 2;
+                ImGui::SetNextItemWidth(150.f);
+                ImGui::SliderInt("render scale", &draw_scale, 1, 4);
+
                 sf::Sprite screen{screen_texture_};
-                screen.setScale(2.f, 2.f);
-                ImGui::Image(screen);
+                screen.setScale(draw_scale, draw_scale);
+                ImGui::Image(screen, sf::Color::White, sf::Color::White);
 
                 ImGui::EndTabItem();
             }
@@ -222,14 +235,14 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     sf::Texture& texture = bg_textures_[bg.id];
 
     const usize tile_base = bg.cnt.char_base_block * 16_kb;
-    const usize se_base = bg.cnt.screen_entry_base_block * 2_kb;
+    const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
 
     ImGui::BeginGroup();
     ImGui::Text("priority: %d", bg.cnt.priority.get());
     ImGui::Text("mosaic: %s", fmt_bool(bg.cnt.mosaic_enabled));
     ImGui::Text("8bit depth: %s", fmt_bool(bg.cnt.color_depth_8bit));
     ImGui::Text("tile base: %08X", tile_base.get() + 0x0600'0000_u32);
-    ImGui::Text("screen entry base: %08X", se_base.get() + 0x0600'0000_u32);
+    ImGui::Text("screen entry base: %08X", map_entry_base.get() + 0x0600'0000_u32);
     ImGui::EndGroup();
 
     ImGui::SameLine(0.f, 64.f);
@@ -248,24 +261,25 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     ImGui::Spacing();
     ImGui::Spacing();
 
-    static constexpr array se_block_sizes{
-      ppu::dimension{1_u8, 1_u8},
-      ppu::dimension{2_u8, 1_u8},
-      ppu::dimension{1_u8, 2_u8},
-      ppu::dimension{2_u8, 2_u8},
+    static constexpr array map_block_sizes{
+      ppu::dimension<u8>{1_u8, 1_u8},
+      ppu::dimension<u8>{2_u8, 1_u8},
+      ppu::dimension<u8>{1_u8, 2_u8},
+      ppu::dimension<u8>{2_u8, 2_u8},
     };
 
-    const ppu::dimension block_size = se_block_sizes[bg.cnt.screen_size];
+    constexpr auto regular_bg_map_block_tile_count = 32_u32;
+    const ppu::dimension block_size = map_block_sizes[bg.cnt.screen_size];
     const sf::Vector2u map_total_block_dimensions{
-      ppu::regular_bg_map_block_tile_count * block_size.h.get(),
-      ppu::regular_bg_map_block_tile_count * block_size.v.get()
+      regular_bg_map_block_tile_count * block_size.h.get(),
+      regular_bg_map_block_tile_count * block_size.v.get()
     };
     const sf::Vector2u map_total_dot_dimensions = map_total_block_dimensions * ppu::tile_dot_count;
 
     for(u32 ty = 0_u32; ty < map_total_block_dimensions.y; ++ty) {
         for(u32 tx = 0_u32; tx < map_total_block_dimensions.x; ++tx) {
-            const ppu::bg_screen_entry entry{memcpy<u16>(vram,
-              se_base + call_private::screen_entry_index(ppu_engine, tx, ty, bg) * 2_u32)};
+            const ppu::bg_map_entry entry{memcpy<u16>(vram,
+              map_entry_base + map_entry_index_duplicate(tx, ty, bg) * 2_u32)};
 
             if(bg.cnt.color_depth_8bit) {
                 for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
@@ -283,7 +297,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         const u8 color_idxs = memcpy<u8>(vram, tile_base + entry.tile_idx() * 32_u32 + py * 4_u32 + px / 2_u32);
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
-                          ty.get() * ppu::tile_dot_count + py.get(),
+                          ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
                           sf::Color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx()).to_u32().get()));
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 6 - px.get() : px.get() + 1),
@@ -326,8 +340,8 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
           ppu::tile_dot_count)};
         ImGui::Image(zoomed_tile, {128, 128});
 
-        const ppu::bg_screen_entry entry{memcpy<u16>(vram,
-          se_base + call_private::screen_entry_index(ppu_engine, tile_x, tile_y, bg) * 2_u32)};
+        const ppu::bg_map_entry entry{memcpy<u16>(vram,
+          map_entry_base + map_entry_index_duplicate(tile_x, tile_y, bg) * 2_u32)};
         ImGui::BeginGroup();
         ImGui::Text("base: %08X", 0x0600'0000_u32 + tile_base.get()
           + (tile_y *32_u32 * block_size.h.get() + tile_x)
@@ -420,14 +434,14 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             if(!depth8bit) {
                 for(u32 x : range(w)) {
                     buffer.setPixel(x.get(), yoffset + y.get(), sf::Color(ppu::color{
-                      memcpy<u16>(vram, page * ppu::bitmap_frame_offset + (y * w + x) * 2_u32)
+                      memcpy<u16>(vram, page * 40_kb + (y * w + x) * 2_u32)
                     }.to_u32().get()));
                 }
             } else {
                 for(u32 x : range(w)) {
                     buffer.setPixel(x.get(), yoffset + y.get(),
                       sf::Color(call_private::palette_color(ppu_engine, memcpy<u8>(vram,
-                        page * ppu::bitmap_frame_offset + (y * w + x)), 0_u8).to_u32().get()));
+                        page * 40_kb + (y * w + x)), 0_u8).to_u32().get()));
                 }
             }
 
