@@ -35,6 +35,7 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::mosaic, mosaic_obj_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::bldcnt, bldcnt_)
 
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color)
+ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color_opaque)
 
 namespace gba::debugger {
 
@@ -414,7 +415,7 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 
 void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noexcept
 {
-    const sf::Color backdrop(call_private::palette_color(ppu_engine, 0_u8, 0_u8).to_u32().get());
+    const sf::Color backdrop(call_private::palette_color_opaque(ppu_engine, 0_u8, 0_u8).to_u32().get());
     const auto& vram = access_private::vram_(ppu_engine);
     const auto& dispcnt = access_private::dispcnt_(ppu_engine);
     auto& buffer = bg_buffers_[bg.id];
@@ -440,7 +441,7 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             } else {
                 for(u32 x : range(w)) {
                     buffer.setPixel(x.get(), yoffset + y.get(),
-                      sf::Color(call_private::palette_color(ppu_engine, memcpy<u8>(vram,
+                      sf::Color(call_private::palette_color_opaque(ppu_engine, memcpy<u8>(vram,
                         page * 40_kb + (y * w + x)), 0_u8).to_u32().get()));
                 }
             }
