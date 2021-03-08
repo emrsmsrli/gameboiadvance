@@ -114,7 +114,13 @@ public:
     controller_handle() = default;
     explicit controller_handle(controller* controller) noexcept : controller_{controller} {}
     void request_dma(const controller::occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
-    void disable_video_transfer() noexcept { controller_->channels[3_usize].cnt.enabled = false; }
+    void disable_video_transfer() noexcept
+    {
+        auto& channel = controller_->channels[3_usize];
+        if(channel.cnt.enabled && channel.cnt.when == channel::control::timing::special) {
+            channel.cnt.enabled = false;
+        }
+    }
 };
 
 } // namespace gba::dma
