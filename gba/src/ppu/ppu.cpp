@@ -129,8 +129,9 @@ void engine::render_scanline() noexcept
             compose(bg2_);
             break;
         case 5: {
-            if(vcount_ < screen_height) {
-                constexpr u32 small_bitmap_width = 160_u32;
+            constexpr u32 small_bitmap_width = 160_u32;
+            constexpr u32 small_bitmap_height = 128_u32;
+            if(vcount_ < small_bitmap_height) {
                 for(const u32 x : range(small_bitmap_width)) {
                     bg_buffers_[2_usize][x] = color{memcpy<u16>(vram_,
                       dispcnt_.frame_select * 40_kb + (vcount_ * small_bitmap_width + x) * 2_u32)};
