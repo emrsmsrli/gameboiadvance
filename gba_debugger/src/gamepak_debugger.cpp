@@ -73,24 +73,24 @@ void gamepak_debugger::draw() const noexcept
             };
 
             if(ImGui::BeginTabItem("Info")) {
-                ImGui::Text("title: %s", access_private::game_title_(pak).data());
-                ImGui::Text("game code: %s", access_private::game_code_(pak).data());
-                ImGui::Text("maker code: %s", access_private::maker_code_(pak).data());
+                ImGui::Text("title: {}", access_private::game_title_(pak));
+                ImGui::Text("game code: {}", access_private::game_code_(pak));
+                ImGui::Text("maker code: {}", access_private::maker_code_(pak));
 
                 ImGui::Spacing();
-                ImGui::Text("backup: %s", backup_str());
+                ImGui::Text("backup: {}", backup_str());
 
-                ImGui::Text("main unit code: %02X", access_private::main_unit_code_(pak).get());
-                ImGui::Text("software version: %02X", access_private::software_version_(pak).get());
-                ImGui::Text("checksum: %02X", access_private::checksum_(pak).get());
-
-                ImGui::Spacing();
-                ImGui::Text("loaded: %s", fmt_bool(access_private::loaded_(pak)));
-                ImGui::Text("has rtc: %s", fmt_bool(access_private::has_rtc_(pak)));
-                ImGui::Text("has mirroring: %s", fmt_bool(access_private::has_mirroring_(pak)));
+                ImGui::Text("main unit code: {:02X}", access_private::main_unit_code_(pak));
+                ImGui::Text("software version: {:02X}", access_private::software_version_(pak));
+                ImGui::Text("checksum: {:02X}", access_private::checksum_(pak));
 
                 ImGui::Spacing();
-                ImGui::Text("path: %ls", access_private::path_(pak).c_str());
+                ImGui::Text("loaded: {}", access_private::loaded_(pak));
+                ImGui::Text("has rtc: {}", access_private::has_rtc_(pak));
+                ImGui::Text("has mirroring: {}", access_private::has_mirroring_(pak));
+
+                ImGui::Spacing();
+                ImGui::Text("path: {}", access_private::path_(pak).string());
                 ImGui::EndTabItem();
             }
 
@@ -101,11 +101,11 @@ void gamepak_debugger::draw() const noexcept
                         case cartridge::backup::type::eeprom_64: {
                             auto* eeprom = dynamic_cast<cartridge::backup_eeprom*>(access_private::backup_(pak).get());
                             ASSERT(eeprom);
-                            ImGui::Text("bus width: %d", access_private::bus_width_(eeprom).get());
-                            ImGui::Text("buffer: %s", fmt_bin(access_private::buffer_(eeprom)).c_str());
-                            ImGui::Text("transmission count: %d", access_private::transmission_count_(eeprom).get());
-                            ImGui::Text("in read mode: %s", fmt_bool(access_private::read_mode_(eeprom)));
-                            ImGui::Text("state: %s", [&]() {
+                            ImGui::Text("bus width: {}", access_private::bus_width_(eeprom));
+                            ImGui::Text("buffer: {:0B}", access_private::buffer_(eeprom));
+                            ImGui::Text("transmission count: {}", access_private::transmission_count_(eeprom));
+                            ImGui::Text("in read mode: {}", access_private::read_mode_(eeprom));
+                            ImGui::Text("state: {}", [&]() {
                                 switch(access_private::state_(eeprom)) {
                                     case cartridge::backup_eeprom::state_debugger::accepting_commands: return "accepting_commands";
                                     case cartridge::backup_eeprom::state_debugger::transmitting_addr: return "transmitting_addr";
@@ -122,11 +122,11 @@ void gamepak_debugger::draw() const noexcept
                         case cartridge::backup::type::flash_128: {
                             auto* flash = dynamic_cast<cartridge::backup_flash*>(access_private::backup_(pak).get());
                             ASSERT(flash);
-                            ImGui::Text("bank: %lld", access_private::current_bank_(flash).get());
+                            ImGui::Text("bank: {}", access_private::current_bank_(flash));
 
                             const u16 device_id = memcpy<u16>(access_private::device_id_(flash), 0_usize);
-                            ImGui::Text("device id: %d vendor: %s", device_id.get(), device_id == 0xD4BF_u16 ? "SST" : "Macronix");
-                            ImGui::Text("state: %s", [&]() {
+                            ImGui::Text("device id: {} vendor: {}", device_id, device_id == 0xD4BF_u16 ? "SST" : "Macronix");
+                            ImGui::Text("state: {}", [&]() {
                                 switch(access_private::state_(flash)) {
                                     case cartridge::backup_flash::state_debugger::accept_cmd: return "accept_cmd";
                                     case cartridge::backup_flash::state_debugger::cmd_phase1: return "cmd_phase1";
@@ -136,7 +136,7 @@ void gamepak_debugger::draw() const noexcept
                                         UNREACHABLE();
                                 }
                             }());
-                            ImGui::Text("commands: %s", [&]() -> std::string {
+                            ImGui::Text("commands: {}", [&]() -> std::string {
                                 const cartridge::backup_flash::cmd_debugger current_cmds = access_private::current_cmds_(flash);
                                 if(current_cmds == cartridge::backup_flash::cmd_debugger::none) {
                                     return "none";
@@ -170,7 +170,7 @@ void gamepak_debugger::draw() const noexcept
                                     }
                                 }
                                 return stream.str();
-                            }().c_str());
+                            }());
                             break;
                         }
                         default:
@@ -186,16 +186,16 @@ void gamepak_debugger::draw() const noexcept
                     auto& rtc = access_private::rtc_(pak);
 
                     ImGui::TextUnformatted("GPIO data"); ImGui::Separator();
-                    ImGui::Text("pin states: %s", fmt_bin(access_private::pin_states_(rtc)).c_str());
-                    ImGui::Text("pin directions: %s", fmt_bin(access_private::directions_(rtc)).c_str());
-                    ImGui::Text("remaining bytes: %d", access_private::remaining_bytes_(rtc).get());
-                    ImGui::Text("read bits: %d", access_private::bits_read_(rtc).get());
-                    ImGui::Text("bit buffer: %s", fmt_bin(access_private::bit_buffer_(rtc)).c_str());
-                    ImGui::Text("read allowed: %s", fmt_bool(access_private::read_allowed_(rtc)));
+                    ImGui::Text("pin states: {:0B}", access_private::pin_states_(rtc));
+                    ImGui::Text("pin directions: {:0B}", access_private::directions_(rtc));
+                    ImGui::Text("remaining bytes: {}", access_private::remaining_bytes_(rtc));
+                    ImGui::Text("read bits: {}", access_private::bits_read_(rtc));
+                    ImGui::Text("bit buffer: {:0B}", access_private::bit_buffer_(rtc));
+                    ImGui::Text("read allowed: {}", access_private::read_allowed_(rtc));
 
                     ImGui::TextUnformatted("RTC data"); ImGui::Separator();
-                    ImGui::Text("24h mode: %s", fmt_bool(bit::test(access_private::control_(rtc), 6_u8)));
-                    ImGui::Text("transfer state: %s", [&]() {
+                    ImGui::Text("24h mode: {}", bit::test(access_private::control_(rtc), 6_u8));
+                    ImGui::Text("transfer state: {}", [&]() {
                         switch(access_private::transfer_state_(rtc)) {
                             case cartridge::rtc::transfer_state_debugger::waiting_hi_sck: return "waiting_hi_sck";
                             case cartridge::rtc::transfer_state_debugger::waiting_hi_cs: return "waiting_hi_cs";
@@ -206,7 +206,7 @@ void gamepak_debugger::draw() const noexcept
                     }());
 
                     auto& rtc_cmd = access_private::current_cmd_(rtc);
-                    ImGui::Text("rtc command: %s, is read access read: %s", [&]() {
+                    ImGui::Text("rtc command: {}, is read access read: {}", [&]() {
                         switch(rtc_cmd.cmd_type) {
                             case cartridge::rtc_command::type::none: return "none";
                             case cartridge::rtc_command::type::reset: return "reset";
@@ -217,17 +217,17 @@ void gamepak_debugger::draw() const noexcept
                             default:
                                 UNREACHABLE();
                         }
-                    }(), fmt_bool(rtc_cmd.is_access_read));
+                    }(), rtc_cmd.is_access_read);
                     ImGui::TextUnformatted("Time"); ImGui::Separator();
 
                     auto& time = access_private::time_regs_(rtc);
-                    ImGui::Text("year:  %s", fmt_hex(time[0_usize]).c_str());
-                    ImGui::Text("month: %s", fmt_hex(time[1_usize]).c_str());
-                    ImGui::Text("mday:  %s", fmt_hex(time[2_usize]).c_str());
-                    ImGui::Text("wday:  %s", fmt_hex(time[3_usize]).c_str());
-                    ImGui::Text("hour:  %s", fmt_hex(time[4_usize]).c_str());
-                    ImGui::Text("min:   %s", fmt_hex(time[5_usize]).c_str());
-                    ImGui::Text("sec:   %s", fmt_hex(time[6_usize]).c_str());
+                    ImGui::Text("year:  {:X}", time[0_usize]);
+                    ImGui::Text("month: {:X}", time[1_usize]);
+                    ImGui::Text("mday:  {:X}", time[2_usize]);
+                    ImGui::Text("wday:  {:X}", time[3_usize]);
+                    ImGui::Text("hour:  {:X}", time[4_usize]);
+                    ImGui::Text("min:   {:X}", time[5_usize]);
+                    ImGui::Text("sec:   {:X}", time[6_usize]);
 
                     ImGui::EndTabItem();
                 }

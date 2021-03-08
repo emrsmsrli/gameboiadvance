@@ -239,11 +239,11 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
 
     ImGui::BeginGroup();
-    ImGui::Text("priority: %d", bg.cnt.priority.get());
-    ImGui::Text("mosaic: %s", fmt_bool(bg.cnt.mosaic_enabled));
-    ImGui::Text("8bit depth: %s", fmt_bool(bg.cnt.color_depth_8bit));
-    ImGui::Text("tile base: %08X", tile_base.get() + 0x0600'0000_u32);
-    ImGui::Text("screen entry base: %08X", map_entry_base.get() + 0x0600'0000_u32);
+    ImGui::Text("priority: {}", bg.cnt.priority.get());
+    ImGui::Text("mosaic: {}", bg.cnt.mosaic_enabled);
+    ImGui::Text("8bit depth: {}", bg.cnt.color_depth_8bit);
+    ImGui::Text("tile base: {:08X}", tile_base + 0x0600'0000_u32);
+    ImGui::Text("screen entry base: {:08X}", map_entry_base + 0x0600'0000_u32);
     ImGui::EndGroup();
 
     ImGui::SameLine(0.f, 64.f);
@@ -255,8 +255,8 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     ImGui::Checkbox("Enable visible area mask", &enable_visible_area[bg.id]);
     if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable visible area border", &enable_visible_border[bg.id]); }
     if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable window mask", &enable_window_area[bg.id]); }
-    ImGui::Text("voffset: %04X", bg.voffset.get());
-    ImGui::Text("hoffset: %04X", bg.hoffset.get());
+    ImGui::Text("voffset: {:04X}", bg.voffset);
+    ImGui::Text("hoffset: {:04X}", bg.hoffset);
     ImGui::EndGroup();
 
     ImGui::Spacing();
@@ -344,12 +344,12 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
         const ppu::bg_map_entry entry{memcpy<u16>(vram,
           map_entry_base + map_entry_index_duplicate(tile_x, tile_y, bg) * 2_u32)};
         ImGui::BeginGroup();
-        ImGui::Text("base: %08X", 0x0600'0000_u32 + tile_base.get()
-          + (tile_y *32_u32 * block_size.h.get() + tile_x)
-            * (bg.cnt.color_depth_8bit ? 64u : 32u));
-        ImGui::Text("tile: %02X palette %02X", entry.tile_idx().get(), entry.palette_idx().get());
-        ImGui::Text("x: %02X y: %02X", tile_x, tile_y);
-        ImGui::Text("hflip: %s\nvflip: %s", fmt_bool(entry.hflipped()), fmt_bool(entry.vflipped()));
+        ImGui::Text("base: {:08X}", 0x0600'0000_u32 + tile_base
+          + (tile_y * 32_u32 * block_size.h + tile_x)
+            * (bg.cnt.color_depth_8bit ? 64_u32 : 32_u32));
+        ImGui::Text("tile: {:02X} palette {:02X}", entry.tile_idx(), entry.palette_idx());
+        ImGui::Text("x: {:02X} y: {:02X}", tile_x, tile_y);
+        ImGui::Text("hflip: {}\nvflip: {}", entry.hflipped(), entry.vflipped());
         ImGui::EndGroup();
 
         ImGui::EndTooltip();
@@ -421,9 +421,9 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
     auto& buffer = bg_buffers_[bg.id];
     auto& texture = bg_textures_[bg.id];
 
-    ImGui::Text("priority: %d", bg.cnt.priority.get());
-    ImGui::Text("mosaic: %s", fmt_bool(bg.cnt.mosaic_enabled));
-    ImGui::Text("8bit depth: %s", fmt_bool(mode == 4_u8));
+    ImGui::Text("priority: {}", bg.cnt.priority);
+    ImGui::Text("mosaic: {}", bg.cnt.mosaic_enabled);
+    ImGui::Text("8bit depth: {}", mode == 4_u8);
 
     ImGui::Spacing();
     ImGui::Spacing();

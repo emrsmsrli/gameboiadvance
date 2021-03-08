@@ -81,7 +81,7 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         if(reg == 0_u32) {
             ImGui::TextColored(ImColor(ImGui::GetColorU32(ImGuiCol_TextDisabled)), "%08X", reg.get());
         } else {
-            ImGui::Text("%08X", reg.get());
+            ImGui::Text("{:08X}", reg);
         }
     };
 
@@ -94,13 +94,13 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
     const auto psr_tooltip = [](arm::psr& p) {
         if(ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
-            ImGui::Text("n: %s", fmt_bool(p.n));  // signed flag
-            ImGui::Text("z: %s", fmt_bool(p.z));  // zero flag
-            ImGui::Text("c: %s", fmt_bool(p.c));  // carry flag
-            ImGui::Text("v: %s", fmt_bool(p.v));  // overflow flag
-            ImGui::Text("i: %s", fmt_bool(p.i));  // irq disabled flag
-            ImGui::Text("f: %s", fmt_bool(p.f));  // fiq disabled flag
-            ImGui::Text("t: %s", fmt_bool(p.t));  // thumb mode flag
+            ImGui::Text("n: {}", p.n);  // signed flag
+            ImGui::Text("z: {}", p.z);  // zero flag
+            ImGui::Text("c: {}", p.c);  // carry flag
+            ImGui::Text("v: {}", p.v);  // overflow flag
+            ImGui::Text("i: {}", p.i);  // irq disabled flag
+            ImGui::Text("f: {}", p.f);  // fiq disabled flag
+            ImGui::Text("t: {}", p.t);  // thumb mode flag
             ImGui::Text("mode: %s", [&]() {
                 switch(p.mode) {
                     case arm::privilege_mode::usr: return "usr";
@@ -292,7 +292,7 @@ void arm_debugger::draw() const noexcept
                 ImGui::TextUnformatted("Pipeline");
                 ImGui::Separator();
                 const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
-                    ImGui::Text("%s: %08X", name, instr.get());
+                    ImGui::Text("{}: {:08}", name, instr);
                     if(ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
                         if(access_private::cpsr_(arm).t) {
@@ -311,7 +311,7 @@ void arm_debugger::draw() const noexcept
                 ImGui::BeginGroup(); {
                     draw_pipeline_instr("executing", access_private::pipeline_(arm).executing, 1_u32);
                     draw_pipeline_instr("decoding", access_private::pipeline_(arm).decoding, 2_u32);
-                    ImGui::Text("fetch: %s", [&]() {
+                    ImGui::Text("fetch: {}", [&]() {
                         switch(access_private::pipeline_(arm).fetch_type) {
                             case arm::mem_access::non_seq: return "non seq";
                             case arm::mem_access::seq: return "seq";
@@ -323,8 +323,8 @@ void arm_debugger::draw() const noexcept
                     ImGui::Spacing();
                     ImGui::Spacing();
 
-                    ImGui::Text("postboot: %X", access_private::post_boot_(arm).get());
-                    ImGui::Text("haltcnt: %s", [&]() {
+                    ImGui::Text("postboot: {:X}", access_private::post_boot_(arm).get());
+                    ImGui::Text("haltcnt: {}", [&]() {
                         switch(access_private::haltcnt_(arm)) {
                             case arm::halt_control::halted: return "halted";
                             case arm::halt_control::stopped: return "stopped";
@@ -338,15 +338,13 @@ void arm_debugger::draw() const noexcept
                     ImGui::Spacing();
 
                     const auto draw_irq_reg = [](const u16 reg) {
-                        ImGui::Text("ie: %04X", reg.get());
+                        ImGui::Text("ie: {:04X}", reg);
                         if(ImGui::IsItemHovered()) {
                             ImGui::BeginTooltip();
                             for(u16 idx : range(14_u16)) {
                                 u16 irq = 1_u16 << idx;
                                 bool s = (reg & irq) == irq;
-                                ImGui::Text("%s: %s",
-                                  to_string_view(to_enum<arm::interrupt_source>(irq)).data(),
-                                  fmt_bool(s));
+                                ImGui::Text("{}: {}", to_string_view(to_enum<arm::interrupt_source>(irq)), s);
                             }
                             ImGui::EndTooltip();
                         }
@@ -354,7 +352,7 @@ void arm_debugger::draw() const noexcept
 
                     draw_irq_reg(access_private::ie_(arm));
                     draw_irq_reg(access_private::if_(arm));
-                    ImGui::Text("ime: %s", fmt_bool(access_private::ime_(arm)));
+                    ImGui::Text("ime: {}", access_private::ime_(arm));
                     ImGui::EndGroup();
                 }
 
@@ -363,15 +361,15 @@ void arm_debugger::draw() const noexcept
                 ImGui::BeginGroup(); {
                     ImGui::TextUnformatted("waitcnt");
                     ImGui::Separator();
-                    ImGui::Text("sram %d", access_private::waitcnt_(arm).sram.get());
-                    ImGui::Text("ws0_nonseq %d", access_private::waitcnt_(arm).ws0_nonseq.get());
-                    ImGui::Text("ws0_seq %d", access_private::waitcnt_(arm).ws0_seq.get());
-                    ImGui::Text("ws1_nonseq %d", access_private::waitcnt_(arm).ws1_nonseq.get());
-                    ImGui::Text("ws1_seq %d", access_private::waitcnt_(arm).ws1_seq.get());
-                    ImGui::Text("ws2_nonseq %d", access_private::waitcnt_(arm).ws2_nonseq.get());
-                    ImGui::Text("ws2_seq %d", access_private::waitcnt_(arm).ws2_seq.get());
-                    ImGui::Text("phi %d", access_private::waitcnt_(arm).phi.get());
-                    ImGui::Text("prefetch %s", fmt_bool(access_private::waitcnt_(arm).prefetch_buffer_enable));
+                    ImGui::Text("sram {}", access_private::waitcnt_(arm).sram);
+                    ImGui::Text("ws0_nonseq {}", access_private::waitcnt_(arm).ws0_nonseq);
+                    ImGui::Text("ws0_seq {}", access_private::waitcnt_(arm).ws0_seq);
+                    ImGui::Text("ws1_nonseq {}", access_private::waitcnt_(arm).ws1_nonseq);
+                    ImGui::Text("ws1_seq {}", access_private::waitcnt_(arm).ws1_seq);
+                    ImGui::Text("ws2_nonseq {}", access_private::waitcnt_(arm).ws2_nonseq);
+                    ImGui::Text("ws2_seq {}", access_private::waitcnt_(arm).ws2_seq);
+                    ImGui::Text("phi {}", access_private::waitcnt_(arm).phi);
+                    ImGui::Text("prefetch {}", access_private::waitcnt_(arm).prefetch_buffer_enable);
                     ImGui::EndGroup();
                 }
 
@@ -380,19 +378,19 @@ void arm_debugger::draw() const noexcept
 
             if(ImGui::BeginTabItem("Timers")) {
                 for(auto& timer : access_private::timers_(arm)) {
-                    ImGui::Text("Timer %d", access_private::id_(timer).get());
+                    ImGui::Text("Timer {}", access_private::id_(timer));
                     ImGui::Separator();
-                    ImGui::Text("counter: %04X reload: %04X",
-                      access_private::counter_(timer).get(),
-                      access_private::reload_(timer).get());
+                    ImGui::Text("counter: {:04X} reload: {:04X}",
+                      access_private::counter_(timer),
+                      access_private::reload_(timer));
 
                     auto& cnt = access_private::control_(timer);
                     constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
 
                     ImGui::Text("prescalar: F/%d", 1_u32 << prescalar_shifts[cnt.prescalar]);
-                    ImGui::Text("cascaded: %s", fmt_bool(cnt.cascaded));
-                    ImGui::Text("irq: %s", fmt_bool(cnt.irq_enabled));
-                    ImGui::Text("enabled: %s", fmt_bool(cnt.enabled));
+                    ImGui::Text("cascaded: {}", cnt.cascaded);
+                    ImGui::Text("irq: {}", cnt.irq_enabled);
+                    ImGui::Text("enabled: {}", cnt.enabled);
 
                     ImGui::Spacing();
                     ImGui::Spacing();
@@ -408,7 +406,7 @@ void arm_debugger::draw() const noexcept
                     std::stringstream s;
                     std::string_view delim = "";
                     for(auto* c : channels) {
-                        s << delim << c;
+                        s << delim << c->id.get();
                         delim = ", ";
                     }
                     return s.str();
@@ -416,26 +414,26 @@ void arm_debugger::draw() const noexcept
 
                 auto& controller = access_private::dma_controller_(arm);
 
-                ImGui::Text("Scheduled channels: %s",
-                  fmt_channels(access_private::scheduled_channels_(controller)).c_str());
-                ImGui::Text("Running channels: %s",
-                  fmt_channels(access_private::running_channels_(controller)).c_str());
+                ImGui::Text("Scheduled channels: {}",
+                  fmt_channels(access_private::scheduled_channels_(controller)));
+                ImGui::Text("Running channels: {}",
+                  fmt_channels(access_private::running_channels_(controller)));
 
                 ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::Spacing();
 
                 for(dma::channel& channel : controller.channels) {
-                    ImGui::Text("DMA %d", channel.id.get());
+                    ImGui::Text("DMA {}", channel.id);
                     ImGui::Separator();
                     ImGui::BeginGroup(); {
-                        ImGui::Text("enabled: %s", fmt_bool(channel.cnt.enabled));
-                        ImGui::Text("repeat: %s", fmt_bool(channel.cnt.repeat));
-                        ImGui::Text("irq: %s", fmt_bool(channel.cnt.irq));
-                        ImGui::Text("drq: %s", fmt_bool(channel.cnt.drq));
-                        ImGui::Text("dst control: %s", to_string_view(channel.cnt.dst_control).data());
-                        ImGui::Text("src control: %s", to_string_view(channel.cnt.src_control).data());
-                        ImGui::Text("timing: %s", [&]() {
+                        ImGui::Text("enabled: {}", channel.cnt.enabled);
+                        ImGui::Text("repeat: {}", channel.cnt.repeat);
+                        ImGui::Text("irq: {}", channel.cnt.irq);
+                        ImGui::Text("drq: {}", channel.cnt.drq);
+                        ImGui::Text("dst control: {}", to_string_view(channel.cnt.dst_control));
+                        ImGui::Text("src control: {}", to_string_view(channel.cnt.src_control));
+                        ImGui::Text("timing: {}", [&]() {
                             switch(channel.cnt.when) {
                                 case dma::channel::control::timing::immediately: return "immediately";
                                 case dma::channel::control::timing::vblank: return "vblank";
@@ -445,7 +443,7 @@ void arm_debugger::draw() const noexcept
                                     UNREACHABLE();
                             }
                         }());
-                        ImGui::Text("size: %s", [&]() {
+                        ImGui::Text("size: {}", [&]() {
                             switch(channel.cnt.size) {
                                 case dma::channel::control::transfer_size::hword: return "hword";
                                 case dma::channel::control::transfer_size::word: return "word";
@@ -460,17 +458,17 @@ void arm_debugger::draw() const noexcept
 
                     ImGui::BeginGroup(); {
                         ImGui::TextUnformatted("Data"); ImGui::Separator();
-                        ImGui::Text("src: %08X", channel.src.get());
-                        ImGui::Text("dst: %08X", channel.dst.get());
-                        ImGui::Text("count: %05X", channel.count.get());
+                        ImGui::Text("src: {:08X}", channel.src);
+                        ImGui::Text("dst: {:08X}", channel.dst);
+                        ImGui::Text("count: {:05X}", channel.count);
 
                         ImGui::Spacing();
                         ImGui::Spacing();
 
                         ImGui::TextUnformatted("Internal Data"); ImGui::Separator();
-                        ImGui::Text("src: %08X", channel.internal.src.get());
-                        ImGui::Text("dst: %08X", channel.internal.dst.get());
-                        ImGui::Text("count: %05X", channel.internal.count.get());
+                        ImGui::Text("src: {:08X}", channel.internal.src);
+                        ImGui::Text("dst: {:08X}", channel.internal.dst);
+                        ImGui::Text("count: {:05X}", channel.internal.count);
                         ImGui::EndGroup();
                     }
 
@@ -535,7 +533,7 @@ void arm_debugger::draw() const noexcept
             if(address == pc - 4) {
                 ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%04X %s", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst).c_str());
             } else {
-                ImGui::Text("0x%08X|0x%04X %s", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst).c_str());
+                ImGui::Text("0x{:08X}|0x{:04X} {}", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst));
             }
         } else {
             const auto address = 4_u32 * i;
@@ -543,7 +541,7 @@ void arm_debugger::draw() const noexcept
             if(address == pc - 8) {
                 ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%08X %s", address + offset, inst.get(), disassembler::disassemble_arm(address, inst).c_str());
             } else {
-                ImGui::Text("0x%08X|0x%08X %s", address + offset, inst.get(), disassembler::disassemble_arm(address, inst).c_str());
+                ImGui::Text("0x{:08X}|0x{:08X} {}", address + offset, inst, disassembler::disassemble_arm(address, inst));
             }
         }
     }

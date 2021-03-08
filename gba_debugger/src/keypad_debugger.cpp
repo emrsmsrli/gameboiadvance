@@ -37,11 +37,11 @@ void keypad_debugger::draw() const noexcept
         };
 
         const auto draw_input_reg = [&](const char* name, const u16 reg, auto modifier) {
-            ImGui::Text("%s: %04X", name, reg.get());
+            ImGui::Text("{}: {:04X}", name, reg);
             if(ImGui::IsItemHovered()) {
                 ImGui::BeginTooltip();
                 for(keypad::keypad::key k : range(keypad::keypad::key::a, keypad::keypad::key::max)) {
-                    ImGui::Text("%s: %s", get_key_str(k), fmt_bool(modifier(bit::test(reg, from_enum<u8>(k)))));
+                    ImGui::Text("{}: {}", get_key_str(k), modifier(bit::test(reg, from_enum<u8>(k))));
                 }
                 ImGui::EndTooltip();
             }
@@ -49,8 +49,8 @@ void keypad_debugger::draw() const noexcept
 
         draw_input_reg("input", kp->keyinput_, [](bool t) { return !t; });
         draw_input_reg("irq mask", kp->keycnt_.select, [](bool t) { return t; });
-        ImGui::Text("irq enable: %s", fmt_bool(kp->keycnt_.enabled));
-        ImGui::Text("irq condition: %s", [&]() {
+        ImGui::Text("irq enable: {}", kp->keycnt_.enabled);
+        ImGui::Text("irq condition: {}", [&]() {
             switch(kp->keycnt_.cond_strategy) {
                 case keypad::keypad::irq_control::condition_strategy::any: return "any";
                 case keypad::keypad::irq_control::condition_strategy::all: return "all";

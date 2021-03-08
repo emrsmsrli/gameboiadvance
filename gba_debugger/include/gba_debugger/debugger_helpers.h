@@ -9,29 +9,21 @@
 #define GAMEBOIADVANCE_DEBUGGER_HELPERS_H
 
 #include <fmt/format.h>
+#include <imgui.h>
 
 #include <gba/helper/macros.h>
 
+namespace ImGui {
+
+template <typename S, typename... Args>
+void Text(const S& format_str, Args&&... args)
+{
+    TextUnformatted(fmt::format(format_str, std::forward<Args>(args)...).c_str());
+}
+
+} // namespace ImGui
+
 namespace gba::debugger {
-
-FORCEINLINE constexpr const char* fmt_bool(const bool val) noexcept
-{
-    return val ? "true" : "false";
-}
-
-template<typename T>
-FORCEINLINE std::string fmt_bin(const T val) noexcept
-{
-    if constexpr(sizeof(T) == 8) {
-        return fmt::format("{:08B}", val);
-    } else if constexpr(sizeof(T) == 4) {
-        return fmt::format("{:04B}", val);
-    } else if constexpr(sizeof(T) == 2) {
-        return fmt::format("{:02B}", val);
-    } else {
-        return fmt::format("{:01B}", val);
-    }
-}
 
 template<typename T>
 FORCEINLINE std::string fmt_hex(const T val) noexcept
