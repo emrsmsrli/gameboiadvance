@@ -478,10 +478,17 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             const sf::Sprite p2 = draw_page(240_u32, 160_u32, 1_u8, true);
 
             texture.update(buffer);
+            ImGui::BeginGroup();
             ImGui::Text("Page 0");
             ImGui::Image(p1);
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+
+            ImGui::BeginGroup();
             ImGui::Text("Page 1");
             ImGui::Image(p2);
+            ImGui::EndGroup();
             break;
         }
         case 5: {
@@ -489,10 +496,18 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             const sf::Sprite p2 = draw_page(160_u32, 128_u32, 1_u8, false);
 
             texture.update(buffer);
+
+            ImGui::BeginGroup();
             ImGui::Text("Page 0");
             ImGui::Image(p1);
+            ImGui::EndGroup();
+
+            ImGui::SameLine();
+
+            ImGui::BeginGroup();
             ImGui::Text("Page 1");
             ImGui::Image(p2);
+            ImGui::EndGroup();
             break;
         }
         default:
