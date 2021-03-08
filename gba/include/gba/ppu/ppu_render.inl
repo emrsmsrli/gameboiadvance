@@ -104,7 +104,7 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
           ? screen_width - screen_x
           : tile_dot_count;
         for(u32 tile_dot_x : range(start_x, end_x)) {
-            final_buffer_[screen_x++] = current_tile_line[tile_dot_x];
+            buffer[screen_x++] = current_tile_line[tile_dot_x];
         }
     }
 }
