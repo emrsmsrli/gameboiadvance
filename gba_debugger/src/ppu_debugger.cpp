@@ -90,7 +90,7 @@ void ppu_debugger::draw() noexcept
 
         sf::Sprite screen{screen_texture_};
         screen.setScale(draw_scale, draw_scale);
-        ImGui::Image(screen, sf::Color::White, sf::Color::White);
+        ImGui::Image(screen);
     }
 
     ImGui::End();
