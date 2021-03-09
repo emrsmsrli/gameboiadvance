@@ -133,7 +133,7 @@ void ppu_debugger::draw() noexcept
                             draw_bitmap_bg(access_private::bg2_(ppu_engine), dispcnt.bg_mode);
                             break;
                         default:
-                            ImGui::Text("invalid mode %d", dispcnt.bg_mode.get());
+                            ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
                             break;
                     }
                 }
@@ -152,10 +152,10 @@ void ppu_debugger::draw() noexcept
                             draw_affine_bg_map(access_private::bg3_(ppu_engine));
                             break;
                         case 1: case 3: case 4: case 5:
-                            ImGui::Text("not used in mode %d", dispcnt.bg_mode.get());
+                            ImGui::Text("not used in mode {}", dispcnt.bg_mode.get());
                             break;
                         default:
-                            ImGui::Text("invalid mode %d", dispcnt.bg_mode.get());
+                            ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
                             break;
                     }
                 }
@@ -186,7 +186,7 @@ void ppu_debugger::draw() noexcept
                                 ImGui::BeginTooltip();
                                 ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
                                 ImGui::SameLine();
-                                ImGui::Text("address: %08X\nvalue: %04X\nR: %02X\nG: %02X\nB: %02X",
+                                ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
                                   address.get() + 0x0500'0000_u32,
                                   bgr_color.get(),
                                   (bgr_color & ppu::color::r_mask).get(),
