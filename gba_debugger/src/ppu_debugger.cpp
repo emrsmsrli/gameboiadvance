@@ -275,6 +275,8 @@ void ppu_debugger::draw() noexcept
 
             if(ImGui::BeginTabItem("Palette View")) {
                 const auto draw_palette = [&](const char* name, usize type_offset /*1 for obj*/) {
+                    ImGui::BeginGroup();
+                    ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(name);
                     for(u32 palette_idx : range(16_u32)) {
                         for(u32 color_idx : range(16_u32)) {
@@ -287,7 +289,7 @@ void ppu_debugger::draw() noexcept
                               ImGuiColorEditFlags_NoBorder
                               | ImGuiColorEditFlags_NoAlpha
                               | ImGuiColorEditFlags_NoDragDrop
-                              | ImGuiColorEditFlags_NoTooltip, ImVec2(20,20));
+                              | ImGuiColorEditFlags_NoTooltip, ImVec2(25, 25));
                             if(ImGui::IsItemHovered()) {
                                 ImGui::BeginTooltip();
                                 ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
@@ -305,11 +307,10 @@ void ppu_debugger::draw() noexcept
                         }
                         ImGui::NewLine();
                     }
-                    ImGui::Spacing();
-                    ImGui::Spacing();
+                    ImGui::EndGroup();
                 };
 
-                draw_palette("BG", 0_usize);
+                draw_palette("BG", 0_usize); ImGui::SameLine();
                 draw_palette("OBJ", 1_usize);
 
                 ImGui::EndTabItem();
