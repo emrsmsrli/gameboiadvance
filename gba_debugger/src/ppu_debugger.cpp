@@ -83,45 +83,153 @@ ppu_debugger::ppu_debugger(ppu::engine* engine)
 
 void ppu_debugger::draw() noexcept
 {
+    if(ImGui::Begin("Framebuffer", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        static int draw_scale = 1;
+        ImGui::SetNextItemWidth(150.f);
+        ImGui::SliderInt("render scale", &draw_scale, 1, 4);
+
+        sf::Sprite screen{screen_texture_};
+        screen.setScale(draw_scale, draw_scale);
+        ImGui::Image(screen, sf::Color::White, sf::Color::White);
+    }
+
+    ImGui::End();
+
     if(ImGui::Begin("PPU")) {
         if(ImGui::BeginTabBar("#pputabs")) {
             const auto& dispcnt = access_private::dispcnt_(ppu_engine);
             const auto& palette = access_private::palette_ram_(ppu_engine);
 
-            if(ImGui::BeginTabItem("Registers & Buffer")) {
-                static int draw_scale = 2;
-                ImGui::SetNextItemWidth(150.f);
-                ImGui::SliderInt("render scale", &draw_scale, 1, 4);
+            if(ImGui::BeginTabItem("Registers")) {
+                ImGui::Text("vcount: {}", access_private::vcount_(ppu_engine));
 
-                sf::Sprite screen{screen_texture_};
-                screen.setScale(draw_scale, draw_scale);
-                ImGui::Image(screen, sf::Color::White, sf::Color::White);
+                ImGui::Spacing();
+                ImGui::Spacing();
+                ImGui::Spacing();
 
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(10.f, 10.f));
+                if(ImGui::BeginTable("#regtables", 2, ImGuiTableFlags_BordersInner)) {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "DISPCNT");
+                    ImGui::Spacing();
+                    ImGui::Text("mode: {}\n"
+                      "bitmap frame: {}\n"
+                      "interval free: {}\n"
+                      "obj 1d mapping: {}\n"
+                      "forced blank: {}\n"
+                      "bg enables: {}\n"
+                      "obj enable: {}\n"
+                      "win enables: {}\n"
+                      "winobj enable: {}\n",
+                      dispcnt.bg_mode.get(),
+                      dispcnt.frame_select.get(),
+                      dispcnt.hblank_interval_free,
+                      dispcnt.obj_mapping_1d,
+                      dispcnt.forced_blank,
+                      fmt::join(dispcnt.enable_bg, ", "),
+                      dispcnt.enable_obj,
+                      fmt::join(array<bool, 2>{dispcnt.enable_w0, dispcnt.enable_w1}, ", "),
+                      dispcnt.enable_wobj);
+
+                    ImGui::TableNextColumn();
+
+                    const auto& dispstat = access_private::dispstat_(ppu_engine);
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "DISPSTAT");
+                    ImGui::Spacing();
+                    ImGui::Text("vblank: {}\n"
+                      "hblank: {}\n"
+                      "vcounter: {}\n"
+                      "vblank irq enabled: {}\n"
+                      "hblank irq enabled: {}\n"
+                      "vcounter irq enabled: {}\n"
+                      "vcount setting: {:02X}",
+                      dispstat.vblank, dispstat.hblank, dispstat.vcounter,
+                      dispstat.vblank_irq_enabled, dispstat.hblank_irq_enabled, dispstat.vcounter_irq_enabled,
+                      dispstat.vcount_setting);
+
+
+                    const auto draw_bg_regs = [](const char* name, const auto& bg) {
+                        using bg_type = std::remove_cv_t<std::remove_reference_t<decltype(bg)>>;
+
+                        const usize tile_base = bg.cnt.char_base_block * 16_kb;
+                        const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
+
+                        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
+                        ImGui::Spacing();
+                        ImGui::Text("priority: {}", bg.cnt.priority.get());
+                        if constexpr(std::is_same_v<bg_type, ppu::bg_affine>) {
+                            ImGui::Text("wraparound: {}", bg.cnt.wraparound);
+                        }
+                        ImGui::Text("mosaic: {}", bg.cnt.mosaic_enabled);
+                        ImGui::Text("8bit depth: {}", bg.cnt.color_depth_8bit);
+                        ImGui::Text("tile base: {:08X}", tile_base + 0x0600'0000_u32);
+                        ImGui::Text("screen entry base: {:08X}", map_entry_base + 0x0600'0000_u32);
+                        ImGui::Text("voffset: {:04X}", bg.voffset);
+                        ImGui::Text("hoffset: {:04X}", bg.hoffset);
+                        if constexpr(std::is_same_v<bg_type, ppu::bg_affine>) {
+                            ImGui::Text("yref: {:08X}, internal {:08X}", bg.y_ref.ref, bg.y_ref.internal);
+                            ImGui::Text("xref: {:08X}, internal {:08X}", bg.x_ref.ref, bg.x_ref.internal);
+                            ImGui::Text("pa: {:04X}, pb: {:04X}, pc: {:04X}, pd: {:04X}",
+                              bg.pa, bg.pb, bg.pc, bg.pd);
+                        }
+                    };
+
+                    ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_bg_regs("BG0", access_private::bg0_(ppu_engine)); ImGui::TableNextColumn();
+                    draw_bg_regs("BG1", access_private::bg1_(ppu_engine)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_bg_regs("BG2", access_private::bg2_(ppu_engine)); ImGui::TableNextColumn();
+                    draw_bg_regs("BG3", access_private::bg3_(ppu_engine));
+
+                    const auto draw_win_regs = [](const char* name, const ppu::window& win) {
+                        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
+                        ImGui::Spacing();
+                        ImGui::Text("top left     x: {:02X}, y: {:02X}", win.top_left.x, win.top_left.y);
+                        ImGui::Text("bottom right x: {:02X}, y: {:02X}", win.bottom_right.x, win.bottom_right.y);
+                    };
+
+                    ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_win_regs("WIN0", access_private::win0_(ppu_engine)); ImGui::TableNextColumn();
+                    draw_win_regs("WIN1", access_private::win1_(ppu_engine));
+
+                    const auto draw_win_enable_regs = [](const char* name, const ppu::win_enable_bits& e) {
+                        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
+                        ImGui::Spacing();
+                        ImGui::Text("bg enables: {}\nobj enable: {}\nblending enable: {}",
+                          fmt::join(e.bg_enable, ", "), e.obj_enable, e.special_effect);
+                    };
+
+                    ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WININ_WIN0", access_private::win_in_(ppu_engine).win0); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WININ_WIN1", access_private::win_in_(ppu_engine).win1); ImGui::TableNextRow(); ImGui::TableNextColumn();
+
+                    draw_win_enable_regs("WINOUT_OUT", access_private::win_out_(ppu_engine).outside); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WINOUT_OBJ", access_private::win_out_(ppu_engine).obj);
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::PopStyleVar();
                 ImGui::EndTabItem();
             }
 
-            if(ImGui::BeginTabItem("BG0")) {
-                if(!dispcnt.enable_bg[0_usize]) {
-                    ImGui::TextUnformatted("disabled");
-                } else {
+            if(dispcnt.enable_bg[0_usize]) {
+                if(ImGui::BeginTabItem("BG0")) {
                     draw_regular_bg_map(access_private::bg0_(ppu_engine));
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
 
-            if(ImGui::BeginTabItem("BG1")) {
-                if(!dispcnt.enable_bg[1_usize]) {
-                    ImGui::TextUnformatted("disabled");
-                } else {
+            if(dispcnt.enable_bg[1_usize]) {
+                if(ImGui::BeginTabItem("BG1")) {
                     draw_regular_bg_map(access_private::bg1_(ppu_engine));
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
 
-            if(ImGui::BeginTabItem("BG2")) {
-                if(!dispcnt.enable_bg[2_usize]) {
-                    ImGui::TextUnformatted("disabled");
-                } else {
+            if(dispcnt.enable_bg[2_usize]) {
+                if(ImGui::BeginTabItem("BG2")) {
                     switch(dispcnt.bg_mode.get()) {
                         case 0:
                             draw_regular_bg_map(to_regular(access_private::bg2_(ppu_engine)));
@@ -136,14 +244,12 @@ void ppu_debugger::draw() noexcept
                             ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
                             break;
                     }
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
 
-            if(ImGui::BeginTabItem("BG3")) {
-                if(!dispcnt.enable_bg[3_usize]) {
-                    ImGui::TextUnformatted("disabled");
-                } else {
+            if(dispcnt.enable_bg[3_usize]) {
+                if(ImGui::BeginTabItem("BG3")) {
                     switch(dispcnt.bg_mode.get()) {
                         case 0:
                             draw_regular_bg_map(to_regular(access_private::bg3_(ppu_engine)));
@@ -158,8 +264,8 @@ void ppu_debugger::draw() noexcept
                             ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
                             break;
                     }
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
             }
 
             if(ImGui::BeginTabItem("OAM")) {
@@ -238,29 +344,12 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     const usize tile_base = bg.cnt.char_base_block * 16_kb;
     const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
 
-    ImGui::BeginGroup();
-    ImGui::Text("priority: {}", bg.cnt.priority.get());
-    ImGui::Text("mosaic: {}", bg.cnt.mosaic_enabled);
-    ImGui::Text("8bit depth: {}", bg.cnt.color_depth_8bit);
-    ImGui::Text("tile base: {:08X}", tile_base + 0x0600'0000_u32);
-    ImGui::Text("screen entry base: {:08X}", map_entry_base + 0x0600'0000_u32);
-    ImGui::EndGroup();
-
-    ImGui::SameLine(0.f, 64.f);
-
-    ImGui::BeginGroup();
     static array<bool, 4> enable_visible_area{true, true, true, true};
     static array<bool, 4> enable_visible_border{true, true, true, true};
     static array<bool, 4> enable_window_area{true, true, true, true};
     ImGui::Checkbox("Enable visible area mask", &enable_visible_area[bg.id]);
-    if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable visible area border", &enable_visible_border[bg.id]); }
-    if(enable_visible_area[bg.id]) { ImGui::Checkbox("Enable window mask", &enable_window_area[bg.id]); }
-    ImGui::Text("voffset: {:04X}", bg.voffset);
-    ImGui::Text("hoffset: {:04X}", bg.hoffset);
-    ImGui::EndGroup();
-
-    ImGui::Spacing();
-    ImGui::Spacing();
+    if(enable_visible_area[bg.id]) { ImGui::SameLine(); ImGui::Checkbox("Enable visible area border", &enable_visible_border[bg.id]); }
+    if(enable_visible_area[bg.id]) { ImGui::SameLine(); ImGui::Checkbox("Enable window mask", &enable_window_area[bg.id]); }
 
     static constexpr array map_block_sizes{
       ppu::dimension<u8>{1_u8, 1_u8},
@@ -420,13 +509,6 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
     const auto& dispcnt = access_private::dispcnt_(ppu_engine);
     auto& buffer = bg_buffers_[bg.id];
     auto& texture = bg_textures_[bg.id];
-
-    ImGui::Text("priority: {}", bg.cnt.priority);
-    ImGui::Text("mosaic: {}", bg.cnt.mosaic_enabled);
-    ImGui::Text("8bit depth: {}", mode == 4_u8);
-
-    ImGui::Spacing();
-    ImGui::Spacing();
 
     const auto draw_page = [&](u32 w, u32 h, u8 page, bool depth8bit) {
         const u32::type yoffset = page.get() * (ppu::screen_height + 2);
