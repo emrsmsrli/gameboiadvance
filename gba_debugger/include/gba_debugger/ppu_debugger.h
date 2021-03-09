@@ -21,6 +21,9 @@ struct ppu_debugger {
     sf::Image screen_buffer_;
     sf::Texture screen_texture_;
 
+    sf::Image tiles_buffer_;
+    sf::Texture tiles_texture_;
+
     array<sf::Image, 4> bg_buffers_;
     array<sf::Texture, 4> bg_textures_;
 
@@ -33,6 +36,8 @@ struct ppu_debugger {
     void draw_regular_bg_map(const ppu::bg_regular& bg) noexcept;
     void draw_affine_bg_map(const ppu::bg_affine& bg) noexcept;
     void draw_bitmap_bg(const ppu::bg_affine& bg, u32 mode) noexcept;
+    void draw_bg_tiles() noexcept;
+    void draw_obj_tiles() noexcept;
     void draw_obj() noexcept;
 };
 
