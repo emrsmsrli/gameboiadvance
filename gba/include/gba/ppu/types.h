@@ -190,7 +190,7 @@ struct window {
 struct win_enable_bits {
     array<bool, 4> bg_enable{false, false, false, false};;
     bool obj_enable = false;
-    bool special_effect = false;
+    bool blend_enable = false;
 };
 
 struct win_in {
