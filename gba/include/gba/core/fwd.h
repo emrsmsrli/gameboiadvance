@@ -32,6 +32,10 @@ namespace arm {
 class arm7tdmi;
 enum class mem_access : u32::type;
 
+#if WITH_DEBUGGER
+enum class debugger_access_width : u32::type;
+#endif // WITH_DEBUGGER
+
 } // namespace arm
 
 namespace ppu {

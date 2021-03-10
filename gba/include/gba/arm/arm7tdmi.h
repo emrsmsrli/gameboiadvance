@@ -23,6 +23,10 @@
 
 namespace gba::arm {
 
+#if WITH_DEBUGGER
+enum class debugger_access_width : u32::type { byte, hword, word };
+#endif // WITH_DEBUGGER
+
 enum class privilege_mode : u8::type {
     usr = 0x10,  // user
     fiq = 0x11,  // fast interrupt
@@ -183,6 +187,10 @@ class arm7tdmi {
 public:
 #if WITH_DEBUGGER
     using timers_debugger = array<timer, 4>;
+
+    delegate<bool(u32)> on_instruction_execute;
+    delegate<void(u32, debugger_access_width)> on_io_read;
+    delegate<void(u32, u32, debugger_access_width)> on_io_write;
 #endif // WITH_DEBUGGER
 
     static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz

@@ -7,13 +7,16 @@
 
 #include <gba_debugger/debugger.h>
 
+#include <string_view>
 #include <thread>
 #include <chrono>
 
 #include <access_private.h>
 #include <imgui-SFML.h>
+#include <imgui.h>
 
 #include <gba/core.h>
+#include <gba_debugger/debugger_helpers.h>
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
@@ -26,6 +29,20 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, oam_)
 
 namespace gba::debugger {
+
+namespace {
+
+std::string_view to_string_view(const arm::debugger_access_width access_type) noexcept
+{
+    switch(access_type) {
+        case arm::debugger_access_width::byte: return "byte";
+        case arm::debugger_access_width::hword: return "hword";
+        case arm::debugger_access_width::word: return "word";
+        default: UNREACHABLE();
+    }
+}
+
+} // namespace
 
 window::window(core* core) noexcept
   : window_{sf::VideoMode{1000u, 1000u}, "GBA Debugger"},
@@ -82,7 +99,9 @@ window::window(core* core) noexcept
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
     LOG_TRACE(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
 
-    // todo register to gba events
+    core_->arm.on_instruction_execute.connect<&window::on_instruction_execute>(this);
+    core_->arm.on_io_read.connect<&window::on_io_read>(this);
+    core_->arm.on_io_write.connect<&window::on_io_write>(this);
 }
 
 bool window::draw() noexcept
@@ -103,6 +122,7 @@ bool window::draw() noexcept
                 case sf::Keyboard::N: core_->press_key(keypad::keypad::key::start); break;
                 case sf::Keyboard::T: core_->press_key(keypad::keypad::key::left_shoulder); break;
                 case sf::Keyboard::U: core_->press_key(keypad::keypad::key::right_shoulder); break;
+                case sf::Keyboard::F7: core_->arm.tick(); break;
                 default:
                     break;
             }
@@ -118,6 +138,7 @@ bool window::draw() noexcept
                 case sf::Keyboard::N: core_->release_key(keypad::keypad::key::start); break;
                 case sf::Keyboard::T: core_->release_key(keypad::keypad::key::left_shoulder); break;
                 case sf::Keyboard::U: core_->release_key(keypad::keypad::key::right_shoulder); break;
+                case sf::Keyboard::F9: tick_allowed_ = !tick_allowed_; break;
                 default:
                     break;
             }
@@ -130,9 +151,13 @@ bool window::draw() noexcept
         return true;
     }
 
+    const u64 until = core_->schdlr.now() + ppu::engine::cycles_per_frame;
+    while (tick_allowed_ && core_->schdlr.now() < until) {
+        core_->arm.tick();
+    }
+
     ImGui::SFML::Update(window_, dt_.restart());
 
-    // todo draw debugger components
     disassembly_view_.draw_with_mode(access_private::cpsr_(core_->arm).t);
     memory_view_.draw();
     gamepak_debugger_.draw();
@@ -144,6 +169,37 @@ bool window::draw() noexcept
     ImGui::SFML::Render();
     window_.display();
     return true;
+}
+
+bool window::on_instruction_execute(const u32 address) noexcept
+{
+    const bool should_break = last_executed_addr_ != address
+      && arm_debugger_.has_enabled_execution_breakpoint(address);
+
+    if(should_break) {
+        tick_allowed_ = false;
+        LOG_DEBUG(debugger, "execution breakpoint hit: {:08X}", address);
+    }
+
+    last_executed_addr_ = address;
+    return should_break;
+}
+
+void window::on_io_read(const u32 address, const arm::debugger_access_width access_type) noexcept
+{
+    if(arm_debugger_.has_enabled_read_breakpoint(address, access_type)) {
+        tick_allowed_ = false;
+        LOG_DEBUG(debugger, "read breakpoint hit: {:08X}, {} access", address, to_string_view(access_type));
+    }
+}
+
+void window::on_io_write(const u32 address, const u32 data, const arm::debugger_access_width access_type) noexcept
+{
+    if(arm_debugger_.has_enabled_write_breakpoint(address, data, access_type)) {
+        tick_allowed_ = false;
+        LOG_DEBUG(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
+          address, data, to_string_view(access_type));
+    }
 }
 
 } // namespace gba::debugger

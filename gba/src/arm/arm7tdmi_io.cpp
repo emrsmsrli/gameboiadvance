@@ -100,6 +100,10 @@ u32 arm7tdmi::read_32_aligned(const u32 addr, const mem_access access) noexcept
 
 u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_read(addr, debugger_access_width::word);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
@@ -154,6 +158,10 @@ u32 arm7tdmi::read_32(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_write(addr, data, debugger_access_width::word);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     ASSERT(!bitflags::is_set(access, mem_access::dry_run));
@@ -222,6 +230,10 @@ u32 arm7tdmi::read_16_aligned(const u32 addr, const mem_access access) noexcept
 
 u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_read(addr, debugger_access_width::hword);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
@@ -277,6 +289,10 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_write(addr, data, debugger_access_width::hword);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     ASSERT(!bitflags::is_set(access, mem_access::dry_run));
@@ -341,6 +357,10 @@ u32 arm7tdmi::read_8_signed(const u32 addr, const mem_access access) noexcept
 
 u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_read(addr, debugger_access_width::byte);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     if(LIKELY(!bitflags::is_set(access, mem_access::dry_run))) {
@@ -386,6 +406,10 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcept
 {
+#if WITH_DEBUGGER
+    on_io_write(addr, data, debugger_access_width::byte);
+#endif // WITH_DEBUGGER
+
     const auto page = to_enum<memory_page>(addr >> 24_u32);
 
     ASSERT(!bitflags::is_set(access, mem_access::dry_run));

@@ -7,6 +7,7 @@
 
 #include <gba_debugger/arm_debugger.h>
 
+#include <algorithm>
 #include <sstream>
 
 #include <imgui.h>
@@ -278,12 +279,12 @@ std::string_view to_string_view(const dma::channel::control::address_control con
 
 } // namespace
 
-void arm_debugger::draw() const noexcept
+void arm_debugger::draw() noexcept
 {
     if(ImGui::Begin("ARM")) {
         if(ImGui::BeginTabBar("#arm_tab")) {
             if(ImGui::BeginTabItem("Registers")) {
-                draw_regs(arm);
+                draw_regs(arm_);
 
                 ImGui::Spacing();
                 ImGui::Spacing();
@@ -292,16 +293,16 @@ void arm_debugger::draw() const noexcept
                 ImGui::TextUnformatted("Pipeline");
                 ImGui::Separator();
                 const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
-                    ImGui::Text("{}: {:08}", name, instr);
+                    ImGui::Text("{}: {:08X}", name, instr);
                     if(ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
-                        if(access_private::cpsr_(arm).t) {
+                        if(access_private::cpsr_(arm_).t) {
                             ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                              access_private::r15_(arm) - offset * 4_u32,
+                              access_private::r15_(arm_) - offset * 4_u32,
                               narrow<u16>(instr)).c_str());
                         } else {
                             ImGui::TextUnformatted(disassembler::disassemble_arm(
-                              access_private::r15_(arm) - offset * 2_u32,
+                              access_private::r15_(arm_) - offset * 2_u32,
                               instr).c_str());
                         }
                         ImGui::EndTooltip();
@@ -309,10 +310,10 @@ void arm_debugger::draw() const noexcept
                 };
 
                 ImGui::BeginGroup(); {
-                    draw_pipeline_instr("executing", access_private::pipeline_(arm).executing, 1_u32);
-                    draw_pipeline_instr("decoding", access_private::pipeline_(arm).decoding, 2_u32);
+                    draw_pipeline_instr("executing", access_private::pipeline_(arm_).executing, 1_u32);
+                    draw_pipeline_instr("decoding", access_private::pipeline_(arm_).decoding, 2_u32);
                     ImGui::Text("fetch: {}", [&]() {
-                        switch(access_private::pipeline_(arm).fetch_type) {
+                        switch(access_private::pipeline_(arm_).fetch_type) {
                             case arm::mem_access::non_seq: return "non seq";
                             case arm::mem_access::seq: return "seq";
                             default: UNREACHABLE();
@@ -323,9 +324,9 @@ void arm_debugger::draw() const noexcept
                     ImGui::Spacing();
                     ImGui::Spacing();
 
-                    ImGui::Text("postboot: {:X}", access_private::post_boot_(arm).get());
+                    ImGui::Text("postboot: {:X}", access_private::post_boot_(arm_).get());
                     ImGui::Text("haltcnt: {}", [&]() {
-                        switch(access_private::haltcnt_(arm)) {
+                        switch(access_private::haltcnt_(arm_)) {
                             case arm::halt_control::halted: return "halted";
                             case arm::halt_control::stopped: return "stopped";
                             case arm::halt_control::running: return "running";
@@ -350,9 +351,9 @@ void arm_debugger::draw() const noexcept
                         }
                     };
 
-                    draw_irq_reg(access_private::ie_(arm));
-                    draw_irq_reg(access_private::if_(arm));
-                    ImGui::Text("ime: {}", access_private::ime_(arm));
+                    draw_irq_reg(access_private::ie_(arm_));
+                    draw_irq_reg(access_private::if_(arm_));
+                    ImGui::Text("ime: {}", access_private::ime_(arm_));
                     ImGui::EndGroup();
                 }
 
@@ -361,15 +362,15 @@ void arm_debugger::draw() const noexcept
                 ImGui::BeginGroup(); {
                     ImGui::TextUnformatted("waitcnt");
                     ImGui::Separator();
-                    ImGui::Text("sram {}", access_private::waitcnt_(arm).sram);
-                    ImGui::Text("ws0_nonseq {}", access_private::waitcnt_(arm).ws0_nonseq);
-                    ImGui::Text("ws0_seq {}", access_private::waitcnt_(arm).ws0_seq);
-                    ImGui::Text("ws1_nonseq {}", access_private::waitcnt_(arm).ws1_nonseq);
-                    ImGui::Text("ws1_seq {}", access_private::waitcnt_(arm).ws1_seq);
-                    ImGui::Text("ws2_nonseq {}", access_private::waitcnt_(arm).ws2_nonseq);
-                    ImGui::Text("ws2_seq {}", access_private::waitcnt_(arm).ws2_seq);
-                    ImGui::Text("phi {}", access_private::waitcnt_(arm).phi);
-                    ImGui::Text("prefetch {}", access_private::waitcnt_(arm).prefetch_buffer_enable);
+                    ImGui::Text("sram {}", access_private::waitcnt_(arm_).sram);
+                    ImGui::Text("ws0_nonseq {}", access_private::waitcnt_(arm_).ws0_nonseq);
+                    ImGui::Text("ws0_seq {}", access_private::waitcnt_(arm_).ws0_seq);
+                    ImGui::Text("ws1_nonseq {}", access_private::waitcnt_(arm_).ws1_nonseq);
+                    ImGui::Text("ws1_seq {}", access_private::waitcnt_(arm_).ws1_seq);
+                    ImGui::Text("ws2_nonseq {}", access_private::waitcnt_(arm_).ws2_nonseq);
+                    ImGui::Text("ws2_seq {}", access_private::waitcnt_(arm_).ws2_seq);
+                    ImGui::Text("phi {}", access_private::waitcnt_(arm_).phi);
+                    ImGui::Text("prefetch {}", access_private::waitcnt_(arm_).prefetch_buffer_enable);
                     ImGui::EndGroup();
                 }
 
@@ -377,7 +378,7 @@ void arm_debugger::draw() const noexcept
             }
 
             if(ImGui::BeginTabItem("Timers")) {
-                for(auto& timer : access_private::timers_(arm)) {
+                for(auto& timer : access_private::timers_(arm_)) {
                     ImGui::Text("Timer {}", access_private::id_(timer));
                     ImGui::Separator();
                     ImGui::Text("counter: {:04X} reload: {:04X}",
@@ -412,7 +413,7 @@ void arm_debugger::draw() const noexcept
                     return s.str();
                 };
 
-                auto& controller = access_private::dma_controller_(arm);
+                auto& controller = access_private::dma_controller_(arm_);
 
                 ImGui::Text("Scheduled channels: {}",
                   fmt_channels(access_private::scheduled_channels_(controller)));
@@ -480,73 +481,237 @@ void arm_debugger::draw() const noexcept
                 ImGui::EndTabItem();
             }
 
+            if(ImGui::BeginTabItem("Execution")) {
+                if(ImGui::BeginChild("#breakpointschild")) {
+                    draw_breakpoints();
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                    ImGui::Spacing();
+                    draw_disassembly();
+                    ImGui::EndChild();
+                }
+
+                ImGui::EndTabItem();
+            }
+
             ImGui::EndTabBar();
         }
     }
 
     ImGui::End();
+}
 
-    ImGui::Begin("diss");
-    vector<u8>* memory;
-    unsigned int offset = 0;
-    unsigned int pc;
-    if(auto p = access_private::r15_(arm).get(); p < 0x3FFF) {
-        memory = &access_private::bios_(arm);
-        pc = p;
-    } else if(p < 0x0203FFFF) {
-        memory = &access_private::wram_(arm);
-        pc = p - 0x02000000;
-        offset = 0x02000000;
-    } else if(p < 0x03007FFF) {
-        memory = &access_private::iwram_(arm);
-        pc = p - 0x03000000;
-        offset = 0x03000000;
-    } else if(p < 0x09FFFFFF) {
-        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
-        pc = p - 0x08000000;
-        offset = 0x08000000;
-    } else if(p < 0x0BFFFFFF) {
-        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
-        pc = p - 0x0A000000;
-        offset = 0x08000000;
-    } else if(p < 0x0DFFFFFF) {
-        memory = &access_private::pak_data_(access_private::core_(arm)->pak);
-        pc = p - 0x0C000000;
-        offset = 0x08000000;
-    } else {
-        UNREACHABLE();
-    }
+void arm_debugger::draw_breakpoints() noexcept
+{
+    static constexpr array breakpoint_types{"Execution breakpoint", "Access breakpoint"};
+    static int breakpoint_type = 0;
+    ImGui::Combo("", &breakpoint_type, breakpoint_types.data(), breakpoint_types.size().get());
 
-    auto mult = access_private::cpsr_(arm).t ? 2u : 4u;
-    auto i = pc / mult;
-    if(i < 9) {
-        i = 0;
-    } else {
-        i -= 9;
-    }
+    if(breakpoint_type == 0) {
+        static array<char, 9> address_buf{};
 
-    auto max = std::min(15ull + i, memory->size().get() / mult);
-    for(; i < max; ++i) {
-        if(access_private::cpsr_(arm).t) {
-            const auto address = 2_u32 * i;
-            u16 inst = memcpy<u16>(*memory, address);
-            if(address == pc - 4) {
-                ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%04X %s", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst).c_str());
-            } else {
-                ImGui::Text("0x{:08X}|0x{:04X} {}", address + offset, inst.get(), disassembler::disassemble_thumb(address, inst));
-            }
-        } else {
-            const auto address = 4_u32 * i;
-            u32 inst = memcpy<u32>(*memory, address);
-            if(address == pc - 8) {
-                ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X|0x%08X %s", address + offset, inst.get(), disassembler::disassemble_arm(address, inst).c_str());
-            } else {
-                ImGui::Text("0x{:08X}|0x{:08X} {}", address + offset, inst, disassembler::disassemble_arm(address, inst));
+        const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
+        ImGui::SetNextItemWidth(120);
+        ImGui::InputText("address", address_buf.data(), address_buf.size().get(),
+          ImGuiInputTextFlags_CharsHexadecimal
+          | ImGuiInputTextFlags_CharsUppercase);
+
+        if(ok_pressed) {
+            if(std::strlen(address_buf.data()) != 0) {
+                execution_breakpoint breakpoint;
+                breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
+
+                if(std::find(
+                  execution_breakpoints_.begin(),
+                  execution_breakpoints_.end(), breakpoint) == execution_breakpoints_.end())
+                {
+                    LOG_DEBUG(debugger, "execution breakpoint added: {:08X}", breakpoint.address);
+                    execution_breakpoints_.push_back(breakpoint);
+                }
             }
         }
-    }
 
-    ImGui::End();
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        int idx_to_delete = -1;
+        ImGuiListClipper clipper(execution_breakpoints_.size().get());
+        while(clipper.Step()) {
+            for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                auto& bp = execution_breakpoints_[static_cast<u32::type>(i)];
+
+                ImGui::Button("X");
+                if(ImGui::IsItemClicked()) { // hack
+                    idx_to_delete = i;
+                    LOG_DEBUG(debugger, "execution breakpoint removed: {:08X}", bp.address);
+                }
+
+                ImGui::SameLine(0, 5);
+                ImGui::Checkbox("", &bp.enabled);
+                if(ImGui::IsItemClicked()) { // hack
+                    bp.enabled = !bp.enabled;
+                    LOG_DEBUG(debugger, "execution breakpoint toggled: {:08X}", bp.address);
+                }
+
+                ImGui::SameLine(0, 10);
+                ImGui::Text("{:08X}", bp.address);
+            }
+        }
+
+        if(idx_to_delete != -1) {
+            execution_breakpoints_.erase(execution_breakpoints_.begin() + idx_to_delete);
+        }
+
+    } else if(breakpoint_type == 1) {
+        // todo
+    }
+}
+
+void arm_debugger::draw_disassembly() noexcept
+{
+    if(ImGui::BeginChild("#armdisassemblychild")) {
+        vector<u8>* memory;
+        const u32 pc = access_private::r15_(arm_);
+        u32 offset;
+        if(pc < 0x0000'3FFF_u32) {
+            memory = &access_private::bios_(arm_);
+        } else if(pc < 0x0203'FFFF_u32) {
+            memory = &access_private::wram_(arm_);
+            offset = 0x0200'0000_u32;
+        } else if(pc < 0x0300'7FFF_u32) {
+            memory = &access_private::iwram_(arm_);
+            offset = 0x0300'0000_u32;
+        } else if(pc < 0x09FF'FFFF_u32) {
+            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            offset = 0x0800'0000_u32;
+        } else if(pc < 0x0BFF'FFFF_u32) {
+            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            offset = 0xA800'0000_u32;
+        } else if(pc < 0x0DFF'FFFF_u32) {
+            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            offset = 0x0C00'0000_u32;
+        } else {
+            // probably something is broken at this point
+            // or we're execution in vram, which is very unlikely
+            // don't think we'll support disassembly for it
+            LOG_WARN(debugger, "unknown execution page");
+            return;
+        }
+
+        const u32 pc_physical_address = pc - offset;
+
+        const u32 instr_width = access_private::cpsr_(arm_).t ? 2_u32 : 4_u32;
+        usize instr_idx = pc_physical_address / instr_width;
+        if(instr_idx < 9_u32) {
+            instr_idx = 0_u32;
+        } else {
+            instr_idx -= 9_u32;
+        }
+
+        const auto get_execution_breakpoint = [&](const u32 address) {
+            return std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
+              [&](const execution_breakpoint& bp) { return bp.address == address; });
+        };
+
+        const auto modify_execution_breakpoint = [&](const u32 address, bool toggle) {
+            const auto it = get_execution_breakpoint(address);
+
+            if(it != execution_breakpoints_.end()) {
+                if(toggle) {
+                    it->enabled = !it->enabled;
+                } else {
+                    LOG_DEBUG(debugger, "execution breakpoint removed: {:08X}", address);
+                    execution_breakpoints_.erase(it);
+                }
+            } else {
+                LOG_DEBUG(debugger, "execution breakpoint added: {:08X}", address);
+                execution_breakpoints_.push_back(execution_breakpoint{address, true});
+            }
+        };
+
+        const usize max = std::min(15_usize + instr_idx, memory->size() / instr_width);
+        for(; instr_idx < max; ++instr_idx) {
+            const u32 physical_address = instr_width * narrow<u32>(instr_idx);
+            const u32 virtual_address = physical_address + offset;
+
+            ImGui::BeginGroup();
+            const float radius = ImGui::GetTextLineHeight() * .5f + 1.f;
+            if(const auto it = get_execution_breakpoint(virtual_address); it != execution_breakpoints_.end()) {
+                ImVec2 cursor = ImGui::GetCursorScreenPos();
+                if(it->enabled) {
+                    ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(cursor.x + radius, cursor.y + radius),
+                      radius, 0xFF0000FF);
+                } else {
+                    ImGui::GetWindowDrawList()->AddCircle(ImVec2(cursor.x + radius, cursor.y + radius),
+                      radius, 0xFF0000FF, 0, 1.5f);
+                }
+            }
+
+            ImGui::Dummy(ImVec2{radius * 2, radius * 2});
+            ImGui::SameLine(0.f, 5.f);
+
+            if(access_private::cpsr_(arm_).t) {
+                const u16 inst = memcpy<u16>(*memory, physical_address);
+                if(virtual_address == pc - 4_u32) {
+                    ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X | 0x%04X %s",
+                      virtual_address.get(), inst.get(),
+                      disassembler::disassemble_thumb(virtual_address, inst).c_str());
+                } else {
+                    ImGui::Text("0x{:08X} | 0x{:04X} {}", virtual_address,
+                      inst, disassembler::disassemble_thumb(virtual_address, inst));
+                }
+            } else {
+                const u32 inst = memcpy<u32>(*memory, physical_address);
+                if(virtual_address == pc - 8_u32) {
+                    ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X | 0x%08X %s",
+                      virtual_address.get(), inst.get(),
+                      disassembler::disassemble_arm(virtual_address, inst).c_str());
+                } else {
+                    ImGui::Text("0x{:08X} | 0x{:08X} {}", virtual_address,
+                      inst, disassembler::disassemble_arm(virtual_address, inst));
+                }
+            }
+            ImGui::EndGroup();
+
+            if(ImGui::IsItemClicked()) {
+                const ImGuiIO& io = ImGui::GetIO();
+                modify_execution_breakpoint(virtual_address, io.KeyShift);
+            }
+        }
+        ImGui::EndChild();
+    }
+}
+
+bool arm_debugger::has_enabled_execution_breakpoint(const u32 address) noexcept
+{
+    return std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
+      [&](const execution_breakpoint& bp) {
+          return bp.enabled && bp.address == address;
+      }) != execution_breakpoints_.end();
+}
+
+bool arm_debugger::has_enabled_read_breakpoint(const u32 address, const arm::debugger_access_width access_width) noexcept
+{
+    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
+      [&](const access_breakpoint& bp) {
+          return bp.enabled
+            && bp.access_width == access_width
+            && bp.address_range.contains(address)
+            && bitflags::is_set(bp.access_type, access_breakpoint::type::read);
+      }) != access_breakpoints_.end();
+}
+
+bool arm_debugger::has_enabled_write_breakpoint(const u32 address, const u32 data,
+  const arm::debugger_access_width access_width) noexcept
+  {
+    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
+      [&](const access_breakpoint& bp) {
+          return bp.enabled
+            && bp.access_width == access_width
+            && bp.address_range.contains(address)
+            && bitflags::is_set(bp.access_type, access_breakpoint::type::write)
+            && (!bp.data.has_value() || *bp.data == data);
+      }) != access_breakpoints_.end();
 }
 
 } // namespace gba::debugger

@@ -34,10 +34,17 @@ class window {
     ppu_debugger ppu_debugger_;
     keypad_debugger keypad_debugger_;
 
+    bool tick_allowed_ = false;
+    u32 last_executed_addr_;
+
 public:
     explicit window(core* core) noexcept;
 
     [[nodiscard]] bool draw() noexcept;
+
+    bool on_instruction_execute(u32 address) noexcept;
+    void on_io_read(u32 address, arm::debugger_access_width access_type) noexcept;
+    void on_io_write(u32 address, u32 data, arm::debugger_access_width access_type) noexcept;
 };
 
 } // namespace gba::debugger

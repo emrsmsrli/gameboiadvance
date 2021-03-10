@@ -53,6 +53,13 @@ void arm7tdmi::tick() noexcept
         process_interrupts(has_interrupt);
 
         u32& pc = r(15_u8);
+
+#if WITH_DEBUGGER
+        if(on_instruction_execute(pc - (cpsr_.t ? 4_u32 : 8_u32))) {
+            return;
+        }
+#endif // WITH_DEBUGGER
+
         const u32 instruction = pipeline_.executing;
         pipeline_.executing = pipeline_.decoding;
 
