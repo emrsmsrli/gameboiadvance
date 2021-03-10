@@ -272,7 +272,7 @@ struct obj_attr2 {
 
     [[nodiscard]] FORCEINLINE u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
     [[nodiscard]] FORCEINLINE u32 priority() const noexcept { return (value >> 10_u16) & 0b11_u16; }
-    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>(value >> 12_u16); }
+    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>(value >> 12_u16) + 16_u8; }
 };
 
 struct obj {
