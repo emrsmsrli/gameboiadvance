@@ -200,7 +200,7 @@ void ppu_debugger::draw() noexcept
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
                         ImGui::Spacing();
                         ImGui::Text("bg enables: {}\nobj enable: {}\nblending enable: {}",
-                          fmt::join(e.bg_enable, ", "), e.obj_enable, e.special_effect);
+                          fmt::join(e.bg_enable, ", "), e.obj_enable, e.blend_enable);
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();

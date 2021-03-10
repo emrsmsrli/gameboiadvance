@@ -222,7 +222,7 @@ struct bldcnt {
 
     target first;
     target second;
-    effect effect_type;
+    effect type;
 };
 
 struct blend_settings {
@@ -246,14 +246,14 @@ struct bg_map_entry {
 };
 
 struct obj_attr0 {
-    enum class sfx_type { normal, alpha_blending, obj_window };
+    enum class blend_mode { normal, alpha_blending, obj_window, prohibited };
     enum class rendering_mode { normal, affine, hidden, affine_double };
 
     u16 value;
 
     [[nodiscard]] FORCEINLINE u8 y() const noexcept { return narrow<u8>(value); }
     [[nodiscard]] FORCEINLINE rendering_mode render_mode() const noexcept { return to_enum<rendering_mode>((value >> 8_u16) & 0b11_u16); }
-    [[nodiscard]] FORCEINLINE sfx_type sfx_mode() const noexcept { return to_enum<sfx_type>((value >> 10_u16) & 0b11_u16); }
+    [[nodiscard]] FORCEINLINE blend_mode blending() const noexcept { return to_enum<blend_mode>((value >> 10_u16) & 0b11_u16); }
     [[nodiscard]] FORCEINLINE bool mosaic_enabled() const noexcept { return bit::test(value, 12_u8); }
     [[nodiscard]] FORCEINLINE bool color_depth_8bit() const noexcept { return bit::test(value, 13_u8); }
     [[nodiscard]] FORCEINLINE u32 shape_idx() const noexcept { return value >> 14_u8; }

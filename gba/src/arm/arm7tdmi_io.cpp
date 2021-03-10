@@ -493,7 +493,7 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
           | bit::from_bool<u8>(area.bg_enable[2_usize]) << 2_u8
           | bit::from_bool<u8>(area.bg_enable[3_usize]) << 3_u8
           | bit::from_bool<u8>(area.obj_enable) << 4_u8
-          | bit::from_bool<u8>(area.special_effect) << 5_u8;
+          | bit::from_bool<u8>(area.blend_enable) << 5_u8;
     };
 
     switch(addr.get()) {
@@ -551,7 +551,7 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
               | bit::from_bool<u8>(ppu.bldcnt_.first.bg[3_usize]) << 3_u8
               | bit::from_bool<u8>(ppu.bldcnt_.first.obj) << 4_u8
               | bit::from_bool<u8>(ppu.bldcnt_.first.backdrop) << 5_u8
-              | from_enum<u8>(ppu.bldcnt_.effect_type) << 6_u8;
+              | from_enum<u8>(ppu.bldcnt_.type) << 6_u8;
         case ppu::addr_bldcnt + 1:
             return bit::from_bool<u8>(ppu.bldcnt_.second.bg[0_usize])
               | bit::from_bool<u8>(ppu.bldcnt_.second.bg[1_usize]) << 1_u8
@@ -661,7 +661,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         area.bg_enable[2_usize] = bit::test(data, 2_u8);
         area.bg_enable[3_usize] = bit::test(data, 3_u8);
         area.obj_enable = bit::test(data, 4_u8);
-        area.special_effect = bit::test(data, 5_u8);
+        area.blend_enable = bit::test(data, 5_u8);
     };
 
     switch(addr.get()) {
@@ -790,7 +790,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             ppu.bldcnt_.first.bg[3_usize] = bit::test(data, 3_u8);
             ppu.bldcnt_.first.obj = bit::test(data, 4_u8);
             ppu.bldcnt_.first.backdrop = bit::test(data, 5_u8);
-            ppu.bldcnt_.effect_type = to_enum<ppu::bldcnt::effect>((data >> 6_u8) & 0b11_u8);
+            ppu.bldcnt_.type = to_enum<ppu::bldcnt::effect>((data >> 6_u8) & 0b11_u8);
             break;
         case ppu::addr_bldcnt + 1:
             ppu.bldcnt_.second.bg[0_usize] = bit::test(data, 0_u8);
