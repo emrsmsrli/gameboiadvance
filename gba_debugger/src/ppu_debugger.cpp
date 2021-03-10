@@ -33,6 +33,7 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, bool, green_swap_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::mosaic, mosaic_bg_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::mosaic, mosaic_obj_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::bldcnt, bldcnt_)
+ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::blend_settings, blend_settings_)
 
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color)
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color_opaque)
@@ -104,7 +105,14 @@ void ppu_debugger::draw() noexcept
             const auto& palette = access_private::palette_ram_(ppu_engine);
 
             if(ImGui::BeginTabItem("Registers")) {
+                if(!ImGui::BeginChild("#ppuregschild")) {
+                    ImGui::EndChild();
+                    return;
+                }
+
                 ImGui::Text("vcount: {}", access_private::vcount_(ppu_engine));
+                ImGui::SameLine(0.f, 50.f);
+                ImGui::Text("greenswap: {}", access_private::green_swap_(ppu_engine));
 
                 ImGui::Spacing();
                 ImGui::Spacing();
@@ -210,10 +218,54 @@ void ppu_debugger::draw() noexcept
                     draw_win_enable_regs("WINOUT_OUT", access_private::win_out_(ppu_engine).outside); ImGui::TableNextColumn();
                     draw_win_enable_regs("WINOUT_OBJ", access_private::win_out_(ppu_engine).obj);
 
+                    const auto draw_mosaic_regs = [](const char* name, const ppu::mosaic& m) {
+                        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
+                        ImGui::Spacing();
+                        ImGui::Text("v: {:02X} h: {:02X}\nv: {:02X} h: {:02X} (internal)",
+                          m.v, m.h, m.internal.v, m.internal.h);
+                    };
+
+                    ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_mosaic_regs("MOSAIC_BG", access_private::mosaic_bg_(ppu_engine)); ImGui::TableNextColumn();
+                    draw_mosaic_regs("MOSAIC_OBJ", access_private::mosaic_obj_(ppu_engine));
+
+                    ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    auto& bldcnt = access_private::bldcnt_(ppu_engine);
+                    const auto draw_bldcnt_target_regs = [](const char* name, const ppu::bldcnt::target& t) {
+                        ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
+                        ImGui::Spacing();
+                        ImGui::Text("bg: {}\nobj: {}\nbackdrop: {}",
+                          fmt::join(t.bg, ", "), t.obj, t.backdrop);
+                    };
+                    ImGui::Text("blend type: {}", [&]() {
+                        switch(bldcnt.type) {
+                            case ppu::bldcnt::effect::none: return "none";
+                            case ppu::bldcnt::effect::alpha_blend: return "alpha_blend";
+                            case ppu::bldcnt::effect::brightness_inc: return "brightness_inc";
+                            case ppu::bldcnt::effect::brightness_dec: return "brightness_dec";
+                            default: UNREACHABLE();
+                        }
+                    }());
+                    if(ImGui::BeginTable("#bldcntable", 2)) {
+                        ImGui::TableNextRow(); ImGui::TableNextColumn();
+                        draw_bldcnt_target_regs("first", bldcnt.first);
+                        ImGui::TableNextColumn();
+                        draw_bldcnt_target_regs("second", bldcnt.second);
+                        ImGui::EndTable();
+                    }
+
+                    ImGui::TableNextColumn();
+                    auto& bldset = access_private::blend_settings_(ppu_engine);
+                    ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "BLEND SETTINGS");
+                    ImGui::Spacing();
+                    ImGui::Text("eva {:02X}\nevb {:02X}\nevy {:02X}",
+                      bldset.eva, bldset.evb, bldset.evy);
+
                     ImGui::EndTable();
                 }
 
                 ImGui::PopStyleVar();
+                ImGui::EndChild();
                 ImGui::EndTabItem();
             }
 

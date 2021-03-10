@@ -222,7 +222,7 @@ struct bldcnt {
 
     target first;
     target second;
-    effect type;
+    effect type{effect::none};
 };
 
 struct blend_settings {
