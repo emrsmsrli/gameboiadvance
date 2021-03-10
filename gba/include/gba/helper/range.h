@@ -54,7 +54,7 @@ public:
     [[nodiscard]] FORCEINLINE constexpr T min() const noexcept { return min_; }
     [[nodiscard]] FORCEINLINE constexpr T max() const noexcept { return max_; }
 
-    [[nodiscard]] FORCEINLINE constexpr bool contains(const T v) { return min_ <= v && v < max_; }
+    [[nodiscard]] FORCEINLINE constexpr bool contains(const T v) const noexcept { return min_ <= v && v < max_; }
 };
 
 template<typename Container, typename F>
