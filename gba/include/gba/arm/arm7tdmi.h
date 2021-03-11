@@ -24,7 +24,7 @@
 namespace gba::arm {
 
 #if WITH_DEBUGGER
-enum class debugger_access_width : u32::type { byte, hword, word };
+enum class debugger_access_width : u32::type { byte, hword, word, any };
 #endif // WITH_DEBUGGER
 
 enum class privilege_mode : u8::type {

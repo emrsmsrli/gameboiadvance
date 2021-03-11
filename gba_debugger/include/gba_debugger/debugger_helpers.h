@@ -8,6 +8,9 @@
 #ifndef GAMEBOIADVANCE_DEBUGGER_HELPERS_H
 #define GAMEBOIADVANCE_DEBUGGER_HELPERS_H
 
+#include <string>
+#include <optional>
+
 #include <fmt/format.h>
 #include <imgui.h>
 
@@ -40,5 +43,17 @@ FORCEINLINE std::string fmt_hex(const T val) noexcept
 }
 
 } // namespace gba::debugger
+
+template<typename T>
+struct fmt::formatter<std::optional<T>> : formatter<T> {
+    template<typename FormatContext>
+    auto format(const std::optional<T>& o, FormatContext& ctx) -> decltype(ctx.out())
+    {
+        if(o.has_value()) {
+            return formatter<T>::format(o.value(), ctx);
+        }
+        return format_to(ctx.out(), "{}", "<nullopt>");
+    }
+};
 
 #endif //GAMEBOIADVANCE_DEBUGGER_HELPERS_H

@@ -29,11 +29,13 @@ public:
     struct access_breakpoint {
         enum class type { read = 1, write = 2, read_write = read | write };
 
-        range<u32> address_range{0u};
+        range<u32> address_range{1u};
         arm::debugger_access_width access_width;
         type access_type{type::read};
         std::optional<u32> data;
         bool enabled = true;
+
+        bool operator==(const access_breakpoint& other) const noexcept;
     };
 
 private:
@@ -43,17 +45,19 @@ private:
     vector<access_breakpoint> access_breakpoints_;
 
 public:
-    arm_debugger(arm::arm7tdmi* arm)
+    arm_debugger(arm::arm7tdmi* arm) noexcept
       : arm_{arm} {}
 
     void draw() noexcept;
 
-    bool has_enabled_execution_breakpoint(u32 address) noexcept;
-    bool has_enabled_read_breakpoint(u32 address, arm::debugger_access_width access_width) noexcept;
-    bool has_enabled_write_breakpoint(u32 address, u32 data, arm::debugger_access_width access_width) noexcept;
+    [[nodiscard]] bool has_enabled_execution_breakpoint(u32 address) noexcept;
+    [[nodiscard]] bool has_enabled_read_breakpoint(u32 address, arm::debugger_access_width access_width) noexcept;
+    [[nodiscard]] bool has_enabled_write_breakpoint(u32 address, u32 data, arm::debugger_access_width access_width) noexcept;
 
 private:
     void draw_breakpoints() noexcept;
+    void draw_execution_breakpoints() noexcept;
+    void draw_access_breakpoints() noexcept;
     void draw_disassembly() noexcept;
 };
 

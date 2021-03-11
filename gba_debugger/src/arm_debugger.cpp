@@ -243,6 +243,36 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
     ImGui::PopStyleVar();
 }
 
+template<typename T, typename BPContainer>
+void draw_bps(BPContainer&& container, T&& f) noexcept
+{
+    int idx_to_delete = -1;
+    ImGuiListClipper clipper(container.size().get());
+    while(clipper.Step()) {
+        for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+            auto& bp = container[static_cast<u32::type>(i)];
+
+            ImGui::Button("X");
+            if(ImGui::IsItemClicked()) { // hack
+                idx_to_delete = i;
+            }
+
+            ImGui::SameLine(0, 5);
+            ImGui::Checkbox("", &bp.enabled);
+            if(ImGui::IsItemClicked()) { // hack
+                bp.enabled = !bp.enabled;
+            }
+
+            ImGui::SameLine(0, 10);
+            f(bp);
+        }
+    }
+
+    if(idx_to_delete != -1) {
+        container.erase(container.begin() + idx_to_delete);
+    }
+}
+
 std::string_view to_string_view(const arm::interrupt_source irq) noexcept
 {
     switch(irq) {
@@ -277,7 +307,37 @@ std::string_view to_string_view(const dma::channel::control::address_control con
     }
 }
 
+std::string_view to_string_view(const arm::debugger_access_width width) noexcept
+{
+    switch(width) {
+        case arm::debugger_access_width::byte: return "byte";
+        case arm::debugger_access_width::hword: return "hword";
+        case arm::debugger_access_width::word: return "word";
+        case arm::debugger_access_width::any: return "any";
+        default:
+            UNREACHABLE();
+    }
+}
+
+std::string_view to_string_view(const arm_debugger::access_breakpoint::type type) noexcept
+{
+    switch(type) {
+        case arm_debugger::access_breakpoint::type::read: return "read";
+        case arm_debugger::access_breakpoint::type::write: return "write";
+        case arm_debugger::access_breakpoint::type::read_write: return "read_write";
+        default:
+            UNREACHABLE();
+    }
+}
+
 } // namespace
+
+bool arm_debugger::access_breakpoint::operator==(const arm_debugger::access_breakpoint& other) const noexcept {
+    return address_range.contains(other.address_range)
+      && other.access_width == access_width
+      && other.access_type == access_type
+      && (access_width == arm::debugger_access_width::any || other.data == data);
+}
 
 void arm_debugger::draw() noexcept
 {
@@ -508,63 +568,142 @@ void arm_debugger::draw_breakpoints() noexcept
     ImGui::Combo("", &breakpoint_type, breakpoint_types.data(), breakpoint_types.size().get());
 
     if(breakpoint_type == 0) {
-        static array<char, 9> address_buf{};
-
-        const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
-        ImGui::SetNextItemWidth(120);
-        ImGui::InputText("address", address_buf.data(), address_buf.size().get(),
-          ImGuiInputTextFlags_CharsHexadecimal
-          | ImGuiInputTextFlags_CharsUppercase);
-
-        if(ok_pressed) {
-            if(std::strlen(address_buf.data()) != 0) {
-                execution_breakpoint breakpoint;
-                breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
-
-                if(std::find(
-                  execution_breakpoints_.begin(),
-                  execution_breakpoints_.end(), breakpoint) == execution_breakpoints_.end())
-                {
-                    LOG_DEBUG(debugger, "execution breakpoint added: {:08X}", breakpoint.address);
-                    execution_breakpoints_.push_back(breakpoint);
-                }
-            }
-        }
-
-        ImGui::Spacing();
-        ImGui::Spacing();
-
-        int idx_to_delete = -1;
-        ImGuiListClipper clipper(execution_breakpoints_.size().get());
-        while(clipper.Step()) {
-            for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-                auto& bp = execution_breakpoints_[static_cast<u32::type>(i)];
-
-                ImGui::Button("X");
-                if(ImGui::IsItemClicked()) { // hack
-                    idx_to_delete = i;
-                    LOG_DEBUG(debugger, "execution breakpoint removed: {:08X}", bp.address);
-                }
-
-                ImGui::SameLine(0, 5);
-                ImGui::Checkbox("", &bp.enabled);
-                if(ImGui::IsItemClicked()) { // hack
-                    bp.enabled = !bp.enabled;
-                    LOG_DEBUG(debugger, "execution breakpoint toggled: {:08X}", bp.address);
-                }
-
-                ImGui::SameLine(0, 10);
-                ImGui::Text("{:08X}", bp.address);
-            }
-        }
-
-        if(idx_to_delete != -1) {
-            execution_breakpoints_.erase(execution_breakpoints_.begin() + idx_to_delete);
-        }
-
+        draw_execution_breakpoints();
     } else if(breakpoint_type == 1) {
-        // todo
+        draw_access_breakpoints();
     }
+}
+
+void arm_debugger::draw_execution_breakpoints() noexcept
+{
+    static array<char, 9> address_buf{};
+
+    const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
+    ImGui::SetNextItemWidth(120);
+    ImGui::InputText("address", address_buf.data(), address_buf.size().get(),
+      ImGuiInputTextFlags_CharsHexadecimal
+        | ImGuiInputTextFlags_CharsUppercase);
+
+    if(ok_pressed) {
+        if(std::strlen(address_buf.data()) != 0) {
+            execution_breakpoint breakpoint;
+            breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
+
+            if(std::find(
+              execution_breakpoints_.begin(),
+              execution_breakpoints_.end(), breakpoint) == execution_breakpoints_.end())
+            {
+                execution_breakpoints_.push_back(breakpoint);
+            }
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    draw_bps(execution_breakpoints_, [](const execution_breakpoint& bp) {
+        ImGui::Text("{:08X}", bp.address);
+    });
+}
+
+void arm_debugger::draw_access_breakpoints() noexcept
+{
+    static bool incorrect_range = false;
+    static constexpr array access_type_strs{"read", "write", "read&write"};
+    static constexpr array access_widths{"byte", "hword", "word", "any"};
+    static int access_type = 0;
+    static int access_width = 3;
+    static array<char, 9> address_lo_buf{};
+    static array<char, 9> address_hi_buf{};
+    static array<char, 9> data_buf{};
+
+    ImGui::PushItemWidth(120);
+    ImGui::Combo("access type", &access_type, access_type_strs.data(), access_type_strs.size().get());
+    ImGui::SameLine();
+    const bool width_changed = ImGui::Combo("access width", &access_width,
+      access_widths.data(), access_widths.size().get());
+
+    const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
+    ImGui::InputText("addr low", address_lo_buf.data(), address_lo_buf.size().get(),
+      ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+
+    ImGui::SameLine();
+
+    const static ImVec4 default_frame_color = ImGui::GetStyleColorVec4(ImGuiCol_FrameBg);
+    static ImVec4 hibuf_frame_color = default_frame_color;
+    if(incorrect_range) {
+        ImGui::SetKeyboardFocusHere();
+        incorrect_range = false;
+        hibuf_frame_color = ImVec4{.55f, 0.f, 0.f, 1.f};
+    }
+
+    ImGui::PushStyleColor(ImGuiCol_FrameBg, hibuf_frame_color);
+    if(ImGui::InputText("addr hi", address_hi_buf.data(), address_hi_buf.size().get(),
+      ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase)) {
+        hibuf_frame_color = default_frame_color;
+    }
+    ImGui::PopStyleColor();
+
+    static constexpr array buf_sizes{3, 5, 9, 9};
+    const int buf_size = buf_sizes[static_cast<u32::type>(access_width)];
+    if(access_type > 0) {
+        if(width_changed) { ImGui::SetKeyboardFocusHere(); }
+
+        ImGui::InputText("data", data_buf.data(), buf_size,
+          ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CharsUppercase);
+    }
+
+    ImGui::PopItemWidth();
+
+    if(ok_pressed) {
+        if(std::strlen(address_lo_buf.data()) != 0 &&
+          std::strlen(address_hi_buf.data()) != 0) {
+            static constexpr array access_types{
+              access_breakpoint::type::read,
+              access_breakpoint::type::write,
+              access_breakpoint::type::read_write
+            };
+            access_breakpoint breakpoint;
+            breakpoint.access_width = static_cast<arm::debugger_access_width>(access_width);
+            breakpoint.access_type = access_types[static_cast<u32::type>(access_type)];
+
+            const u32 addr_min = static_cast<u32::type>(std::strtoul(address_lo_buf.data(), nullptr, 16));
+            const u32 addr_max = static_cast<u32::type>(std::strtoul(address_hi_buf.data(), nullptr, 16));
+            if(addr_min < addr_max) {
+                breakpoint.address_range = range<u32>(addr_min, addr_max);
+
+                if(access_type > 0 && std::strlen(data_buf.data()) != 0) {
+                    breakpoint.data = static_cast<u32::type>(std::strtoul(data_buf.data(), nullptr, 16));
+                }
+
+                const auto not_exists_with_access = [&](access_breakpoint bp,
+                  arm::debugger_access_width width, access_breakpoint::type type) {
+                    bp.access_width = width;
+                    bp.access_type = type;
+                    return std::find(
+                      access_breakpoints_.begin(),
+                      access_breakpoints_.end(), bp) == access_breakpoints_.end();
+                };
+
+                if(not_exists_with_access(breakpoint, arm::debugger_access_width::any, access_breakpoint::type::read_write)
+                  && not_exists_with_access(breakpoint, breakpoint.access_width, access_breakpoint::type::read_write)
+                  && not_exists_with_access(breakpoint, arm::debugger_access_width::any, breakpoint.access_type)
+                  && not_exists_with_access(breakpoint, breakpoint.access_width, breakpoint.access_type)
+                ) {
+                    access_breakpoints_.push_back(breakpoint);
+                }
+            } else {
+                incorrect_range = true;
+            }
+        }
+    }
+
+    ImGui::Spacing();
+    ImGui::Spacing();
+    draw_bps(access_breakpoints_, [](const access_breakpoint& bp) {
+        ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X}",
+          bp.address_range.min(), bp.address_range.max(),
+          to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+    });
 }
 
 void arm_debugger::draw_disassembly() noexcept
@@ -620,11 +759,9 @@ void arm_debugger::draw_disassembly() noexcept
                 if(toggle) {
                     it->enabled = !it->enabled;
                 } else {
-                    LOG_DEBUG(debugger, "execution breakpoint removed: {:08X}", address);
                     execution_breakpoints_.erase(it);
                 }
             } else {
-                LOG_DEBUG(debugger, "execution breakpoint added: {:08X}", address);
                 execution_breakpoints_.push_back(execution_breakpoint{address, true});
             }
         };
@@ -695,7 +832,7 @@ bool arm_debugger::has_enabled_read_breakpoint(const u32 address, const arm::deb
     return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
       [&](const access_breakpoint& bp) {
           return bp.enabled
-            && bp.access_width == access_width
+            && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
             && bp.address_range.contains(address)
             && bitflags::is_set(bp.access_type, access_breakpoint::type::read);
       }) != access_breakpoints_.end();
@@ -707,7 +844,7 @@ bool arm_debugger::has_enabled_write_breakpoint(const u32 address, const u32 dat
     return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
       [&](const access_breakpoint& bp) {
           return bp.enabled
-            && bp.access_width == access_width
+            && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
             && bp.address_range.contains(address)
             && bitflags::is_set(bp.access_type, access_breakpoint::type::write)
             && (!bp.data.has_value() || *bp.data == data);
