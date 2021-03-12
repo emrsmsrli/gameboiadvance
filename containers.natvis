@@ -21,4 +21,14 @@
         <DisplayString>{_data}</DisplayString>
         <Expand><ExpandedItem>_data</ExpandedItem></Expand>
     </Type>
+    <Type Name="gba::view&lt;*&gt;">
+        <DisplayString>{entries_} size={size_}</DisplayString>
+        <Expand>
+            <Item Name="[size]" ExcludeView="simple">size_</Item>
+            <ArrayItems>
+                <Size>size_.value_</Size>
+                <ValuePointer>entries_</ValuePointer>
+            </ArrayItems>
+        </Expand>
+    </Type>
 </AutoVisualizer>
