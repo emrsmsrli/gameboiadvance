@@ -225,7 +225,7 @@ public:
     }
 
     [[nodiscard]] constexpr const T& operator[](const usize idx) const noexcept { return *ptr(idx); }
-    [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return entries_ + idx.get() * sizeof(T); }
+    [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return entries_ + idx.get(); }
     [[nodiscard]] constexpr const T& at(const usize idx) const noexcept { ASSERT(idx < size_); return *ptr(idx); }
     [[nodiscard]] constexpr const T* data() const noexcept { return entries_; }
 
