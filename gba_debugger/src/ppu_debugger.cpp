@@ -56,6 +56,11 @@ ppu::bg_regular to_regular(const ppu::bg_affine& affine) noexcept
     return reg;
 }
 
+sf::Color to_sf_color(const ppu::color color) noexcept
+{
+    return sf::Color{color.to_u32().get()};
+}
+
 // we cannot access private templates
 template<typename BG>
 [[nodiscard]] FORCEINLINE u32 map_entry_index_duplicate(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept
@@ -348,7 +353,7 @@ void ppu_debugger::draw() noexcept
                             const usize address = type_offset * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
                             const u16 bgr_color = memcpy<u16>(palette, address);
                             const ppu::color ppu_color{bgr_color};
-                            const sf::Color sf_color(ppu_color.to_u32().get());
+                            const sf::Color sf_color = to_sf_color(ppu_color);
 
                             ImGui::ColorButton("", sf_color,
                               ImGuiColorEditFlags_NoBorder
@@ -391,7 +396,7 @@ void ppu_debugger::draw() noexcept
 void ppu_debugger::on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept
 {
     for(u32 x : range(ppu::screen_width)) {
-        screen_buffer_.setPixel(x.get(), screen_y.get(), sf::Color{scanline[x].to_u32().get()});
+        screen_buffer_.setPixel(x.get(), screen_y.get(), to_sf_color(scanline[x]));
     }
 }
 
@@ -444,7 +449,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          sf::Color(call_private::palette_color(ppu_engine, color_idx, 0_u8).to_u32().get()));
+                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -454,11 +459,11 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          sf::Color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx()).to_u32().get()));
+                          to_sf_color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx())));
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 6 - px.get() : px.get() + 1),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          sf::Color(call_private::palette_color(ppu_engine, color_idxs >> 4_u8, entry.palette_idx()).to_u32().get()));
+                          to_sf_color(call_private::palette_color(ppu_engine, color_idxs >> 4_u8, entry.palette_idx())));
                     }
                 }
             }
@@ -570,7 +575,7 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 
 void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noexcept
 {
-    const sf::Color backdrop(call_private::palette_color_opaque(ppu_engine, 0_u8, 0_u8).to_u32().get());
+    const sf::Color backdrop = to_sf_color(call_private::palette_color_opaque(ppu_engine, 0_u8, 0_u8));
     const auto& vram = access_private::vram_(ppu_engine);
     const auto& dispcnt = access_private::dispcnt_(ppu_engine);
     auto& buffer = bg_buffers_[bg.id];
@@ -582,15 +587,15 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
         for(u32 y : range(h)) {
             if(!depth8bit) {
                 for(u32 x : range(w)) {
-                    buffer.setPixel(x.get(), yoffset + y.get(), sf::Color(ppu::color{
+                    buffer.setPixel(x.get(), yoffset + y.get(), to_sf_color(ppu::color{
                       memcpy<u16>(vram, page * 40_kb + (y * w + x) * 2_u32)
-                    }.to_u32().get()));
+                    }));
                 }
             } else {
                 for(u32 x : range(w)) {
                     buffer.setPixel(x.get(), yoffset + y.get(),
-                      sf::Color(call_private::palette_color_opaque(ppu_engine, memcpy<u8>(vram,
-                        page * 40_kb + (y * w + x)), 0_u8).to_u32().get()));
+                      to_sf_color(call_private::palette_color_opaque(ppu_engine,
+                        memcpy<u8>(vram, page * 40_kb + (y * w + x)), 0_u8)));
                 }
             }
 
@@ -691,7 +696,7 @@ void ppu_debugger::draw_bg_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color(ppu_engine, color_idx, 0_u8).to_u32().get()));
+                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -701,11 +706,11 @@ void ppu_debugger::draw_bg_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx)).to_u32().get()));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx))));
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get() + 1,
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx)).to_u32().get()));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx))));
                     }
                 }
             }
@@ -775,7 +780,7 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color(ppu_engine, color_idx, 0_u8).to_u32().get()));
+                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -785,11 +790,11 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx)).to_u32().get()));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx))));
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get() + 1,
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          sf::Color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx)).to_u32().get()));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx))));
                     }
                 }
             }
