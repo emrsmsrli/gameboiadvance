@@ -33,7 +33,7 @@ public:
         size_{size}
     {
         path_.replace_extension(".sav");
-        if(fs::exists(path_)) {
+        if(fs::exists(path_) && fs::file_size(path_) != size) {
             data_ = fs::read_file(path_);
         } else {
             data_.resize(size_);
