@@ -221,6 +221,7 @@ public:
         size_{container.size() / sizeof(T)}
     {
         static_assert(std::is_same_v<u8, std::remove_reference_t<decltype(Container{}.front())>>);
+        ASSERT((container.size() % sizeof(T)) == 0_usize); // alignment check
     }
 
     [[nodiscard]] constexpr const T& operator[](const usize idx) const noexcept { return *ptr(idx); }
