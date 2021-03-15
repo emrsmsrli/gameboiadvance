@@ -460,7 +460,7 @@ std::string hireg_bx(const u32 /*addr*/, const u16 instr) noexcept
     if(instr == 0x46C0_u16) { return "NOP"; }
 
     const u16 op = (instr >> 8_u16) & 0b11_u16;
-    const u16 rs = (instr >> 3_u16) & 0b111_u16;
+    const u16 rs = (instr >> 3_u16) & 0xF_u16;
 
     if(op == 3_u16) {
         return fmt::format("BX {}", register_mnemonics[rs]);
@@ -468,7 +468,7 @@ std::string hireg_bx(const u32 /*addr*/, const u16 instr) noexcept
 
     static constexpr array op_mnemonics{"ADD"sv, "CMP"sv, "MOV"sv};
 
-    const u16 rd = (bit::extract(instr, 7_u8) << 2_u16) | (instr & 0b11_u16);
+    const u16 rd = (bit::extract(instr, 7_u8) << 3_u16) | (instr & 0b111_u16);
     return fmt::format("{} {},{}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs]);
 }
 
