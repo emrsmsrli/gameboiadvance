@@ -790,21 +790,21 @@ void arm_debugger::draw_disassembly() noexcept
             if(access_private::cpsr_(arm_).t) {
                 const u16 inst = memcpy<u16>(*memory, physical_address);
                 if(virtual_address == pc - 4_u32) {
-                    ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X | 0x%04X %s",
+                    ImGui::TextColored(ImColor(0xFF0000FF), "%08X | %04X | %s",
                       virtual_address.get(), inst.get(),
                       disassembler::disassemble_thumb(virtual_address, inst).c_str());
                 } else {
-                    ImGui::Text("0x{:08X} | 0x{:04X} {}", virtual_address,
+                    ImGui::Text("{:08X} | {:04X} | {}", virtual_address,
                       inst, disassembler::disassemble_thumb(virtual_address, inst));
                 }
             } else {
                 const u32 inst = memcpy<u32>(*memory, physical_address);
                 if(virtual_address == pc - 8_u32) {
-                    ImGui::TextColored(ImColor(0xFF0000FF), "0x%08X | 0x%08X %s",
+                    ImGui::TextColored(ImColor(0xFF0000FF), "%08X | %08X | %s",
                       virtual_address.get(), inst.get(),
                       disassembler::disassemble_arm(virtual_address, inst).c_str());
                 } else {
-                    ImGui::Text("0x{:08X} | 0x{:08X} {}", virtual_address,
+                    ImGui::Text("{:08X} | {:08X} | {}", virtual_address,
                       inst, disassembler::disassemble_arm(virtual_address, inst));
                 }
             }
