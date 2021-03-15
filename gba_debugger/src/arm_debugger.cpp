@@ -102,7 +102,7 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
             ImGui::Text("i: {}", p.i);  // irq disabled flag
             ImGui::Text("f: {}", p.f);  // fiq disabled flag
             ImGui::Text("t: {}", p.t);  // thumb mode flag
-            ImGui::Text("mode: %s", [&]() {
+            ImGui::Text("mode: {}", [&]() {
                 switch(p.mode) {
                     case arm::privilege_mode::usr: return "usr";
                     case arm::privilege_mode::fiq: return "fiq";
@@ -448,7 +448,7 @@ void arm_debugger::draw() noexcept
                     auto& cnt = access_private::control_(timer);
                     constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
 
-                    ImGui::Text("prescalar: F/%d", 1_u32 << prescalar_shifts[cnt.prescalar]);
+                    ImGui::Text("prescalar: F/{}", 1_u32 << prescalar_shifts[cnt.prescalar]);
                     ImGui::Text("cascaded: {}", cnt.cascaded);
                     ImGui::Text("irq: {}", cnt.irq_enabled);
                     ImGui::Text("enabled: {}", cnt.enabled);
