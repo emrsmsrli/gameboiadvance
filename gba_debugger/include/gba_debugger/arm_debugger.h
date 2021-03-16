@@ -21,6 +21,8 @@ class arm_debugger {
 public:
     struct execution_breakpoint {
         u32 address;
+        u32 hit_count;
+        std::optional<u32> hit_count_target;
         bool enabled = true;
 
         bool operator==(const execution_breakpoint& other) const noexcept { return other.address == address; }
@@ -50,7 +52,7 @@ public:
 
     void draw() noexcept;
 
-    [[nodiscard]] bool has_enabled_execution_breakpoint(u32 address) noexcept;
+    [[nodiscard]] execution_breakpoint* get_execution_breakpoint(u32 address) noexcept;
     [[nodiscard]] bool has_enabled_read_breakpoint(u32 address, arm::debugger_access_width access_width) noexcept;
     [[nodiscard]] bool has_enabled_write_breakpoint(u32 address, u32 data, arm::debugger_access_width access_width) noexcept;
 

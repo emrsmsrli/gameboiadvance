@@ -577,22 +577,31 @@ void arm_debugger::draw_breakpoints() noexcept
 void arm_debugger::draw_execution_breakpoints() noexcept
 {
     static array<char, 9> address_buf{};
+    static int hit_count_target_buf;
 
     const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
     ImGui::SetNextItemWidth(120);
     ImGui::InputText("address", address_buf.data(), address_buf.size().get(),
       ImGuiInputTextFlags_CharsHexadecimal
         | ImGuiInputTextFlags_CharsUppercase);
+    ImGui::SameLine(); ImGui::SetNextItemWidth(120);
+    if(ImGui::InputInt("hit count", &hit_count_target_buf) && hit_count_target_buf < 0) {
+        hit_count_target_buf = 0;
+    }
 
     if(ok_pressed) {
         if(std::strlen(address_buf.data()) != 0) {
             execution_breakpoint breakpoint;
             breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
+            if(hit_count_target_buf != 0) {
+                breakpoint.hit_count_target = static_cast<u32::type>(hit_count_target_buf);
+            }
 
             if(std::find(
               execution_breakpoints_.begin(),
               execution_breakpoints_.end(), breakpoint) == execution_breakpoints_.end())
             {
+                hit_count_target_buf = 0;
                 execution_breakpoints_.push_back(breakpoint);
             }
         }
@@ -601,7 +610,7 @@ void arm_debugger::draw_execution_breakpoints() noexcept
     ImGui::Spacing();
     ImGui::Spacing();
     draw_bps(execution_breakpoints_, [](const execution_breakpoint& bp) {
-        ImGui::Text("{:08X}", bp.address);
+        ImGui::Text("{:08X} | hit count: {} | hit target: {}", bp.address, bp.hit_count, bp.hit_count_target);
     });
 }
 
@@ -762,7 +771,7 @@ void arm_debugger::draw_disassembly() noexcept
                     execution_breakpoints_.erase(it);
                 }
             } else {
-                execution_breakpoints_.push_back(execution_breakpoint{address, true});
+                execution_breakpoints_.push_back(execution_breakpoint{address, 0_u32, 0_u32, true});
             }
         };
 
@@ -819,12 +828,16 @@ void arm_debugger::draw_disassembly() noexcept
     }
 }
 
-bool arm_debugger::has_enabled_execution_breakpoint(const u32 address) noexcept
+arm_debugger::execution_breakpoint* arm_debugger::get_execution_breakpoint(const u32 address) noexcept
 {
-    return std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
+    const auto it = std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
       [&](const execution_breakpoint& bp) {
           return bp.enabled && bp.address == address;
-      }) != execution_breakpoints_.end();
+      });
+    if(it == execution_breakpoints_.end()) {
+        return nullptr;
+    }
+    return &*it;
 }
 
 bool arm_debugger::has_enabled_read_breakpoint(const u32 address, const arm::debugger_access_width access_width) noexcept

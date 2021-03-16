@@ -175,15 +175,25 @@ bool window::draw() noexcept
 
 bool window::on_instruction_execute(const u32 address) noexcept
 {
-    const bool should_break = last_executed_addr_ != address
-      && arm_debugger_.has_enabled_execution_breakpoint(address);
+    bool should_break = last_executed_addr_ != address;
+    last_executed_addr_ = address;
+
+    arm_debugger::execution_breakpoint* exec_bp = arm_debugger_.get_execution_breakpoint(address);
+    if(!exec_bp) {
+        return false;
+    }
+
+    ++exec_bp->hit_count;
+
+    if(exec_bp->hit_count_target.has_value()) {
+        should_break = should_break && *exec_bp->hit_count_target == exec_bp->hit_count;
+    }
 
     if(should_break) {
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "execution breakpoint hit: {:08X}", address);
     }
 
-    last_executed_addr_ = address;
     return should_break;
 }
 
