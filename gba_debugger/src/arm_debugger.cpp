@@ -353,7 +353,7 @@ void arm_debugger::draw() noexcept
                 ImGui::TextUnformatted("Pipeline");
                 ImGui::Separator();
                 const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
-                    ImGui::Text("{}: {:08X}", name, instr);
+                    ImGui::Text(access_private::cpsr_(arm_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
                     if(ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
                         if(access_private::cpsr_(arm_).t) {
