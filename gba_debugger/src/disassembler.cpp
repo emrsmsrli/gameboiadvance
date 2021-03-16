@@ -83,7 +83,7 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
         if(bit::test(instr, 25_u8)) {
             const u32 imm = instr & 0xFF_u32;
             const u8 shift_amount = narrow<u8>((instr >> 8_u32) & 0xF_u32);
-            return fmt::format("0x{:02X}", math::logical_rotate_right(imm, shift_amount << 1_u8).result);
+            return fmt::format("{:02X}", math::logical_rotate_right(imm, shift_amount << 1_u8).result);
         }
 
         // register as 2nd operand
@@ -101,7 +101,7 @@ std::string data_processing(const u32 /*addr*/, const u32 instr) noexcept
             return std::string{register_mnemonics[r2]};
         }
 
-        return fmt::format("{},{} 0x{:X}", register_mnemonics[r2], shift_mnemonics[shift_type], shift_amount);
+        return fmt::format("{},{} {:X}", register_mnemonics[r2], shift_mnemonics[shift_type], shift_amount);
     };
 
     switch(opcode.get()) {
@@ -176,7 +176,7 @@ std::string psr_transfer(const u32 /*addr*/, const u32 instr) noexcept
         const u32 imm = instr & 0xFF_u32;
         const u8 shift_amount = narrow<u8>((instr >> 8_u32) & 0xF_u32);
 
-        return fmt::format("MOV{} {}_{},0x{:08X}", get_condition_mnemonic(instr), psr, flags,
+        return fmt::format("MOV{} {}_{},{:08X}", get_condition_mnemonic(instr), psr, flags,
           math::logical_rotate_right(imm, shift_amount << 1_u8).result);
     }
 
@@ -248,7 +248,7 @@ std::string halfword_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
             // imm src
             if(bit::test(i, 22_u8)) {
                 if(const u32 offset = get_imm_offset(i); offset != 0_u32) {
-                    return fmt::format("[{},{}0x{:02X}]{}", rn, updown, offset, write_back);
+                    return fmt::format("[{},{}{:02X}]{}", rn, updown, offset, write_back);
                 }
 
                 return fmt::format("[{}]", rn);
@@ -262,7 +262,7 @@ std::string halfword_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 
         // imm src
         if(bit::test(i, 22_u8)) {
-            return fmt::format("[{}],{}0x{:02X}", rn, updown, get_imm_offset(i));
+            return fmt::format("[{}],{}{:02X}", rn, updown, get_imm_offset(i));
         }
 
         // reg src
@@ -305,7 +305,7 @@ std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 
             // imm src
             if(!bit::test(i, 25_u8)) {
-                return fmt::format("[{},{}0x{:02X}]{}", rn, updown, offset, write_back);
+                return fmt::format("[{},{}{:02X}]{}", rn, updown, offset, write_back);
             }
 
             // reg src
@@ -317,7 +317,7 @@ std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
                 return fmt::format("[{},{}{}]{}", rn, updown, register_mnemonics[rm], write_back);
             }
 
-            return fmt::format("[{},{}{},{} 0x{:X}]{}", rn, updown, register_mnemonics[rm],
+            return fmt::format("[{},{}{},{} {:X}]{}", rn, updown, register_mnemonics[rm],
               shift_mnemonics[shift_type], shift_amount, write_back);
         }
 
@@ -325,7 +325,7 @@ std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
 
         // imm src
         if(!bit::test(i, 25_u8)) {
-            return fmt::format("[{}],{}0x{:02X}", rn, updown, offset);
+            return fmt::format("[{}],{}{:02X}", rn, updown, offset);
         }
 
         // reg src
@@ -337,7 +337,7 @@ std::string single_data_transfer(const u32 /*addr*/, const u32 instr) noexcept
             return fmt::format("[{}],{}{}", rn, updown, register_mnemonics[rm]);
         }
 
-        return fmt::format("[{}],{}{},{} 0x{:X}", rn, updown, register_mnemonics[rm],
+        return fmt::format("[{}],{}{},{} {:X}", rn, updown, register_mnemonics[rm],
           shift_mnemonics[shift_type], shift_amount);
     };
 
@@ -384,7 +384,7 @@ std::string branch_link(const u32 addr, const u32 instr) noexcept
 {
     const i32 sign_extended_offset = math::sign_extend<26>((instr & 0xFFFFFF_u32) << 2_u32);
 
-    return fmt::format("B{}{} 0x{:0>8X}",
+    return fmt::format("B{}{} {:0>8X}",
       bit::test(instr, 24_u8) ? "L" : "",
       get_condition_mnemonic(instr),
       addr + sign_extended_offset + 8_u32);
@@ -392,7 +392,7 @@ std::string branch_link(const u32 addr, const u32 instr) noexcept
 
 std::string swi(const u32 /*addr*/, const u32 instr) noexcept
 {
-    return fmt::format("SWI{} 0x{:0>8X}", get_condition_mnemonic(instr), instr & 0xFFFFFF_u32);
+    return fmt::format("SWI{} {:0>8X}", get_condition_mnemonic(instr), instr & 0xFFFFFF_u32);
 }
 
 } // namespace arm
@@ -414,7 +414,7 @@ std::string move_shifted_reg(const u32 /*addr*/, const u16 instr) noexcept
     }
 
     static constexpr array op_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv};
-    return fmt::format("{}S {},{},0x{:02X}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs], offset);
+    return fmt::format("{}S {},{},{:02X}", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rs], offset);
 }
 
 std::string add_subtract(const u32 /*addr*/, const u16 instr) noexcept
@@ -425,7 +425,7 @@ std::string add_subtract(const u32 /*addr*/, const u16 instr) noexcept
 
     // imm
     if(bit::test(instr, 10_u8)) {
-        return fmt::format("{}S {},{},0x{:X}", op_mnemonics[bit::extract(instr, 9_u8)], register_mnemonics[rd],
+        return fmt::format("{}S {},{},{:X}", op_mnemonics[bit::extract(instr, 9_u8)], register_mnemonics[rd],
           register_mnemonics[rs], (instr >> 6_u16) & 0b111_u16);
     }
 
@@ -440,7 +440,7 @@ std::string mov_cmp_add_sub_imm(const u32 /*addr*/, const u16 instr) noexcept
     const u16 imm = instr & 0xFF_u16;
     const u16 rd = (instr >> 8_u16) & 0b111_u16;
     const u16 op = (instr >> 11_u16) & 0b11_u16;
-    return fmt::format("{}S {},0x{:02X}", op_mnemonics[op], register_mnemonics[rd], imm);
+    return fmt::format("{}S {},{:02X}", op_mnemonics[op], register_mnemonics[rd], imm);
 }
 
 std::string alu(const u32 /*addr*/, const u16 instr) noexcept
@@ -476,7 +476,7 @@ std::string pc_rel_load(const u32 addr, const u16 instr) noexcept
 {
     const u16 rd = (instr >> 8_u16) & 0b111_u16;
     const u32 jump_addr = ((instr & 0xFF_u16) << 2_u16) + bit::clear(addr + 4_u16, 1_u8);
-    return fmt::format("LDR {},0x{:08X}", register_mnemonics[rd], jump_addr);
+    return fmt::format("LDR {},[{:08X}]", register_mnemonics[rd], jump_addr);
 }
 
 std::string ld_str_reg(const u32 /*addr*/, const u16 instr) noexcept
@@ -515,7 +515,7 @@ std::string ld_str_imm(const u32 /*addr*/, const u16 instr) noexcept
     }
 
     static constexpr array op_mnemonics{"STR"sv, "LDR"sv, "STRB"sv, "LDRB"sv};
-    return fmt::format("{} {},[{},0x{:02X}]", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rb], imm);
+    return fmt::format("{} {},[{},{:02X}]", op_mnemonics[op], register_mnemonics[rd], register_mnemonics[rb], imm);
 }
 
 std::string ld_str_hword(const u32 /*addr*/, const u16 instr) noexcept
@@ -524,7 +524,7 @@ std::string ld_str_hword(const u32 /*addr*/, const u16 instr) noexcept
     const u16 rb = (instr >> 3_u16) & 0b111_u16;
     const u16 imm = ((instr >> 6_u16) & 0x1F_u16) << 1_u16;
     static constexpr array op_mnemonics{"STRH"sv, "LDRH"sv};
-    return fmt::format("{} {},[{},0x{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
+    return fmt::format("{} {},[{},{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
       register_mnemonics[rb], imm);
 }
 
@@ -533,7 +533,7 @@ std::string ld_str_sp_relative(const u32 /*addr*/, const u16 instr) noexcept
     const u16 rd = (instr >> 8_u16) & 0b111_u16;
     const u16 offset = (instr & 0xFF_u16) << 2_u16;
     static constexpr array op_mnemonics{"STR"sv, "LDR"sv};
-    return fmt::format("{} {},[SP,0x{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
+    return fmt::format("{} {},[SP,{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
       offset);
 }
 
@@ -541,12 +541,12 @@ std::string ld_addr(const u32 /*addr*/, const u16 instr) noexcept
 {
     const u16 rd = (instr >> 8_u16) & 0b111_u16;
     const u16 offset = (instr & 0xFF_u16) << 2_u16;
-    return fmt::format("ADD {},{},0x{:02X}", register_mnemonics[rd], bit::test(instr, 11_u8) ? "sp" : "pc", offset);
+    return fmt::format("ADD {},{},{:02X}", register_mnemonics[rd], bit::test(instr, 11_u8) ? "sp" : "pc", offset);
 }
 
 std::string add_offset_to_sp(const u32 /*addr*/, const u16 instr) noexcept
 {
-    return fmt::format("ADD SP, {}0x{:02X}", bit::test(instr, 7_u8) ? "-" : "", (instr & 0x7F_u16) << 2_u16);
+    return fmt::format("ADD SP, {}{:02X}", bit::test(instr, 7_u8) ? "-" : "", (instr & 0x7F_u16) << 2_u16);
 }
 
 std::string push_pop(const u32 /*addr*/, const u16 instr) noexcept
@@ -576,7 +576,7 @@ std::string ld_str_multiple(const u32 /*addr*/, const u16 instr) noexcept
 std::string branch_cond(const u32 addr, const u16 instr) noexcept
 {
     const i32 offset = math::sign_extend<9>(widen<u32>((instr & 0xFF_u16)) << 1_u32);
-    return fmt::format("B{} 0x{:08X}", get_condition_mnemonic(instr & 0x0FFF_u16, 8_u32),
+    return fmt::format("B{} {:08X}", get_condition_mnemonic(instr & 0x0FFF_u16, 8_u32),
       addr + 4_u32 + offset);
 }
 
@@ -588,14 +588,14 @@ std::string swi(const u32 /*addr*/, const u16 instr) noexcept
 std::string branch(const u32 addr, const u16 instr) noexcept
 {
     const i32 offset = math::sign_extend<11>(widen<u32>((instr & 0x3FF_u16)) << 1_u32);
-    return fmt::format("B 0x{:08X}", addr + 4_u32 + offset);
+    return fmt::format("B {:08X}", addr + 4_u32 + offset);
 }
 
 std::string long_branch_link(const u32 /*addr*/, const u16 instr) noexcept
 {
     // first part of instruction has no mnemonic
     if(!bit::test(instr, 11_u8)) { return std::string{unknown_instruction}; }
-    return fmt::format("BL lr+0x{:03X}", math::logical_shift_left(instr & 0x7FF_u16, 1_u8).result);
+    return fmt::format("BL lr+{:03X}", math::logical_shift_left(instr & 0x7FF_u16, 1_u8).result);
 }
 
 } // namespace thumb
