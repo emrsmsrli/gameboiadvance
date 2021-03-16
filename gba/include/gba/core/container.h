@@ -220,7 +220,8 @@ public:
       : entries_{reinterpret_cast<const T*>(container.data())},
         size_{container.size() / sizeof(T)}
     {
-        static_assert(std::is_same_v<u8, std::remove_reference_t<decltype(Container{}.front())>>);
+        static_assert(std::is_same_v<u8, std::remove_reference_t<decltype(Container{}.front())>>,
+          "source container element type must be u8");
         ASSERT((container.size() % sizeof(T)) == 0_usize); // alignment check
     }
 
