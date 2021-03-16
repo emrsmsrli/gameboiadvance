@@ -265,6 +265,8 @@ struct obj_attr1 {
     [[nodiscard]] FORCEINLINE u16 x() const noexcept { return value & 0x1FF_u16; }
     [[nodiscard]] FORCEINLINE u32 affine_idx() const noexcept { return (value >> 9_u16) & 0x1F_u16; }
     [[nodiscard]] FORCEINLINE u32 size_idx() const noexcept { return value >> 14_u8; }
+    [[nodiscard]] FORCEINLINE bool h_flipped() const noexcept { return bit::test(value, 12_u8); }
+    [[nodiscard]] FORCEINLINE bool v_flipped() const noexcept { return bit::test(value, 13_u8); }
 };
 
 struct obj_attr2 {
