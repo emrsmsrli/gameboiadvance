@@ -771,7 +771,7 @@ void arm_debugger::draw_disassembly() noexcept
                     execution_breakpoints_.erase(it);
                 }
             } else {
-                execution_breakpoints_.push_back(execution_breakpoint{address, 0_u32, 0_u32, true});
+                execution_breakpoints_.push_back(execution_breakpoint{address, 0_u32, std::nullopt, true});
             }
         };
 

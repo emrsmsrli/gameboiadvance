@@ -179,14 +179,18 @@ bool window::on_instruction_execute(const u32 address) noexcept
     last_executed_addr_ = address;
 
     arm_debugger::execution_breakpoint* exec_bp = arm_debugger_.get_execution_breakpoint(address);
-    if(!exec_bp) {
+    if(!exec_bp || !should_break) {
         return false;
     }
 
     ++exec_bp->hit_count;
 
+    if(!tick_allowed_) {
+        return false;
+    }
+
     if(exec_bp->hit_count_target.has_value()) {
-        should_break = should_break && *exec_bp->hit_count_target == exec_bp->hit_count;
+        should_break = *exec_bp->hit_count_target == exec_bp->hit_count;
     }
 
     if(should_break) {
