@@ -893,18 +893,23 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 
         case addr_ime:
             ime_ = bit::test(data, 0_u8);
+            schedule_update_irq_signal();
             break;
         case addr_ie:
             ie_ = bit::set_byte(ie_, 0_u8, data);
+            schedule_update_irq_signal();
             break;
         case addr_ie + 1:
             ie_ = bit::set_byte(ie_, 1_u8, data & 0x3F_u8);
+            schedule_update_irq_signal();
             break;
         case addr_if:
             if_ &= ~data;
+            schedule_update_irq_signal();
             break;
         case addr_if + 1:
             if_ &= ~(widen<u16>(data) << 8_u16);
+            schedule_update_irq_signal();
             break;
         case addr_waitcnt:
             waitcnt_.sram = data & 0b11_u8;

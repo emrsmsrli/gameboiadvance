@@ -12,6 +12,7 @@ add_library(${PROJECT_NAME} STATIC
         src/arm/arm7tdmi_io.cpp
         src/arm/dma_controller.cpp
         src/arm/timer.cpp
+        src/arm/irq_controller_handle.cpp
         src/ppu/ppu.cpp
         src/ppu/ppu_render.cpp
         src/cartridge/backup.cpp

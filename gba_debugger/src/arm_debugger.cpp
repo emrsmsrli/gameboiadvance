@@ -48,7 +48,6 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::waitstate_control, waitcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::halt_control, haltcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u8, post_boot_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::scheduler::event::handle, interrupt_delay_handle_)
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::arm7tdmi::timers_debugger, timers_)
 ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, id_)

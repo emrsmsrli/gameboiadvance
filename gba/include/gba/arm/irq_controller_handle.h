@@ -8,7 +8,7 @@
 #ifndef GAMEBOIADVANCE_IRQ_CONTROLLER_HANDLE_H
 #define GAMEBOIADVANCE_IRQ_CONTROLLER_HANDLE_H
 
-#include <gba/core/integer.h>
+#include <gba/core/fwd.h>
 
 namespace gba::arm {
 
@@ -30,12 +30,12 @@ enum class interrupt_source : u16::type {
 };
 
 class irq_controller_handle {
-    u16* if_;
+    arm7tdmi* arm_;
 
 public:
     irq_controller_handle() = default;
-    explicit irq_controller_handle(u16* if_handle) noexcept : if_{if_handle} {}
-    void request_interrupt(const interrupt_source irq) noexcept { *if_ |= from_enum<u16>(irq); }
+    explicit irq_controller_handle(arm7tdmi* arm) noexcept : arm_{arm} {}
+    void request_interrupt(const interrupt_source irq) noexcept;
 };
 
 } // namespace gba::arm

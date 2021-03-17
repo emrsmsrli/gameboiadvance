@@ -20,7 +20,7 @@
 #if DEBUG
   #define ASSERT(x) do { if(!(x)) { LOG_ERROR(assert, "assertion failure: " # x); std::terminate(); } } while(0)
 #else
-  #define ASSERT(x)
+  #define ASSERT(x) (void)0
 #endif
 
 #if defined(_MSC_VER)

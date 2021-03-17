@@ -44,13 +44,14 @@ arm7tdmi::arm7tdmi(core* core, vector<u8> bios) noexcept
 
 void arm7tdmi::tick() noexcept
 {
-    const bool has_interrupt = interrupt_available();
-    if(UNLIKELY(haltcnt_ == halt_control::halted && has_interrupt)) {
+    if(UNLIKELY(haltcnt_ == halt_control::halted && interrupt_available())) {
         haltcnt_ = halt_control::running;
     }
 
     if(LIKELY(haltcnt_ == halt_control::running)) {
-        process_interrupts(has_interrupt);
+        if(irq_signal_) {
+            process_interrupts();
+        }
 
         u32& pc = r(15_u8);
 
@@ -87,21 +88,22 @@ void arm7tdmi::tick() noexcept
     }
 }
 
-void arm7tdmi::process_interrupts(const bool has_interrupt) noexcept
+void arm7tdmi::schedule_update_irq_signal() noexcept
 {
-    if(ime_ && has_interrupt) {
-        if(!core_->schdlr.has_event(interrupt_delay_handle_)) {
-            core_->schdlr.add_event(3_u64, {
-              connect_arg<&arm7tdmi::process_interrupts_delayed>,
-              this
-            });
-        }
-    } else {
-        core_->schdlr.remove_event(interrupt_delay_handle_);
+    scheduled_irq_signal_ = ime_ && interrupt_available();
+
+    if(scheduled_irq_signal_ != irq_signal_) {
+        core_->schdlr.remove_event(irq_signal_delay_handle_);
+        irq_signal_delay_handle_ = core_->schdlr.add_event(1_usize, {connect_arg<&arm7tdmi::update_irq_signal>, this});
     }
 }
 
-void arm7tdmi::process_interrupts_delayed(const u64 /*cycles_late*/) noexcept
+void arm7tdmi::update_irq_signal(u64 /*late_cycles*/) noexcept
+{
+    irq_signal_ = scheduled_irq_signal_;
+}
+
+void arm7tdmi::process_interrupts() noexcept
 {
     if(cpsr().i) {
         return;
@@ -113,9 +115,9 @@ void arm7tdmi::process_interrupts_delayed(const u64 /*cycles_late*/) noexcept
 
     if(cpsr().t) {
         cpsr().t = false;
-        r14_ = r15_ - 2_u32; // fixme 2 necessary?
+        r(14_u8) = r15_;
     } else {
-        r14_ = r15_ - 4_u32;
+        r(14_u8) = r15_ - 4_u32;
     }
 
     r15_ = 0x0000'0018_u32;

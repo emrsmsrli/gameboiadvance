@@ -164,10 +164,12 @@ class arm7tdmi {
 
     u8 post_boot_;
     halt_control haltcnt_{halt_control::running};
-    scheduler::event::handle interrupt_delay_handle_;
     u16 ie_;
     u16 if_;
     bool ime_ = false;
+    bool irq_signal_ = false;
+    bool scheduled_irq_signal_ = false;
+    scheduler::event::handle irq_signal_delay_handle_;
 
     array<timer, 4> timers_;
     dma::controller dma_controller_{this};
@@ -200,8 +202,13 @@ public:
 
     void tick() noexcept;
 
-    void request_interrupt(const interrupt_source irq) noexcept { if_ |= from_enum<u16>(irq); }
-    irq_controller_handle get_interrupt_handle() noexcept { return irq_controller_handle{&if_}; }
+    void request_interrupt(const interrupt_source irq) noexcept
+    {
+        if_ |= from_enum<u16>(irq);
+        schedule_update_irq_signal();
+    }
+
+    irq_controller_handle get_interrupt_handle() noexcept { return irq_controller_handle{this}; }
     dma::controller_handle get_dma_cnt_handle() noexcept { return dma::controller_handle{&dma_controller_}; }
 
     u32& r(u8 index) noexcept;
@@ -231,8 +238,9 @@ private:
     void update_waitstate_table() noexcept;
 
     [[nodiscard]] bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
-    void process_interrupts(bool has_interrupt) noexcept;
-    void process_interrupts_delayed(u64 /*cycles_late*/) noexcept;
+    void schedule_update_irq_signal() noexcept;
+    void update_irq_signal(u64 /*late_cycles*/) noexcept;
+    void process_interrupts() noexcept;
     void tick_internal() noexcept;
     void tick_components(u64 cycles) noexcept;
 
