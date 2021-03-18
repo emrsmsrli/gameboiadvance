@@ -397,8 +397,8 @@ void arm_debugger::draw() noexcept
                     ImGui::Spacing();
                     ImGui::Spacing();
 
-                    const auto draw_irq_reg = [](const u16 reg) {
-                        ImGui::Text("ie: {:04X}", reg);
+                    const auto draw_irq_reg = [](const char* name, const u16 reg) {
+                        ImGui::Text("{}: {:04X}", name, reg);
                         if(ImGui::IsItemHovered()) {
                             ImGui::BeginTooltip();
                             for(u16 idx : range(14_u16)) {
@@ -410,8 +410,8 @@ void arm_debugger::draw() noexcept
                         }
                     };
 
-                    draw_irq_reg(access_private::ie_(arm_));
-                    draw_irq_reg(access_private::if_(arm_));
+                    draw_irq_reg("ie", access_private::ie_(arm_));
+                    draw_irq_reg("if", access_private::if_(arm_));
                     ImGui::Text("ime: {}", access_private::ime_(arm_));
                     ImGui::EndGroup();
                 }
