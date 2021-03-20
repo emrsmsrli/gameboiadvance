@@ -28,6 +28,7 @@ ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::unique_ptr<gba::cartridge::ba
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, oam_)
+ACCESS_PRIVATE_FIELD(gba::scheduler, gba::vector<gba::scheduler::event>, heap_)
 
 namespace gba::debugger {
 
@@ -166,6 +167,14 @@ bool window::draw() noexcept
     arm_debugger_.draw();
     ppu_debugger_.draw();
     keypad_debugger_.draw();
+
+    if(ImGui::Begin("Scheduler")) {
+        ImGui::Text("Cycles: {}", core_->schdlr.now());
+        ImGui::Text("Cycles to next event: {}", core_->schdlr.remaining_cycles_to_next_event());
+        ImGui::Text("Scheduled event count: {}", access_private::heap_(core_->schdlr).size());
+    }
+
+    ImGui::End();
 
     window_.clear(sf::Color::Black);
     ImGui::SFML::Render();
