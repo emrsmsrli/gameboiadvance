@@ -25,7 +25,7 @@ constexpr std::string_view unknown_instruction = "???"sv;
 constexpr array shift_mnemonics{"LSL"sv, "LSR"sv, "ASR"sv, "ROR"sv};
 constexpr array register_mnemonics{
   "r0"sv, "r1"sv, "r2"sv, "r3"sv, "r4"sv, "r5"sv, "r6"sv, "r7"sv, "r8"sv, "r9"sv,
-  "r10"sv, "r11"sv, "r12"sv, "r13"sv, "r14"sv, "r15"sv, "cpsr"sv, "spsr"sv
+  "r10"sv, "r11"sv, "r12"sv, "sp"sv, "lr"sv, "pc"sv, "cpsr"sv, "spsr"sv
 };
 
 std::string_view get_condition_mnemonic(const u32 instr, const u32 offset = 28_u32) noexcept
@@ -533,7 +533,7 @@ std::string ld_str_sp_relative(const u32 /*addr*/, const u16 instr) noexcept
     const u16 rd = (instr >> 8_u16) & 0b111_u16;
     const u16 offset = (instr & 0xFF_u16) << 2_u16;
     static constexpr array op_mnemonics{"STR"sv, "LDR"sv};
-    return fmt::format("{} {},[SP,{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
+    return fmt::format("{} {},[sp,{:02X}]", op_mnemonics[bit::extract(instr, 11_u8)], register_mnemonics[rd],
       offset);
 }
 
@@ -546,7 +546,7 @@ std::string ld_addr(const u32 /*addr*/, const u16 instr) noexcept
 
 std::string add_offset_to_sp(const u32 /*addr*/, const u16 instr) noexcept
 {
-    return fmt::format("ADD SP, {}{:02X}", bit::test(instr, 7_u8) ? "-" : "", (instr & 0x7F_u16) << 2_u16);
+    return fmt::format("ADD sp, {}{:02X}", bit::test(instr, 7_u8) ? "-" : "", (instr & 0x7F_u16) << 2_u16);
 }
 
 std::string push_pop(const u32 /*addr*/, const u16 instr) noexcept
