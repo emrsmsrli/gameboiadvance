@@ -115,7 +115,7 @@ void arm7tdmi::process_interrupts() noexcept
 
     if(cpsr().t) {
         cpsr().t = false;
-        r(14_u8) = r15_ - 2_u32;
+        r(14_u8) = r15_;
     } else {
         r(14_u8) = r15_ - 4_u32;
     }
