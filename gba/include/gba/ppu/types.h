@@ -98,10 +98,10 @@ struct bg_affine_base {
     reference_point x_ref;
     reference_point y_ref;
 
-    u16 pa;
+    u16 pa = 0x0100_u16;
     u16 pb;
     u16 pc;
-    u16 pd;
+    u16 pd = 0x0100_u16;;
 };
 
 namespace traits {
@@ -278,20 +278,30 @@ struct obj_attr2 {
 };
 
 struct obj {
+    static constexpr array<dimension<u8>, 12> dimensions_table{{
+      {8_u8, 8_u8}, {16_u8, 16_u8}, {32_u8, 32_u8}, {64_u8, 64_u8},
+      {16_u8, 8_u8}, {32_u8, 8_u8}, {32_u8, 16_u8}, {64_u8, 32_u8},
+      {8_u8, 16_u8}, {8_u8, 32_u8}, {16_u8, 32_u8}, {32_u8, 64_u8},
+    }};
+
     obj_attr0 attr0;
     obj_attr1 attr1;
     obj_attr2 attr2;
     [[maybe_unused]] u16 _fill;
+
+    dimension<u8> dimensions() const noexcept { return dimensions_table[(attr0.shape_idx() << 2_u8) | attr1.size_idx()]; }
 };
 
 struct obj_affine {
-    [[maybe_unused]] array<u16, 3> _fill0;
+    using fill_t = array<u16, 3>;
+
+    [[maybe_unused]] fill_t _fill0;
     i16 pa;
-    [[maybe_unused]] array<u16, 3> _fill1;
+    [[maybe_unused]] fill_t _fill1;
     i16 pb;
-    [[maybe_unused]] array<u16, 3> _fill2;
+    [[maybe_unused]] fill_t _fill2;
     i16 pc;
-    [[maybe_unused]] array<u16, 3> _fill3;
+    [[maybe_unused]] fill_t _fill3;
     i16 pd;
 };
 

@@ -27,6 +27,9 @@ struct ppu_debugger {
     array<sf::Image, 4> bg_buffers_;
     array<sf::Texture, 4> bg_textures_;
 
+    array<sf::Image, 128> obj_buffers_;
+    array<sf::Texture, 128> obj_textures_;
+
     explicit ppu_debugger(ppu::engine* engine);
     void draw() noexcept;
 

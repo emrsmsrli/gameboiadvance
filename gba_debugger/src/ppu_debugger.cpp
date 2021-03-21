@@ -71,6 +71,17 @@ template<typename BG>
     return n;
 }
 
+std::string_view to_string_view(const ppu::obj_attr0::rendering_mode mode) noexcept
+{
+    switch(mode) {
+        case ppu::obj_attr0::rendering_mode::normal: return "normal";
+        case ppu::obj_attr0::rendering_mode::affine: return "affine";
+        case ppu::obj_attr0::rendering_mode::hidden: return "hidden";
+        case ppu::obj_attr0::rendering_mode::affine_double: return "affine_double";
+        default: UNREACHABLE();
+    }
+}
+
 } // namespace
 
 ppu_debugger::ppu_debugger(ppu::engine* engine)
@@ -81,6 +92,10 @@ ppu_debugger::ppu_debugger(ppu::engine* engine)
     for(usize i : range(bg_buffers_.size())) {
         bg_buffers_[i].create(1024, 1024);
         bg_textures_[i].create(1024, 1024);
+    }
+    for(usize i : range(obj_buffers_.size())) {
+        obj_buffers_[i].create(64, 64);
+        obj_textures_[i].create(64, 64);
     }
 
     tiles_buffer_.create(256, 512);
@@ -365,11 +380,11 @@ void ppu_debugger::draw() noexcept
                                 ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
                                 ImGui::SameLine();
                                 ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
-                                  address.get() + 0x0500'0000_u32,
-                                  bgr_color.get(),
-                                  (bgr_color & ppu::color::r_mask).get(),
-                                  (bgr_color & ppu::color::g_mask).get() >> 5_u32,
-                                  (bgr_color & ppu::color::b_mask).get() >> 10_u32);
+                                  address + 0x0500'0000_u32,
+                                  bgr_color,
+                                  (bgr_color & ppu::color::r_mask),
+                                  (bgr_color & ppu::color::g_mask) >> 5_u16,
+                                  (bgr_color & ppu::color::b_mask) >> 10_u16);
                                 ImGui::EndTooltip();
                             }
 
@@ -837,7 +852,124 @@ void ppu_debugger::draw_obj_tiles() noexcept
 
 void ppu_debugger::draw_obj() noexcept
 {
-    // todo
+    const auto& vram = access_private::vram_(ppu_engine);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    const bool mapping_1d = dispcnt.obj_mapping_1d;
+
+    const view<ppu::obj> obj_view{access_private::oam_(ppu_engine)};
+    const view<ppu::obj_affine> obj_affine_view{access_private::oam_(ppu_engine)};
+
+    for(u32 obj_y : range(16_u32)) {
+        for(u32 obj_x : range(8_u32)) {
+            u32 obj_idx = obj_y * 8_u32 + obj_x;
+
+            sf::Texture& texture = obj_textures_[obj_idx];
+            sf::Image& buffer = obj_buffers_[obj_idx];
+
+            const ppu::obj& obj = obj_view[obj_idx];
+
+            auto dimension = obj.dimensions();
+            const ppu::obj_attr0::rendering_mode rendering_mode = obj.attr0.render_mode();
+            const bool color_depth_8_bit = obj.attr0.color_depth_8bit();
+
+            const bool hflip = obj.attr1.h_flipped();
+            const bool vflip = obj.attr1.v_flipped();
+
+            const u16 tile_idx = obj.attr2.tile_idx();
+            const u8 palette_idx = obj.attr2.palette_idx();
+
+            bool is_rendered = rendering_mode != ppu::obj_attr0::rendering_mode::hidden;
+
+            const ppu::dimension<u32> tile_dimens{
+              dimension.h / ppu::tile_dot_count,
+              dimension.v / ppu::tile_dot_count
+            };
+
+            if(is_rendered) {
+                for(u32 ty = 0_u32; ty < tile_dimens.v; ++ty) {
+                    for(u32 tx = 0_u32; tx < tile_dimens.h; ++tx) {
+                        const u32 t_idx = tile_idx + ty * (mapping_1d ? tile_dimens.h : 32_u32) + tx;
+
+                        if(color_depth_8_bit) {
+                            for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
+                                for(u32 px = 0_u32; px < ppu::tile_dot_count; ++px) {
+                                    const u8 color_idx = memcpy<u8>(vram, 0x1'0000_u32 + t_idx * 64_u32 + py * 8_u32 + px);
+                                    buffer.setPixel(
+                                      tx.get() * ppu::tile_dot_count + px.get(),
+                                      ty.get() * ppu::tile_dot_count + py.get(),
+                                      to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                                }
+                            }
+                        } else {
+                            for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
+                                for(u32 px = 0_u32; px < ppu::tile_dot_count; px += 2_u32) {
+                                    const u8 color_idxs = memcpy<u8>(vram, 0x1'0000_u32 + t_idx * 32_u32 + py * 4_u32 + px / 2_u32);
+                                    buffer.setPixel(
+                                      tx.get() * ppu::tile_dot_count + px.get(),
+                                      ty.get() * ppu::tile_dot_count + py.get(),
+                                      to_sf_color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, palette_idx)));
+                                    buffer.setPixel(
+                                      tx.get() * ppu::tile_dot_count + px.get() + 1,
+                                      ty.get() * ppu::tile_dot_count + py.get(),
+                                      to_sf_color(call_private::palette_color(ppu_engine, color_idxs >> 4_u8, palette_idx)));
+                                }
+                            }
+                        }
+                    }
+                }
+                texture.update(buffer);
+            }
+
+            if(dimension.v == 0) { dimension.v = 64_u8; }
+            if(dimension.h == 0) { dimension.h = 64_u8; }
+
+            const u8 magnification = 64_u8 / std::max(dimension.v, dimension.h);
+            sf::Sprite obj_sprite{texture, sf::IntRect{0, 0, dimension.h.get(), dimension.v.get()}};
+            obj_sprite.setScale(magnification.get() * (hflip ? -1 : 1), magnification.get() * (vflip ? -1 : 1));
+
+            ImGui::Image(obj_sprite, is_rendered ? sf::Color::White : sf::Color{0xFFFFFF7F}, sf::Color::White);
+            if(ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                obj_sprite.setScale(10.f * (hflip ? -1 : 1), 10.f * (vflip ? -1 : 1));
+                ImGui::Image(obj_sprite);
+
+                const u8 y = obj.attr0.y();
+                const ppu::obj_attr0::blend_mode blend_mode = obj.attr0.blending();
+                const bool mosaic = obj.attr0.mosaic_enabled();
+                const u16 x = obj.attr1.x();
+                const u32 affine_idx = obj.attr1.affine_idx();
+                const u32 priority = obj.attr2.priority();
+                const ppu::obj_affine& obj_affine = obj_affine_view[affine_idx];
+
+                ImGui::Text("size: {}x{}\n"
+                  "y: {:02X}, x: {:03X}\n"
+                  "hflip: {}, vflip: {}\n"
+                  "rendering mode: {}\n"
+                  "color depth: {}\n"
+                  "tile idx: {:03X}\n"
+                  "palette idx: {:02X}\n"
+                  "affine idx: {:02X}\n"
+                  "priority: {}\n"
+                  "pa {:04X}, pb {:04X}, pc {:04X}, pd {:04X}",
+                  dimension.v, dimension.h,
+                  y, x, hflip, vflip, to_string_view(rendering_mode),
+                  color_depth_8_bit ? "8bit" : "4bit", tile_idx, palette_idx - 16_u8,
+                  affine_idx, priority,
+                  obj_affine.pa, obj_affine.pb, obj_affine.pc, obj_affine.pd);
+
+                ImGui::EndTooltip();
+            }
+
+            if(float s = float(dimension.h.get()) / dimension.v.get(); s < 1.f) {
+                ImGui::SameLine(0.f, 0.f);
+                ImGui::Dummy(ImVec2((1.f - s) * 64.f, 0.f));
+            }
+
+            ImGui::SameLine(0.f, 10.f);
+        }
+
+        ImGui::NewLine();
+    }
 }
 
 } // namespace gba::debugger
