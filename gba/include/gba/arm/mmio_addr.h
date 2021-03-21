@@ -30,7 +30,7 @@ constexpr auto addr_tm2cnt_h = 0x0400'010A_u32;      // 2     R/W  TM2CNT_H  Tim
 constexpr auto addr_tm3cnt_l = 0x0400'010C_u32;      // 2     R/W  TM3CNT_L  Timer 3 Counter/Reload
 constexpr auto addr_tm3cnt_h = 0x0400'010E_u32;      // 2     R/W  TM3CNT_H  Timer 3 Control
 
-constexpr auto addr_dma0sad = 0x0400'0B0_u32;        //  4    W    DMA0SAD   DMA 0 Source Address
+constexpr auto addr_dma0sad = 0x0400'00B0_u32;       //  4    W    DMA0SAD   DMA 0 Source Address
 constexpr auto addr_dma0dad = 0x0400'00B4_u32;       //  4    W    DMA0DAD   DMA 0 Destination Address
 constexpr auto addr_dma0cnt_l = 0x0400'00B8_u32;     //  2    W    DMA0CNT_L DMA 0 Word Count
 constexpr auto addr_dma0cnt_h = 0x0400'00BA_u32;     //  2    R/W  DMA0CNT_H DMA 0 Control
