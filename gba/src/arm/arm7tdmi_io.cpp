@@ -643,12 +643,20 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
         case addr_tm3cnt_h:     return timers_[3_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm3cnt_h + 1: return 0_u8;
 
+        case addr_dma0cnt_l:
+        case addr_dma0cnt_l + 1: return 0_u8;
         case addr_dma0cnt_h:     return dma_controller_.channels[0_usize].read_cnt_l();
         case addr_dma0cnt_h + 1: return dma_controller_.channels[0_usize].read_cnt_h();
+        case addr_dma1cnt_l:
+        case addr_dma1cnt_l + 1: return 0_u8;
         case addr_dma1cnt_h:     return dma_controller_.channels[1_usize].read_cnt_l();
         case addr_dma1cnt_h + 1: return dma_controller_.channels[1_usize].read_cnt_h();
+        case addr_dma2cnt_l:
+        case addr_dma2cnt_l + 1: return 0_u8;
         case addr_dma2cnt_h:     return dma_controller_.channels[2_usize].read_cnt_l();
         case addr_dma2cnt_h + 1: return dma_controller_.channels[2_usize].read_cnt_h();
+        case addr_dma3cnt_l:
+        case addr_dma3cnt_l + 1: return 0_u8;
         case addr_dma3cnt_h:     return dma_controller_.channels[3_usize].read_cnt_l();
         case addr_dma3cnt_h + 1: return dma_controller_.channels[3_usize].read_cnt_h();
 
