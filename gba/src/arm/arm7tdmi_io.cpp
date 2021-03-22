@@ -652,11 +652,12 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
         case addr_dma3cnt_h:     return dma_controller_.channels[3_usize].read_cnt_l();
         case addr_dma3cnt_h + 1: return dma_controller_.channels[3_usize].read_cnt_h();
 
-        case addr_ime:    return bit::from_bool<u8>(ime_);
-        case addr_ie:     return narrow<u8>(ie_);
-        case addr_ie + 1: return narrow<u8>(ie_ >> 8_u8);
-        case addr_if:     return narrow<u8>(if_);
-        case addr_if + 1: return narrow<u8>(if_ >> 8_u8);
+        case addr_ime:     return bit::from_bool<u8>(ime_);
+        case addr_ime + 1: return 0_u8;
+        case addr_ie:      return narrow<u8>(ie_);
+        case addr_ie + 1:  return narrow<u8>(ie_ >> 8_u8);
+        case addr_if:      return narrow<u8>(if_);
+        case addr_if + 1:  return narrow<u8>(if_ >> 8_u8);
         case addr_waitcnt:
             return waitcnt_.sram
               | (waitcnt_.ws0_nonseq << 2_u8)
