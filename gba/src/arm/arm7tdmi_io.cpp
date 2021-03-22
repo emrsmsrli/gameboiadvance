@@ -626,6 +626,30 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
         case apu::addr_fifo_b + 3:
             return 0_u8;
 
+        case sio::addr_siomulti0:
+        case sio::addr_siomulti0 + 1:
+        case sio::addr_siomulti1:
+        case sio::addr_siomulti1 + 1:
+        case sio::addr_siomulti2:
+        case sio::addr_siomulti2 + 1:
+        case sio::addr_siomulti3:
+        case sio::addr_siomulti3 + 1:
+        case sio::addr_siocnt:
+        case sio::addr_siocnt + 1:
+        case sio::addr_siomlt_send:
+        case sio::addr_siomlt_send + 1:
+        case sio::addr_rcnt:
+        case sio::addr_rcnt + 1:
+        case sio::addr_joycnt:
+        case sio::addr_joycnt + 1:
+        case sio::addr_joy_recv:
+        case sio::addr_joy_recv + 1:
+        case sio::addr_joy_trans:
+        case sio::addr_joy_trans + 1:
+        case sio::addr_joystat:
+        case sio::addr_joystat + 1:
+            return 0_u8;
+
         case addr_tm0cnt_l:     return timers_[0_usize].read(timer::register_type::cnt_l_lsb);
         case addr_tm0cnt_l + 1: return timers_[0_usize].read(timer::register_type::cnt_l_msb);
         case addr_tm0cnt_h:     return timers_[0_usize].read(timer::register_type::cnt_h_lsb);
