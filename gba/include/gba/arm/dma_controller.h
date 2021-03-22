@@ -48,6 +48,9 @@ struct channel : data {
 
     u32 id;
 
+    // no fwd
+    u64 last_event_handle;
+
     control cnt;
     data internal;
 
