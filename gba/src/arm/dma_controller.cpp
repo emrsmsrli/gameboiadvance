@@ -94,18 +94,30 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
     channel.cnt.enabled = bit::test(data, 7_u8);
     channel.cnt.irq = bit::test(data, 6_u8);
     channel.cnt.when = to_enum<channel::control::timing>(((data >> 4_u8) & 0b11_u8));
+    channel.cnt.drq = idx == 3_usize && bit::test(data, 3_u8);
     channel.cnt.size = to_enum<channel::control::transfer_size>(bit::extract(data, 2_u8));
     channel.cnt.repeat = bit::test(data, 1_u8);
     channel.cnt.src_control = to_enum<channel::control::address_control>(
       bit::extract(from_enum<u8>(channel.cnt.src_control), 0_u8) | (bit::extract(data, 0_u8) << 1_u8));
 
     if(!channel.cnt.enabled) {
-        // todo handle self disable
-        // todo handle disable before scheduled func runs
+        scheduled_channels_.erase(
+          std::remove(scheduled_channels_.begin(), scheduled_channels_.end(), &channel),
+          scheduled_channels_.end());
+        running_channels_.erase(
+          std::remove(running_channels_.begin(), running_channels_.end(), &channel),
+          running_channels_.end());
+
+        arm_->core_->schdlr.remove_event(channel.last_event_handle);
+        return;
     }
 
     if(was_enabled) {
         return;
+    }
+
+    if(addr_in_rom_area(channel.src)) {
+        channel.cnt.src_control = channel::control::address_control::increment;
     }
 
     latch(channel, false, is_for_fifo(&channel));
@@ -271,8 +283,10 @@ void controller::on_channel_start(const u64 /*cycles_late*/) noexcept
 
 void controller::schedule(channel& channel, const channel::control::timing timing) noexcept
 {
-    if(channel.cnt.enabled && channel.cnt.when == timing) {
-        arm_->core_->schdlr.add_event(2_usize,
+    if(channel.cnt.enabled
+      && channel.cnt.when == timing
+      && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
+        channel.last_event_handle = arm_->core_->schdlr.add_event(2_usize,
           {connect_arg<&controller::on_channel_start>, this});
         scheduled_channels_.push_back(&channel);
         sort_by_priority(scheduled_channels_);
