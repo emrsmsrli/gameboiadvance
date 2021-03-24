@@ -212,7 +212,7 @@ bool window::on_instruction_execute(const u32 address) noexcept
 
 void window::on_io_read(const u32 address, const arm::debugger_access_width access_type) noexcept
 {
-    if(arm_debugger_.has_enabled_read_breakpoint(address, access_type)) {
+    if(tick_allowed_ && arm_debugger_.has_enabled_read_breakpoint(address, access_type)) {
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "read breakpoint hit: {:08X}, {} access", address, to_string_view(access_type));
     }
@@ -220,7 +220,7 @@ void window::on_io_read(const u32 address, const arm::debugger_access_width acce
 
 void window::on_io_write(const u32 address, const u32 data, const arm::debugger_access_width access_type) noexcept
 {
-    if(arm_debugger_.has_enabled_write_breakpoint(address, data, access_type)) {
+    if(tick_allowed_ && arm_debugger_.has_enabled_write_breakpoint(address, data, access_type)) {
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
           address, data, to_string_view(access_type));
