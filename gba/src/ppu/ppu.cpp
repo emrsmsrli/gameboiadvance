@@ -84,10 +84,10 @@ void engine::on_hblank(const u64 cycles_late) noexcept
         // todo update affine regs
     }
 
-    if(vcount_ >= video_dma_start_line) {
-        dma_.request_dma(dma::controller::occasion::video);
-    } else if(vcount_ == video_dma_end_line) {
+    if(vcount_ == video_dma_end_line) {
         dma_.disable_video_transfer();
+    } else if(vcount_ >= video_dma_start_line) {
+        dma_.request_dma(dma::controller::occasion::video);
     }
 }
 
