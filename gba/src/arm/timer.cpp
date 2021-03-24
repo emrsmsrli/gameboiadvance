@@ -76,7 +76,7 @@ void timer::write(const register_type reg, const u8 data) noexcept
                 } else {
                     u64 delay = scheduler_->now() & start_delay_masks[control_.prescalar];
                     if(!was_enabled) {
-                        delay - 2_u64;
+                        delay -= 2_u64;
                     }
 
                     schedule_overflow(delay);
