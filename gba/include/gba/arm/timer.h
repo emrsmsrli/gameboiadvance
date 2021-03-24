@@ -11,7 +11,6 @@
 #include <gba/core/fwd.h>
 #include <gba/core/math.h>
 #include <gba/core/event/event.h>
-#include <gba/core/fwd.h>
 #include <gba/core/scheduler.h>
 
 namespace gba::arm {
@@ -54,6 +53,8 @@ public:
     void write(register_type reg, u8 data) noexcept;
 
 private:
+    [[nodiscard]] u32 calculate_counter_delta() const noexcept;
+
     void schedule_overflow(u64 cycles_late = 0_u64) noexcept;
     void overflow(u64 cycles_late) noexcept;
     void overflow_internal() noexcept;

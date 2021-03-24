@@ -55,6 +55,8 @@ ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, counter_)
 ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u16, reload_)
 ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::arm::timer_control, control_)
 
+ACCESS_PRIVATE_FUN(gba::arm::timer, gba::u32() const noexcept, calculate_counter_delta)
+
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::dma::controller, dma_controller_)
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::u32, latch_)
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, running_channels_)
@@ -438,14 +440,17 @@ void arm_debugger::draw() noexcept
 
             if(ImGui::BeginTabItem("Timers")) {
                 for(auto& timer : access_private::timers_(arm_)) {
+                    constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
+                    auto& cnt = access_private::control_(timer);
+
                     ImGui::Text("Timer {}", access_private::id_(timer));
                     ImGui::Separator();
                     ImGui::Text("counter: {:04X} reload: {:04X}",
-                      access_private::counter_(timer),
+                      cnt.enabled && !cnt.cascaded
+                        // as accurate as possible
+                        ? access_private::counter_(timer) + call_private::calculate_counter_delta(timer)
+                        : access_private::counter_(timer),
                       access_private::reload_(timer));
-
-                    auto& cnt = access_private::control_(timer);
-                    constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
 
                     ImGui::Text("prescalar: F/{}", 1_u32 << prescalar_shifts[cnt.prescalar]);
                     ImGui::Text("cascaded: {}", cnt.cascaded);

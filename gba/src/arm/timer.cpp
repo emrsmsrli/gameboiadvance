@@ -20,9 +20,14 @@ constexpr u32 overflow_value = 0x1'0000_u32;
 
 u8 timer::read(const timer::register_type reg) const noexcept
 {
+    u32 counter = counter_;
+    if(control_.enabled) {
+        counter += calculate_counter_delta();
+    }
+
     switch(reg) {
-        case register_type::cnt_l_lsb: return narrow<u8>(counter_);
-        case register_type::cnt_l_msb: return narrow<u8>(counter_ >> 8_u32);
+        case register_type::cnt_l_lsb: return narrow<u8>(counter);
+        case register_type::cnt_l_msb: return narrow<u8>(counter >> 8_u32);
         case register_type::cnt_h_lsb:
             return control_.prescalar
               | bit::from_bool<u8>(control_.cascaded) << 2_u8
@@ -52,7 +57,7 @@ void timer::write(const register_type reg, const u8 data) noexcept
 
             if(scheduler_->has_event(handle_)) {
                 scheduler_->remove_event(handle_);
-                counter_ += (scheduler_->now() - last_scheduled_timestamp_) >> prescalar_shifts[control_.prescalar];
+                counter_ += calculate_counter_delta();
                 if(counter_ >= overflow_value) {
                     overflow_internal();
                 }
@@ -122,6 +127,11 @@ void timer::tick_internal() noexcept
     if(counter_ == overflow_value) {
         overflow_internal();
     }
+}
+
+u32 timer::calculate_counter_delta() const noexcept
+{
+    return narrow<u32>(scheduler_->now() - last_scheduled_timestamp_) >> prescalar_shifts[control_.prescalar];
 }
 
 } // namespace gba::arm
