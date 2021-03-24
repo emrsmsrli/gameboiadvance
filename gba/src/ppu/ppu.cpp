@@ -42,6 +42,8 @@ void engine::on_hdraw(const u64 cycles_late) noexcept
         dispstat_.vblank = true;
         event_on_vblank();
 
+        dma_.request_dma(dma::controller::occasion::vblank);
+
         if(dispstat_.vblank_irq_enabled) {
             irq_.request_interrupt(arm::interrupt_source::vblank);
         }
