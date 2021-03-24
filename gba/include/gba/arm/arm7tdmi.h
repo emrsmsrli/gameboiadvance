@@ -102,7 +102,7 @@ struct waitstate_control {
     u8 ws2_nonseq;
     u8 ws2_seq;
     u8 phi;
-    bool prefetch_buffer_enable;
+    bool prefetch_buffer_enable = false;
 };
 
 enum class halt_control {
