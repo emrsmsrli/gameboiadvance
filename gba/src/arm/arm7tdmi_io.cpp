@@ -695,12 +695,15 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
               | (waitcnt_.ws0_nonseq << 2_u8)
               | (waitcnt_.ws0_seq << 4_u8)
               | (waitcnt_.ws1_nonseq << 5_u8)
-              | (waitcnt_.ws2_seq << 7_u8);
+              | (waitcnt_.ws1_seq << 7_u8);
         case addr_waitcnt + 1:
             return waitcnt_.ws2_nonseq
               | (waitcnt_.ws2_seq << 2_u8)
               | (waitcnt_.phi << 3_u8)
               | bit::from_bool<u8>(waitcnt_.prefetch_buffer_enable) << 6_u8;
+        case addr_waitcnt + 2:
+        case addr_waitcnt + 3:
+            return 0_u8;
         case addr_postboot:
             return post_boot_;
     }
@@ -949,7 +952,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             waitcnt_.ws0_nonseq = (data >> 2_u8) & 0b11_u8;
             waitcnt_.ws0_seq = bit::extract(data, 4_u8);
             waitcnt_.ws1_nonseq = (data >> 5_u8) & 0b11_u8;
-            waitcnt_.ws2_seq = bit::extract(data, 7_u8);
+            waitcnt_.ws1_seq = bit::extract(data, 7_u8);
             update_waitstate_table();
             break;
         case addr_waitcnt + 1:
