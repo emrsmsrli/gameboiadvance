@@ -21,7 +21,7 @@ constexpr u32 overflow_value = 0x1'0000_u32;
 u8 timer::read(const timer::register_type reg) const noexcept
 {
     u32 counter = counter_;
-    if(control_.enabled) {
+    if(scheduler_->has_event(handle_)) {
         counter += calculate_counter_delta();
     }
 
