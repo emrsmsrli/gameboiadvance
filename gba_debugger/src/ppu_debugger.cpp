@@ -519,9 +519,10 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
         const ppu::bg_map_entry entry{memcpy<u16>(vram,
           map_entry_base + map_entry_index_duplicate(tile_x, tile_y, bg) * 2_u32)};
         ImGui::BeginGroup();
-        ImGui::Text("base: {:08X}", 0x0600'0000_u32 + tile_base
-          + (tile_y * 32_u32 * block_size.h + tile_x)
-            * (bg.cnt.color_depth_8bit ? 64_u32 : 32_u32));
+        ImGui::Text("map base addr: {:08X}", 0x0600'0000_u32 + map_entry_base
+          + map_entry_index_duplicate(tile_x, tile_y, bg) * 2_u32);
+        ImGui::Text("tile base addr: {:08X}", 0x0600'0000_u32 + tile_base
+          + entry.tile_idx() * (bg.cnt.color_depth_8bit ? 64_u32 : 32_u32));
         ImGui::Text("tile: {:02X} palette {:02X}", entry.tile_idx(), entry.palette_idx());
         ImGui::Text("x: {:02X} y: {:02X}", tile_x, tile_y);
         ImGui::Text("hflip: {}\nvflip: {}", entry.hflipped(), entry.vflipped());
@@ -585,7 +586,76 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
     sf::Image& buffer = bg_buffers_[bg.id];
     sf::Texture& texture = bg_textures_[bg.id];
 
-    // todo
+    const usize tile_base = bg.cnt.char_base_block * 16_kb;
+    const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
+
+    const sf::Vector2u map_total_block_dimensions{
+      16_u32 * (1_u32 << bg.cnt.screen_size.get()),
+      16_u32 * (1_u32 << bg.cnt.screen_size.get())
+    };
+    const sf::Vector2u map_total_dot_dimensions = map_total_block_dimensions * ppu::tile_dot_count;
+
+    for(u32 ty = 0_u32; ty < map_total_block_dimensions.y; ++ty) {
+        for(u32 tx = 0_u32; tx < map_total_block_dimensions.x; ++tx) {
+            const u32 entry_idx = ty * map_total_block_dimensions.x + tx;
+            const u8 tile_idx{memcpy<u8>(vram, map_entry_base + entry_idx)};
+
+            for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
+                for(u32 px = 0_u32; px < ppu::tile_dot_count; ++px) {
+                    const u8 color_idx = memcpy<u8>(vram, tile_base + tile_idx * 64_u32 + py * 8_u32 + px);
+                    buffer.setPixel(
+                      tx.get() * ppu::tile_dot_count + px.get(),
+                      ty.get() * ppu::tile_dot_count + py.get(),
+                      to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                }
+            }
+        }
+    }
+
+    static int draw_scale = 1;
+    ImGui::SetNextItemWidth(150.f);
+    ImGui::SliderInt("render scale", &draw_scale, 1, 4);
+
+    if(!ImGui::BeginChild("#bgtexture", ImVec2{}, false, ImGuiWindowFlags_HorizontalScrollbar)) {
+        return;
+    }
+
+    texture.update(buffer);
+    sf::Sprite bg_sprite{texture, sf::IntRect(0, 0, map_total_dot_dimensions.x, map_total_dot_dimensions.y)};
+    bg_sprite.setScale(draw_scale, draw_scale);
+
+    // draw the whole map in half alpha
+    const ImVec2 img_start = ImGui::GetCursorScreenPos();
+    ImGui::Image(bg_sprite);
+
+    if(ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+
+        const ImVec2 mouse_pos = ImGui::GetIO().MousePos;
+        const u32::type tile_y = (mouse_pos.y - img_start.y) / (draw_scale * ppu::tile_dot_count);
+        const u32::type tile_x = (mouse_pos.x - img_start.x) / (draw_scale * ppu::tile_dot_count);
+
+        const sf::Sprite zoomed_tile{texture, sf::IntRect(
+          tile_x * ppu::tile_dot_count,
+          tile_y * ppu::tile_dot_count,
+          ppu::tile_dot_count,
+          ppu::tile_dot_count)};
+        ImGui::Image(zoomed_tile, {128, 128});
+
+        const u32 entry_idx = tile_y * map_total_block_dimensions.x + tile_x;
+        const u8 tile_idx{memcpy<u8>(vram, map_entry_base + entry_idx)};
+
+        ImGui::BeginGroup();
+        ImGui::Text("map base addr: {:08X}", 0x0600'0000_u32 + map_entry_base + entry_idx);
+        ImGui::Text("tile base addr: {:08X}", 0x0600'0000_u32 + tile_base + tile_idx * 64_u32);
+        ImGui::Text("tile: {:02X}", tile_idx);
+        ImGui::Text("x: {:02X} y: {:02X}", tile_x, tile_y);
+        ImGui::EndGroup();
+
+        ImGui::EndTooltip();
+    }
+
+    ImGui::EndChild();
 }
 
 void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noexcept
@@ -711,7 +781,7 @@ void ppu_debugger::draw_bg_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -795,7 +865,7 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -897,7 +967,7 @@ void ppu_debugger::draw_obj() noexcept
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
                                 }
                             }
                         } else {
@@ -907,11 +977,11 @@ void ppu_debugger::draw_obj() noexcept
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, palette_idx)));
+                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, palette_idx)));
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get() + 1,
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color(ppu_engine, color_idxs >> 4_u8, palette_idx)));
+                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, palette_idx)));
                                 }
                             }
                         }
