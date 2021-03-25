@@ -239,7 +239,7 @@ struct bg_map_entry {
     [[nodiscard]] FORCEINLINE u16 tile_idx() const noexcept { return value & 0x3FF_u16; }
     [[nodiscard]] FORCEINLINE bool hflipped() const noexcept { return bit::test(value, 10_u8); }
     [[nodiscard]] FORCEINLINE bool vflipped() const noexcept { return bit::test(value, 11_u8); }
-    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>((value >> 12_u16) & 0xF_u16); }
+    [[nodiscard]] FORCEINLINE u8 palette_idx() const noexcept { return narrow<u8>(value >> 12_u16); }
 
     [[nodiscard]] bool operator==(const bg_map_entry other) const noexcept { return value == other.value; }
     [[nodiscard]] bool operator<(const bg_map_entry other) const noexcept { return value < other.value; }
