@@ -84,9 +84,10 @@ void engine::on_hblank(const u64 cycles_late) noexcept
         // todo update affine regs
     }
 
+    static constexpr range<u8> video_dma_range{video_dma_start_line, video_dma_end_line};
     if(vcount_ == video_dma_end_line) {
         dma_.disable_video_transfer();
-    } else if(vcount_ >= video_dma_start_line) {
+    } else if(video_dma_range.contains(vcount_)) {
         dma_.request_dma(dma::controller::occasion::video);
     }
 }
