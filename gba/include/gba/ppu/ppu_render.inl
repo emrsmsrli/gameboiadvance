@@ -71,7 +71,7 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
     const u16 map_y = (vcount_ + bg.voffset) & map_mask.v;
     const u8 tile_y = narrow<u8>(map_y / tile_dot_count);
 
-    std::map<u16 /*bg_map_entry*/, tile_line> tile_line_cache;
+    std::map<bg_map_entry, tile_line> tile_line_cache;
     tile_line current_tile_line;
 
     for(u16 screen_x = 0_u16; screen_x < screen_width;) {
@@ -80,7 +80,7 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
         const u32 block_index = map_entry_index(tile_x, tile_y, bg);
 
         const bg_map_entry entry{memcpy<u16>(vram_, map_entry_base + block_index * 2_u32)};
-        if(const auto it = tile_line_cache.find(entry.value); it != tile_line_cache.end()) {
+        if(const auto it = tile_line_cache.find(entry); it != tile_line_cache.end()) {
             current_tile_line = it->second;
         } else {
             const u16 dot_y = (map_y & 7_u16) ^ (7_u16 * bit::from_bool<u16>(entry.vflipped()));
@@ -94,7 +94,7 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
                 std::reverse(current_tile_line.begin(), current_tile_line.end());
             }
 
-            tile_line_cache.emplace(entry.value, current_tile_line);
+            tile_line_cache.emplace(entry, current_tile_line);
         }
 
         const u32 start_x = screen_x == 0_u32
