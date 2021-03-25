@@ -762,8 +762,12 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             ppu.dispstat_.vblank_irq_enabled = bit::test(data, 3_u8);
             ppu.dispstat_.hblank_irq_enabled = bit::test(data, 4_u8);
             ppu.dispstat_.vcounter_irq_enabled = bit::test(data, 5_u8);
+            ppu.check_vcounter_irq();
             break;
-        case ppu::addr_dispstat + 1: ppu.dispstat_.vcount_setting = data; break;
+        case ppu::addr_dispstat + 1:
+            ppu.dispstat_.vcount_setting = data;
+            ppu.check_vcounter_irq();
+            break;
         case ppu::addr_bg0cnt:      ppu.bg0_.cnt.write_lower(data); break;
         case ppu::addr_bg0cnt + 1:  ppu.bg0_.cnt.write_upper(data); break;
         case ppu::addr_bg1cnt:      ppu.bg1_.cnt.write_lower(data); break;

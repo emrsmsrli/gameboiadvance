@@ -32,6 +32,17 @@ engine::engine(scheduler* scheduler) noexcept
     scheduler_->add_event(cycles_hdraw, {connect_arg<&engine::on_hblank>, this});
 }
 
+void engine::check_vcounter_irq() noexcept
+{
+    const bool prev_vcounter = dispstat_.vcounter;
+    const bool current_vcounter = dispstat_.vcount_setting == vcount_;
+    dispstat_.vcounter = current_vcounter;
+
+    if(dispstat_.vcounter_irq_enabled && !prev_vcounter && current_vcounter) {
+        irq_.request_interrupt(arm::interrupt_source::vcounter_match);
+    }
+}
+
 void engine::on_hdraw(const u64 cycles_late) noexcept
 {
     scheduler_->add_event(cycles_hdraw - cycles_late, {connect_arg<&engine::on_hblank>, this});
@@ -58,13 +69,7 @@ void engine::on_hdraw(const u64 cycles_late) noexcept
         dispstat_.vblank = false;
     }
 
-    const bool prev_vcounter = dispstat_.vcounter;
-    const bool current_vcounter = dispstat_.vcount_setting == vcount_;
-    dispstat_.vcounter = current_vcounter;
-
-    if(dispstat_.vcounter_irq_enabled && !prev_vcounter && current_vcounter) {
-        irq_.request_interrupt(arm::interrupt_source::vcounter_match);
-    }
+    check_vcounter_irq();
 }
 
 void engine::on_hblank(const u64 cycles_late) noexcept
