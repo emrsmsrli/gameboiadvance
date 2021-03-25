@@ -757,7 +757,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
                 ppu.dispcnt_.enable_bg[bg] = bit::test(data, bg);
             }
             break;
-        case ppu::addr_greenswap: ppu.green_swap_ = bit::test(data, 0_u8);
+        case ppu::addr_greenswap: ppu.green_swap_ = bit::test(data, 0_u8); break;
         case ppu::addr_dispstat:
             ppu.dispstat_.vblank_irq_enabled = bit::test(data, 3_u8);
             ppu.dispstat_.hblank_irq_enabled = bit::test(data, 4_u8);
