@@ -71,6 +71,8 @@ public:
     void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
     void set_dma_controller_handle(const dma::controller_handle dma) noexcept { dma_ = dma; }
 
+    void check_vcounter_irq() noexcept;
+
 private:
     using tile_line = array<color, tile_dot_count>;
 
