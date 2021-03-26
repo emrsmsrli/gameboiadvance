@@ -182,12 +182,6 @@ void engine::render_scanline() noexcept
             UNREACHABLE();
     }
 
-    if(UNLIKELY(green_swap_)) {
-        for(u32 x = 0_u32; x < screen_width; x += 2_u32) {
-            final_buffer_[x].swap_green(final_buffer_[x + 1_u32]);
-        }
-    }
-
     event_on_scanline(vcount_, final_buffer_);
 }
 

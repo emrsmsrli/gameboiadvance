@@ -17,6 +17,12 @@ void engine::render_obj() noexcept
 void engine::compose_impl(const static_vector<u32, 4>& ids) noexcept
 {
     // stub
+
+    if(UNLIKELY(green_swap_)) {
+        for(u32 x = 0_u32; x < screen_width; x += 2_u32) {
+            final_buffer_[x].swap_green(final_buffer_[x + 1_u32]);
+        }
+    }
 }
 
 void engine::tile_line_8bpp(tile_line& out_line, const u32 y, const usize base_addr, const bg_map_entry entry) const noexcept
