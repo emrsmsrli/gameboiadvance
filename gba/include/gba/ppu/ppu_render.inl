@@ -68,7 +68,10 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
     const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
     const dimension<u16>& map_mask = bg_map_size_masks[bg.cnt.screen_size];
 
-    const u16 map_y = (vcount_ + bg.voffset) & map_mask.v;
+    const u8 mosaic_v_offset = bg.cnt.mosaic_enabled
+      ? mosaic_bg_.internal.v
+      : 0_u8;
+    const u16 map_y = (vcount_ + bg.voffset - mosaic_v_offset) & map_mask.v;
     const u8 tile_y = narrow<u8>(map_y / tile_dot_count);
 
     std::map<bg_map_entry, tile_line> tile_line_cache;
@@ -105,6 +108,16 @@ void engine::render_bg_regular_impl(BG& bg) noexcept
           : tile_dot_count;
         for(u32 tile_dot_x : range(start_x, end_x)) {
             buffer[screen_x++] = current_tile_line[tile_dot_x];
+        }
+    }
+
+    if(bg.cnt.mosaic_enabled && mosaic_bg_.h != 1_u32) {
+        mosaic_bg_.internal.h = 0_u8;
+        for(u32 screen_x : range(screen_width)) {
+            buffer[screen_x] = buffer[screen_x - mosaic_bg_.internal.h];
+            if (++mosaic_bg_.internal.h == mosaic_bg_.h) {
+                mosaic_bg_.internal.h = 0_u8;
+            }
         }
     }
 }

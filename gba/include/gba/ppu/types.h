@@ -101,7 +101,7 @@ struct bg_affine_base {
     u16 pa = 0x0100_u16;
     u16 pb;
     u16 pc;
-    u16 pd = 0x0100_u16;;
+    u16 pd = 0x0100_u16;
 };
 
 namespace traits {
@@ -207,6 +207,14 @@ struct win_out {
 
 struct mosaic : dimension<u8> {
     dimension<u8> internal;
+
+    FORCEINLINE void reset() noexcept { internal = dimension{0_u8, 0_u8}; }
+    FORCEINLINE void update_internal_v() noexcept
+    {
+        if(++internal.v == v) {
+            internal.v = 0_u8;
+        }
+    }
 };
 
 /*****************/

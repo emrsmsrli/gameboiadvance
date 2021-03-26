@@ -59,7 +59,8 @@ void engine::on_hdraw(const u64 cycles_late) noexcept
             irq_.request_interrupt(arm::interrupt_source::vblank);
         }
 
-        // todo reset mosaic regs
+        mosaic_bg_.reset();
+        mosaic_obj_.reset();
 
         bg2_.x_ref.latch();
         bg2_.y_ref.latch();
@@ -85,8 +86,8 @@ void engine::on_hblank(const u64 cycles_late) noexcept
         dma_.request_dma(dma::controller::occasion::hblank);
         render_scanline();
 
-        // todo update mosaic
-        // todo update affine regs
+        mosaic_bg_.update_internal_v();
+        mosaic_obj_.update_internal_v();
     }
 
     static constexpr range<u8> video_dma_range{video_dma_start_line, video_dma_end_line};

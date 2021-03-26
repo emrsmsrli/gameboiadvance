@@ -842,10 +842,12 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_mosaic:
             ppu.mosaic_bg_.h = (data & 0xF_u8) + 1_u8;
             ppu.mosaic_bg_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu.mosaic_bg_.internal.v = 0_u8;
             break;
         case ppu::addr_mosaic + 1:
             ppu.mosaic_obj_.h = (data & 0xF_u8) + 1_u8;
             ppu.mosaic_obj_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu.mosaic_obj_.internal.v = 0_u8;
             break;
         case ppu::addr_bldcnt:
             ppu.bldcnt_.first.bg[0_usize] = bit::test(data, 0_u8);
