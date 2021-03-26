@@ -86,6 +86,8 @@ private:
 
     template<typename... BG>
     void render_bg_affine(BG&... bgs) noexcept;
+    template<typename F>
+    void affine_loop(bg_affine& bg, i32 w, i32 h, F&& render_func) noexcept;
 
     void render_obj() noexcept;
 
@@ -94,7 +96,6 @@ private:
 
     template<typename BG>
     void render_bg_regular_impl(BG& bg) noexcept;
-    void render_bg_affine_impl(bg_affine& bg) noexcept;
 
     void compose_impl(const static_vector<u32, 4>& ids) noexcept;
 
@@ -119,8 +120,11 @@ private:
         return color{memcpy<u16>(palette_ram_, (palette_idx * 16_u8 + color_idx) * 2_u16)};
     }
 
-    void tile_line_8bpp(tile_line& out_line, u16 y, usize base_addr, bg_map_entry entry) const noexcept;
-    void tile_line_4bpp(tile_line& out_line, u16 y, usize base_addr, bg_map_entry entry) const noexcept;
+    void tile_line_8bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
+    void tile_line_4bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
+
+    [[nodiscard]] color tile_pixel_8bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
+    [[nodiscard]] color tile_pixel_4bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
 };
 
 } // namespace gba::ppu

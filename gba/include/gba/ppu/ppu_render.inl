@@ -32,11 +32,74 @@ void engine::render_bg_affine(BG&... bgs) noexcept
 {
     const auto render_if_enabled = [&](auto& bg) {
         if(dispcnt_.enable_bg[bg.id]) {
-            render_bg_affine_impl(bg);
+            scanline_buffer& buffer = bg_buffers_[bg.id];
+            const usize tile_base = bg.cnt.char_base_block * 16_kb;
+            const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
+
+            const u32 map_block_size = 16_u32 * (1_u32 << bg.cnt.screen_size);
+            const u32 map_dot_count = map_block_size * tile_dot_count;
+
+            affine_loop(bg, make_signed(map_dot_count), make_signed(map_dot_count),
+              [&](const u32 screen_x, u32 x, u32 y) {
+                  const u8 tile_idx = memcpy<u8>(vram_,
+                    map_entry_base + (y / tile_dot_count) * map_block_size + (x / tile_dot_count));
+                  buffer[screen_x] = tile_pixel_8bpp(
+                    x % tile_dot_count,
+                    y % tile_dot_count,
+                    tile_base + tile_idx * tile_dot_count * tile_dot_count,
+                    0_u8
+                  );
+              });
         }
     };
 
     (..., render_if_enabled(bgs));
+}
+
+template<typename F>
+void engine::affine_loop(bg_affine& bg, const i32 w, const i32 h, F&& render_func) noexcept
+{
+    scanline_buffer& buffer = bg_buffers_[bg.id];
+    i32 ref_y = make_signed(bg.y_ref.internal);
+    i32 ref_x = make_signed(bg.x_ref.internal);
+    const i32 pa = make_signed(bg.pa);
+    const i32 pc = make_signed(bg.pc);
+
+    mosaic_bg_.internal.h = 0_u8;
+    for(u32 screen_x : range(screen_width)) {
+        i32 x = ref_x >> 8_i32;
+        i32 y = ref_y >> 8_i32;
+
+        if(bg.cnt.mosaic_enabled) {
+            if(++mosaic_bg_.internal.h == mosaic_bg_.h) {
+                ref_x += pa * make_signed(mosaic_bg_.h);
+                ref_y += pc * make_signed(mosaic_bg_.h);
+                mosaic_bg_.internal.h = 0_u8;
+            }
+        } else {
+            ref_x += pa;
+            ref_y += pc;
+        }
+
+        if(bg.cnt.wraparound) {
+            if (x >= w) {
+                x %= w;
+            } else if (x < 0) {
+                x = w + (x % w);
+            }
+
+            if (y >= h) {
+                y %= h;
+            } else if (y < 0) {
+                y = h + (y % h);
+            }
+        } else if(!range<i32>(0, w).contains(x) || !range<i32>(0, h).contains(y)) {
+            buffer[screen_x] = color::transparent();
+            continue;
+        }
+
+        render_func(screen_x, make_unsigned(x), make_unsigned(y));
+    }
 }
 
 template<typename... BG>

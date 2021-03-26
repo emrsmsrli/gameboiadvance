@@ -188,7 +188,7 @@ struct window {
 };
 
 struct win_enable_bits {
-    array<bool, 4> bg_enable{false, false, false, false};;
+    array<bool, 4> bg_enable{false, false, false, false};
     bool obj_enable = false;
     bool blend_enable = false;
 };
@@ -223,7 +223,7 @@ struct bldcnt {
     enum class effect : u8::type { none, alpha_blend, brightness_inc, brightness_dec };
 
     struct target {
-        array<bool, 4> bg{false, false, false, false};;
+        array<bool, 4> bg{false, false, false, false};
         bool obj = false;
         bool backdrop = false;
     };
