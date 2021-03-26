@@ -381,6 +381,26 @@ MAKE_OP(>=)
 MAKE_OP(&)
 MAKE_OP(|)
 MAKE_OP(^)
+
+#undef MAKE_OP
+
+#define MAKE_OP(Op)                                                                                 \
+    template<typename A, typename B>                                                                \
+    FORCEINLINE constexpr integer<A> operator Op(const integer<A> a, const integer<B> b) noexcept   \
+    {                                                                                               \
+        return static_cast<A>(static_cast<A>(a) Op static_cast<B>(b));                              \
+    }                                                                                               \
+    template<typename A, typename B>                                                                \
+    FORCEINLINE constexpr integer<A> operator Op(const A a, const integer<B> b) noexcept            \
+    {                                                                                               \
+        return integer<A>(a) Op b;                                                                  \
+    }                                                                                               \
+    template<typename A, typename B>                                                                \
+    FORCEINLINE constexpr integer<A> operator Op(const integer<A> a, const B b) noexcept            \
+    {                                                                                               \
+        return a Op integer<B>(b);                                                                  \
+    }
+
 MAKE_OP(<<)
 MAKE_OP(>>)
 
