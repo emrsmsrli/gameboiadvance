@@ -110,7 +110,7 @@ public:
 
     FORCEINLINE constexpr integer& operator++() noexcept
     {
-        value_ = value_ + Integer{1};
+        value_ = static_cast<Integer>(value_ + Integer{1});
         return *this;
     }
 
@@ -123,7 +123,7 @@ public:
 
     FORCEINLINE constexpr integer& operator--() noexcept
     {
-        value_ = value_ - Integer{1};
+        value_ = static_cast<Integer>(value_ - Integer{1});
         return *this;
     }
 
@@ -281,7 +281,6 @@ template<typename Integer, typename Enum>
 template<typename Enum, typename Integer>
 [[nodiscard]] FORCEINLINE constexpr Enum to_enum(const Integer i) noexcept
 {
-    using underlying_t = std::underlying_type_t<Enum>;
     static_assert(std::is_enum_v<Enum>);
     return static_cast<Enum>(i.get());
 }
