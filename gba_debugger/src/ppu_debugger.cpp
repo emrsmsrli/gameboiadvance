@@ -464,7 +464,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -474,11 +474,11 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx())));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx())));
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 6 - px.get() : px.get() + 1),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color(ppu_engine, color_idxs >> 4_u8, entry.palette_idx())));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, entry.palette_idx())));
                     }
                 }
             }
@@ -606,7 +606,7 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
                     buffer.setPixel(
                       tx.get() * ppu::tile_dot_count + px.get(),
                       ty.get() * ppu::tile_dot_count + py.get(),
-                      to_sf_color(call_private::palette_color(ppu_engine, color_idx, 0_u8)));
+                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
                 }
             }
         }

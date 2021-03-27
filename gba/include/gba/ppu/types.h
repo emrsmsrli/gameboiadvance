@@ -32,8 +32,7 @@ struct color {
         const u32 r = (color & r_mask) << 27_u32;
         const u32 g = (color & g_mask) << 14_u32;
         const u32 b = (color & b_mask) << 1_u32;
-        const u32 a = (bit::extract(color, 15_u8) ^ 1_u32) * 0xFF_u32;
-        return r | g | b | a;
+        return r | g | b | 0xFF_u32;
     }
 
     void swap_green(color& other) noexcept
