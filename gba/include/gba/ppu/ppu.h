@@ -74,6 +74,8 @@ public:
     void check_vcounter_irq() noexcept;
 
 private:
+    enum class palette_8bpp_target { bg = 0_u32, obj = 16_u32 };
+
     using tile_line = array<color, tile_dot_count>;
 
     void on_hblank(u64 cycles_late) noexcept;
@@ -123,7 +125,7 @@ private:
     void tile_line_8bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
     void tile_line_4bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
 
-    [[nodiscard]] color tile_dot_8bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
+    [[nodiscard]] color tile_dot_8bpp(u32 x, u32 y, usize tile_addr, palette_8bpp_target target) const noexcept;
     [[nodiscard]] color tile_dot_4bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
 };
 

@@ -45,13 +45,13 @@ void engine::tile_line_4bpp(tile_line& out_line, const u32 y, const usize base_a
     }
 }
 
-color engine::tile_pixel_8bpp(const u32 x, const u32 y, const usize tile_addr, const u8 palette_idx) const noexcept
+color engine::tile_dot_8bpp(const u32 x, const u32 y, const usize tile_addr, const palette_8bpp_target target) const noexcept
 {
     const u8 color_idx = memcpy<u8>(vram_, tile_addr + y * tile_dot_count + x);
-    return palette_color(color_idx, palette_idx);
+    return palette_color(color_idx, from_enum<u8>(target));
 }
 
-color engine::tile_pixel_4bpp(const u32 x, const u32 y, const usize tile_addr, const u8 palette_idx) const noexcept
+color engine::tile_dot_4bpp(const u32 x, const u32 y, const usize tile_addr, const u8 palette_idx) const noexcept
 {
     const usize offset = tile_addr + (y * tile_dot_count / 2_u32) + (x / 2_u32);
     const u8 color_idxs = memcpy<u8>(vram_, offset);
