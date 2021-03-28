@@ -98,7 +98,7 @@ void rtc::write(const u32 address, const u8 value) noexcept
             read_allowed_ = bit::test(value, 0_u8);
             break;
         default:
-            UNREACHABLE();
+            break;
     }
 }
 
