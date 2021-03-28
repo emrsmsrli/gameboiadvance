@@ -123,8 +123,8 @@ private:
     void tile_line_8bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
     void tile_line_4bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
 
-    [[nodiscard]] color tile_pixel_8bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
-    [[nodiscard]] color tile_pixel_4bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
+    [[nodiscard]] color tile_dot_8bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
+    [[nodiscard]] color tile_dot_4bpp(u32 x, u32 y, usize tile_addr, u8 palette_idx) const noexcept;
 };
 
 } // namespace gba::ppu

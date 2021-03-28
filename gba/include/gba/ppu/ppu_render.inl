@@ -43,7 +43,7 @@ void engine::render_bg_affine(BG&... bgs) noexcept
               [&](const u32 screen_x, u32 x, u32 y) {
                   const u8 tile_idx = memcpy<u8>(vram_,
                     map_entry_base + (y / tile_dot_count) * map_block_size + (x / tile_dot_count));
-                  buffer[screen_x] = tile_pixel_8bpp(
+                  buffer[screen_x] = tile_dot_8bpp(
                     x % tile_dot_count,
                     y % tile_dot_count,
                     tile_base + tile_idx * tile_dot_count * tile_dot_count,
