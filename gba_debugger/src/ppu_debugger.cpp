@@ -865,7 +865,7 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 16_u8)));
                     }
                 }
             } else {
@@ -875,11 +875,11 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx))));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx + 16_u8))));
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get() + 1,
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx))));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx + 16_u8))));
                     }
                 }
             }
