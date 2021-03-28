@@ -105,7 +105,7 @@ public:
     FORCEINLINE constexpr integer operator-() const noexcept
     {
         static_assert(std::is_signed_v<Integer>, "T must be signed");
-        return integer{value_ * Integer{-1}};
+        return integer{static_cast<Integer>(value_ * Integer{-1})};
     }
 
     FORCEINLINE constexpr integer& operator++() noexcept
