@@ -390,12 +390,12 @@ MAKE_OP(^)
     {                                                                                               \
         return static_cast<A>(static_cast<A>(a) Op static_cast<B>(b));                              \
     }                                                                                               \
-    template<typename A, typename B>                                                                \
+    template<typename A, typename B, typename = detail::enable_integer<A>>                          \
     FORCEINLINE constexpr integer<A> operator Op(const A a, const integer<B> b) noexcept            \
     {                                                                                               \
         return integer<A>(a) Op b;                                                                  \
     }                                                                                               \
-    template<typename A, typename B>                                                                \
+    template<typename A, typename B, typename = detail::enable_integer<B>>                          \
     FORCEINLINE constexpr integer<A> operator Op(const integer<A> a, const B b) noexcept            \
     {                                                                                               \
         return a Op integer<B>(b);                                                                  \
