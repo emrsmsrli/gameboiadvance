@@ -21,7 +21,6 @@ template<typename T = u32>
 template<typename T = u32>
 [[nodiscard]] FORCEINLINE constexpr T bit(const u8 b) noexcept { return narrow<T>(1_u32 << b); }
 
-// todo bit::field::extract(T, lsb, msb)
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T extract(const T t, const u8 b) noexcept { return (t >> b) & 0x1_u8; }
 
@@ -60,15 +59,15 @@ template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T clear(const T t, const T m) noexcept { return t & ~m; }
 
 template<typename T>
-[[nodiscard]] FORCEINLINE constexpr T set(const T t, const typename T::type m) noexcept
+[[nodiscard]] FORCEINLINE constexpr T set(const T t, const traits::underlying_int_type<T> m) noexcept
 {
-    return mask::set(t, integer<typename T::type>{m});
+    return mask::set(t, integer<traits::underlying_int_type<T>>{m});
 }
 
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr T clear(const T t, const typename T::type m) noexcept
 {
-    return mask::clear(t, integer<typename T::type>{m});
+    return mask::clear(t, integer<traits::underlying_int_type<T>>{m});
 }
 
 } // namespace mask
@@ -82,9 +81,9 @@ struct logical_op_result {
 };
 
 template<u8::type B, typename T>
-[[nodiscard]] FORCEINLINE constexpr integer<make_signed_t<T>> sign_extend(const integer<T> x) noexcept
+[[nodiscard]] FORCEINLINE constexpr integer<traits::make_signed_t<T>> sign_extend(const integer<T> x) noexcept
 {
-    struct { make_signed_t<T> x: B; } extender; // NOLINT
+    struct { traits::make_signed_t<T> x: B; } extender; // NOLINT
     extender.x = x.get();
     return extender.x;
 }
@@ -107,13 +106,8 @@ template<typename T>
 template<typename T>
 [[nodiscard]] FORCEINLINE constexpr logical_op_result<T> arithmetic_shift_right(const T t, const u8 shift) noexcept
 {
-    using underlying_type = typename T::type;
-    using underlying_stype = make_signed_t<underlying_type>;
-
-    // not portable, GCC produces correct code though
     return logical_op_result<T>{
-      make_unsigned(
-        static_cast<underlying_type>(static_cast<underlying_stype>(make_signed(t)) >> static_cast<u8::type>(shift))),
+      make_unsigned(make_signed(t) >> shift),
       bit::extract(t, shift - 1_u8)
     };
 }

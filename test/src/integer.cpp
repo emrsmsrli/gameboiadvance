@@ -82,6 +82,10 @@ TEST_CASE("integer")
         u >>= 8_u8;
         CHECK(u == 0x000F_u16);
 
+        i16 i = 0xF000_i16;
+        i >>= 8_i8;
+        CHECK(i == 0xFFF0_i16);     // shifting also allowed in signed (uses arithmetic shift)
+
         // u |= 0x0000'0000_u32;    // larger width unsigned is not allowed on right-hand side
     }
 
@@ -120,7 +124,7 @@ TEST_CASE("integer")
         CHECK(signed_int == 0_i8);
         CHECK(signed_int == 0_i16);
         CHECK(signed_int == 0_i32);
-        CHECK(signed_int == 0_i64); // also works
+        CHECK(signed_int == 0_i64); // wider type also works
 
         CHECK(signed_int == 0_u8);
         CHECK(signed_int == 0_u16);
@@ -135,6 +139,6 @@ TEST_CASE("integer")
         CHECK(unsigned_int == 0_u8);
         CHECK(unsigned_int == 0_u16);
         CHECK(unsigned_int == 0_u32);
-        CHECK(unsigned_int == 0_u64); // also works
+        CHECK(unsigned_int == 0_u64); // wider type also works
     }
 }

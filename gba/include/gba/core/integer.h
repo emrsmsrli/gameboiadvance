@@ -20,6 +20,25 @@
 
 namespace gba {
 
+// fwd
+template<typename>
+class integer;
+
+namespace traits {
+
+template<typename Integer>
+using underlying_int_type = typename Integer::type;
+
+template<typename T> struct make_signed { using type = std::make_signed_t<T>; };
+template<typename T> struct make_signed<integer<T>> { using type = integer<std::make_signed_t<T>>; };
+template<typename T> struct make_unsigned { using type = std::make_unsigned_t<T>; };
+template<typename T> struct make_unsigned<integer<T>> { using type = integer<std::make_unsigned_t<T>>; };
+
+template<typename T> using make_signed_t = typename make_signed<T>::type;
+template<typename T> using make_unsigned_t = typename make_unsigned<T>::type;
+
+} // namespace traits
+
 namespace detail {
 
 template<typename T> inline constexpr bool is_integer_v =
@@ -43,23 +62,29 @@ template<typename From, typename To>
 inline constexpr bool is_safe_integer_comparison_v =
   is_safe_integer_conversion_v<From, To> || is_safe_integer_conversion_v<To, From>;
 
-template<typename A, typename B>
-using enable_safe_integer_comparison = std::enable_if_t<is_safe_integer_comparison_v<A, B>>;
+template<typename LeftHand, typename RightHand>
+using enable_safe_integer_comparison = std::enable_if_t<is_safe_integer_comparison_v<LeftHand, RightHand>>;
 
-template<typename From, typename To>
+template<typename LeftHand, typename RightHand>
 inline constexpr bool is_safe_integer_operation_v =
-  is_integer_v<From> && is_integer_v<To> &&
-    std::is_signed_v<From> == std::is_signed_v<To>;
+  is_integer_v<LeftHand> && is_integer_v<RightHand> &&
+  (std::is_signed_v<LeftHand> || std::is_unsigned_v<RightHand>);
 
 template<typename A, typename B>
-using greater_sized_t = std::conditional_t<sizeof(A) < sizeof(B), B, A>;
+using greater_sized_t = std::conditional_t<
+  sizeof(A) >= sizeof(B),
+  A,
+  // convert second operand to the correct sign
+  std::conditional_t<std::is_signed_v<A>, traits::make_signed_t<B>, traits::make_unsigned_t<B>>>;
 
-template<typename A, typename B>
-using integer_result_t = std::enable_if_t<is_safe_integer_operation_v<A, B>, greater_sized_t<A, B>>;
+template<typename LeftHand, typename RightHand>
+using integer_result_t = std::enable_if_t<
+  is_safe_integer_operation_v<LeftHand, RightHand>,
+  greater_sized_t<LeftHand, RightHand>>;
 
-template<typename A, typename B>
+template<typename LeftHand, typename RightHand>
 using enable_safe_unsigned_operation = std::enable_if_t<
-  std::is_unsigned_v<A> && std::is_unsigned_v<B> && sizeof(A) >= sizeof(B)>;
+  std::is_unsigned_v<LeftHand> && std::is_unsigned_v<RightHand> && sizeof(LeftHand) >= sizeof(RightHand)>;
 
 } // namespace detail
 
@@ -75,11 +100,11 @@ public:
     FORCEINLINE constexpr integer() noexcept = default;
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE constexpr integer(const T value) noexcept  // NOLINT
+    FORCEINLINE constexpr integer(const T value) noexcept
       : value_{value} {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
-    FORCEINLINE constexpr integer(const integer<T> value) noexcept  // NOLINT
+    FORCEINLINE constexpr integer(const integer<T> value) noexcept
       : value_(static_cast<T>(value)) {}
 
     template<typename T, typename = detail::enable_safe_integer_conversion<T, Integer>>
@@ -105,38 +130,29 @@ public:
     FORCEINLINE constexpr integer operator-() const noexcept
     {
         static_assert(std::is_signed_v<Integer>, "T must be signed");
-        return integer{static_cast<Integer>(value_ * Integer{-1})};
+        return integer(static_cast<Integer>(-value_));
     }
 
-    FORCEINLINE constexpr integer& operator++() noexcept
+    FORCEINLINE constexpr integer& operator++() noexcept { ++value_; return *this; }
+    FORCEINLINE constexpr integer operator++(int) noexcept
     {
-        value_ = static_cast<Integer>(value_ + Integer{1});
-        return *this;
-    }
-
-    FORCEINLINE constexpr integer operator++(int) noexcept  // NOLINT
-    {
-        auto res = *this;
-        ++*this;
+        const integer res = *this;
+        ++value_;
         return res;
     }
 
-    FORCEINLINE constexpr integer& operator--() noexcept
+    FORCEINLINE constexpr integer& operator--() noexcept { --value_; return *this; }
+    FORCEINLINE constexpr integer operator--(int) noexcept
     {
-        value_ = static_cast<Integer>(value_ - Integer{1});
-        return *this;
-    }
-
-    FORCEINLINE constexpr integer operator--(int) noexcept  // NOLINT
-    {
-        auto res = *this;
-        --*this;
+        const integer res = *this;
+        --value_;
         return res;
     }
 
     template<typename T, typename = detail::enable_integer<T>>
     FORCEINLINE constexpr integer& operator+=(const integer<T> other) noexcept
     {
+        static_assert(sizeof(Integer) >= sizeof(T));
         value_ += static_cast<T>(other);
         return *this;
     }
@@ -144,6 +160,7 @@ public:
     template<typename T, typename = detail::enable_integer<T>>
     FORCEINLINE constexpr integer& operator+=(const T other) noexcept
     {
+        static_assert(sizeof(Integer) >= sizeof(T));
         value_ += other;
         return *this;
     }
@@ -194,76 +211,69 @@ public:
     MAKE_OP(|=)
     MAKE_OP(&=)
     MAKE_OP(^=)
+
+#undef MAKE_OP
+
+#define MAKE_OP(Op)                                                                                 \
+    template<typename T, typename = detail::enable_integer<T>>                                      \
+    FORCEINLINE constexpr integer& operator Op(const integer<T> other) noexcept                     \
+    {                                                                                               \
+        value_ Op static_cast<T>(other);                                                            \
+        return *this;                                                                               \
+    }                                                                                               \
+    template<typename T, typename = detail::enable_integer<T>>                                      \
+    FORCEINLINE constexpr integer& operator Op(const T other) noexcept                              \
+    {                                                                                               \
+        value_ Op other;                                                                            \
+        return *this;                                                                               \
+    }
+
     MAKE_OP(<<=)
     MAKE_OP(>>=)
 
 #undef MAKE_OP
 };
 
-namespace detail {
-
-template<typename Integer>
-using underlying_int_type = typename Integer::type;
-
-template<typename T>
-struct make_signed {
-    using type = std::make_signed_t<T>;
-};
-
-template<typename T>
-struct make_signed<integer<T>> {
-    using type = integer<std::make_signed_t<T>>;
-};
-
-template<typename T>
-struct make_unsigned {
-    using type = std::make_unsigned_t<T>;
-};
-
-template<typename T>
-struct make_unsigned<integer<T>> {
-    using type = integer<std::make_unsigned_t<T>>;
-};
-
-} // namespace detail
-
 template<typename To, typename From, typename = std::enable_if_t<
-  detail::is_safe_integer_operation_v<detail::underlying_int_type<From>, detail::underlying_int_type<To>>>>
+  detail::is_safe_integer_operation_v<traits::underlying_int_type<From>, traits::underlying_int_type<To>>>>
 FORCEINLINE constexpr To narrow(const From from) noexcept
 {
     if constexpr(sizeof(To) < sizeof(From)) {
-        return static_cast<detail::underlying_int_type<To>>(from.get());
+        return static_cast<traits::underlying_int_type<To>>(from.get());
     } else {
         static_assert(sizeof(To) == sizeof(From), "narrow() shouldn't widen integers");
         return from;
     }
 }
 
-template<typename To, typename From, typename = detail::enable_integer<detail::underlying_int_type<To>>>
+template<typename To, typename From, typename = detail::enable_integer<traits::underlying_int_type<To>>>
 FORCEINLINE constexpr To widen(const From from) noexcept
 {
-    static_assert(std::is_signed_v<detail::underlying_int_type<From>> ==
-      std::is_signed_v<detail::underlying_int_type<To>>);
-    return static_cast<detail::underlying_int_type<To>>(from.get());
+    static_assert(std::is_signed_v<traits::underlying_int_type<From>> ==
+      std::is_signed_v<traits::underlying_int_type<To>>);
+    return static_cast<traits::underlying_int_type<To>>(from.get());
 }
 
 // sign ops
 
-template<class Integer> using make_signed_t = typename detail::make_signed<Integer>::type;
-template<class Integer> using make_unsigned_t = typename detail::make_unsigned<Integer>::type;
-
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const T i) noexcept { return static_cast<make_signed_t<T>>(i); }
+FORCEINLINE constexpr traits::make_signed_t<integer<T>> make_signed(const T i) noexcept
+{
+    return static_cast<traits::make_signed_t<T>>(i);
+}
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_signed_t<integer<T>> make_signed(const integer<T> i) noexcept
+FORCEINLINE constexpr traits::make_signed_t<integer<T>> make_signed(const integer<T> i) noexcept
 {
     return make_signed(static_cast<T>(i));
 }
 
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const T i) noexcept { return static_cast<make_unsigned_t<T>>(i); }
+FORCEINLINE constexpr traits::make_unsigned_t<integer<T>> make_unsigned(const T i) noexcept
+{
+    return static_cast<traits::make_unsigned_t<T>>(i);
+}
 template<typename T, typename = detail::enable_integer<T>>
-FORCEINLINE constexpr make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept
+FORCEINLINE constexpr traits::make_unsigned_t<integer<T>> make_unsigned(const integer<T> i) noexcept
 {
     return make_unsigned(static_cast<T>(i));
 }
