@@ -45,6 +45,10 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_)
 
+using arm_waitstate_container = gba::array<gba::u8, 32>;
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, arm_waitstate_container, wait_16)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, arm_waitstate_container, wait_32)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::waitstate_control, waitcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::halt_control, haltcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u8, post_boot_)
@@ -248,7 +252,7 @@ template<typename T, typename BPContainer>
 void draw_bps(BPContainer&& container, T&& f) noexcept
 {
     int idx_to_delete = -1;
-    ImGuiListClipper clipper(container.size().get());
+    ImGuiListClipper clipper(static_cast<int>(container.size().get()));
     while(clipper.Step()) {
         for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
             auto& bp = container[static_cast<u32::type>(i)];
@@ -421,18 +425,98 @@ void arm_debugger::draw() noexcept
                 ImGui::SameLine(0.f, 75.f);
 
                 ImGui::BeginGroup(); {
+                    static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
+                    static constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
+                    static constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
+                    static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+
                     ImGui::TextUnformatted("waitcnt");
                     ImGui::Separator();
-                    ImGui::Text("sram {}", access_private::waitcnt_(arm_).sram);
-                    ImGui::Text("ws0_nonseq {}", access_private::waitcnt_(arm_).ws0_nonseq);
-                    ImGui::Text("ws0_seq {}", access_private::waitcnt_(arm_).ws0_seq);
-                    ImGui::Text("ws1_nonseq {}", access_private::waitcnt_(arm_).ws1_nonseq);
-                    ImGui::Text("ws1_seq {}", access_private::waitcnt_(arm_).ws1_seq);
-                    ImGui::Text("ws2_nonseq {}", access_private::waitcnt_(arm_).ws2_nonseq);
-                    ImGui::Text("ws2_seq {}", access_private::waitcnt_(arm_).ws2_seq);
+                    ImGui::Text("sram {} ({})", ws_nonseq[access_private::waitcnt_(arm_).sram], access_private::waitcnt_(arm_).sram);
+                    ImGui::Text("ws0_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws0_nonseq], access_private::waitcnt_(arm_).ws0_nonseq);
+                    ImGui::Text("ws0_seq {} ({})", ws0_seq[access_private::waitcnt_(arm_).ws0_seq], access_private::waitcnt_(arm_).ws0_seq);
+                    ImGui::Text("ws1_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws1_nonseq], access_private::waitcnt_(arm_).ws1_nonseq);
+                    ImGui::Text("ws1_seq {} ({})", ws1_seq[access_private::waitcnt_(arm_).ws1_seq], access_private::waitcnt_(arm_).ws1_seq);
+                    ImGui::Text("ws2_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws2_nonseq], access_private::waitcnt_(arm_).ws2_nonseq);
+                    ImGui::Text("ws2_seq {} ({})", ws2_seq[access_private::waitcnt_(arm_).ws2_seq], access_private::waitcnt_(arm_).ws2_seq);
                     ImGui::Text("phi {}", access_private::waitcnt_(arm_).phi);
                     ImGui::Text("prefetch {}", access_private::waitcnt_(arm_).prefetch_buffer_enable);
                     ImGui::EndGroup();
+                }
+
+                auto& w16 = access_private::wait_16(arm_);
+                auto& w32 = access_private::wait_32(arm_);
+                static bool show_wait_table = false;
+                ImGui::Checkbox("Show wait table", &show_wait_table);
+
+                if(show_wait_table && ImGui::BeginTable("waittable", 17,
+                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                    ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+                    ImGui::TableSetColumnIndex(1);
+
+                    for(u32::type page : range(0x10)) {
+                        ImGui::TextUnformatted([=]() {
+                            switch(page) {
+                                case 0x00: return "bios";
+                                case 0x01: return "N/A";
+                                case 0x02: return "ewram";
+                                case 0x03: return "iwram";
+                                case 0x04: return "io";
+                                case 0x05: return "palram";
+                                case 0x06: return "vram";
+                                case 0x07: return "oam";
+                                case 0x08: return "pak0_l";
+                                case 0x09: return "pak0_u";
+                                case 0x0A: return "pak1_l";
+                                case 0x0B: return "pak1_u";
+                                case 0x0C: return "pak2_l";
+                                case 0x0D: return "pak2_u";
+                                case 0x0E: return "sram_1";
+                                case 0x0F: return "sram_2";
+                                default:
+                                    UNREACHABLE();
+                            }
+                        }());
+                        ImGui::TableNextColumn();
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("16 ns");
+                    ImGui::TableNextColumn();
+                    for(u32::type page : range(0x10)) {
+                        ImGui::Text("{}", w16[page]);
+                        ImGui::TableNextColumn();
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("16  s");
+                    ImGui::TableNextColumn();
+                    for(u32::type page : range(0x10)) {
+                        ImGui::Text("{}", w16[page + 16]);
+                        ImGui::TableNextColumn();
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("32 ns");
+                    ImGui::TableNextColumn();
+                    for(u32::type page : range(0x10)) {
+                        ImGui::Text("{}", w32[page]);
+                        ImGui::TableNextColumn();
+                    }
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text("32  s");
+                    ImGui::TableNextColumn();
+                    for(u32::type page : range(0x10)) {
+                        ImGui::Text("{}", w32[page + 16]);
+                        ImGui::TableNextColumn();
+                    }
+
+                    ImGui::EndTable();
                 }
 
                 ImGui::EndTabItem();

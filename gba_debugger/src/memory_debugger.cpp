@@ -20,7 +20,7 @@ template<typename InstrType>
 void do_draw(const memory_view_entry& entry) noexcept
 {
     constexpr auto instr_size = sizeof(InstrType);
-    ImGuiListClipper clipper(entry.data->size().get() / instr_size);
+    ImGuiListClipper clipper(static_cast<int>(entry.data->size().get() / instr_size));
     while(clipper.Step()) {
         for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
             const auto address = static_cast<u32::type>(instr_size * i);
