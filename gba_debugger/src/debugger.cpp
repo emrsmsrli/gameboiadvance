@@ -55,6 +55,8 @@ window::window(core* core) noexcept
     ppu_debugger_{&core->ppu},
     keypad_debugger_{&core->keypad}
 {
+    window_.setFramerateLimit(60);
+
     using namespace std::string_view_literals;
     disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
     disassembly_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(core->arm), 0x0200'0000_u32});
@@ -105,6 +107,10 @@ window::window(core* core) noexcept
     core_->arm.on_instruction_execute.connect<&window::on_instruction_execute>(this);
     core_->arm.on_io_read.connect<&window::on_io_read>(this);
     core_->arm.on_io_write.connect<&window::on_io_write>(this);
+
+    arm_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
+    core_->ppu.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
+    core_->ppu.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
 }
 
 bool window::draw() noexcept
@@ -187,6 +193,12 @@ bool window::on_instruction_execute(const u32 address) noexcept
     bool should_break = last_executed_addr_ != address;
     last_executed_addr_ = address;
 
+    if(execution_request_ == arm_debugger::execution_request::instruction) {
+        tick_allowed_ = false;
+        execution_request_ = arm_debugger::execution_request::none;
+        return false;
+    }
+
     arm_debugger::execution_breakpoint* exec_bp = arm_debugger_.get_execution_breakpoint(address);
     if(!exec_bp || !should_break) {
         return false;
@@ -224,6 +236,32 @@ void window::on_io_write(const u32 address, const u32 data, const arm::debugger_
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
           address, data, to_string_view(access_type));
+    }
+}
+
+void window::on_execution_requested(const arm_debugger::execution_request request) noexcept
+{
+    if(execution_request_ != arm_debugger::execution_request::none) {
+        return;
+    }
+
+    execution_request_ = request;
+    tick_allowed_ = true;
+}
+
+void window::on_scanline(u8, const ppu::scanline_buffer&) noexcept
+{
+    if(execution_request_ == arm_debugger::execution_request::scanline) {
+        tick_allowed_ = false;
+        execution_request_ = arm_debugger::execution_request::none;
+    }
+}
+
+void window::on_vblank() noexcept
+{
+    if(execution_request_ == arm_debugger::execution_request::frame) {
+        tick_allowed_ = false;
+        execution_request_ = arm_debugger::execution_request::none;
     }
 }
 

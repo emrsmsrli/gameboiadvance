@@ -36,6 +36,7 @@ class window {
 
     bool tick_allowed_ = false;
     u32 last_executed_addr_;
+    arm_debugger::execution_request execution_request_{arm_debugger::execution_request::none};
 
 public:
     explicit window(core* core) noexcept;
@@ -45,6 +46,11 @@ public:
     bool on_instruction_execute(u32 address) noexcept;
     void on_io_read(u32 address, arm::debugger_access_width access_type) noexcept;
     void on_io_write(u32 address, u32 data, arm::debugger_access_width access_type) noexcept;
+
+private:
+    void on_execution_requested(arm_debugger::execution_request type) noexcept;
+    void on_scanline(u8, const ppu::scanline_buffer&) noexcept;
+    void on_vblank() noexcept;
 };
 
 } // namespace gba::debugger

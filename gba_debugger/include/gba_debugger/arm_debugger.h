@@ -12,6 +12,7 @@
 
 #include <gba/core/fwd.h>
 #include <gba/core/container.h>
+#include <gba/core/event/event.h>
 #include <gba/helper/range.h>
 #include <gba/helper/bitflags.h>
 
@@ -19,6 +20,8 @@ namespace gba::debugger {
 
 class arm_debugger {
 public:
+    enum class execution_request { none, instruction, scanline, frame };
+
     struct execution_breakpoint {
         u32 address;
         u32 hit_count;
@@ -47,6 +50,8 @@ private:
     vector<access_breakpoint> access_breakpoints_;
 
 public:
+    event<execution_request> on_execution_requested;
+
     arm_debugger(arm::arm7tdmi* arm) noexcept
       : arm_{arm} {}
 

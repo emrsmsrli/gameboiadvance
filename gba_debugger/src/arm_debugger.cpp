@@ -651,14 +651,34 @@ void arm_debugger::draw() noexcept
 
 void arm_debugger::draw_breakpoints() noexcept
 {
-    static constexpr array breakpoint_types{"Execution breakpoint", "Access breakpoint"};
-    static int breakpoint_type = 0;
-    ImGui::Combo("", &breakpoint_type, breakpoint_types.data(), breakpoint_types.size().get());
+    if(ImGui::BeginChild("#breakpointtypeschild", ImVec2(0, 300), true)) {
+        ImGui::TextUnformatted("Run:"); ImGui::SameLine();
+        if(ImGui::Button("One frame")) {
+            on_execution_requested(execution_request::frame);
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("One scanline")) {
+            on_execution_requested(execution_request::scanline);
+        }
+        ImGui::SameLine();
+        if(ImGui::Button("One instruction")) {
+            on_execution_requested(execution_request::instruction);
+        }
 
-    if(breakpoint_type == 0) {
-        draw_execution_breakpoints();
-    } else if(breakpoint_type == 1) {
-        draw_access_breakpoints();
+        ImGui::Spacing();
+        ImGui::Spacing();
+
+        static constexpr array breakpoint_types{"Execution breakpoint", "Access breakpoint"};
+        static int breakpoint_type = 0;
+        ImGui::TextUnformatted("Breakpoints:");
+        ImGui::Combo("", &breakpoint_type, breakpoint_types.data(), breakpoint_types.size().get());
+
+        if(breakpoint_type == 0) {
+            draw_execution_breakpoints();
+        } else if(breakpoint_type == 1) {
+            draw_access_breakpoints();
+        }
+        ImGui::EndChild();
     }
 }
 
