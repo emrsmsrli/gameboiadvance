@@ -82,6 +82,17 @@ std::string_view to_string_view(const ppu::obj_attr0::rendering_mode mode) noexc
     }
 }
 
+std::string_view to_string_view(const ppu::obj_attr0::blend_mode mode) noexcept
+{
+    switch(mode) {
+        case ppu::obj_attr0::blend_mode::normal: return "normal";
+        case ppu::obj_attr0::blend_mode::alpha_blending: return "alpha_blending";
+        case ppu::obj_attr0::blend_mode::obj_window: return "obj_window";
+        case ppu::obj_attr0::blend_mode::prohibited: return "prohibited";
+        default: UNREACHABLE();
+    }
+}
+
 } // namespace
 
 ppu_debugger::ppu_debugger(ppu::engine* engine)
@@ -938,7 +949,11 @@ void ppu_debugger::draw_obj() noexcept
 
             const ppu::obj& obj = obj_view[obj_idx];
 
-            auto dimension = obj.dimensions();
+            const u32 shape_idx = obj.attr0.shape_idx();
+            auto dimension = shape_idx == 3_u32
+              ? ppu::dimension<u8>{}
+              : obj.dimensions[shape_idx][obj.attr1.size_idx()];
+            const ppu::obj_attr0::blend_mode blend_mode = obj.attr0.blending();
             const ppu::obj_attr0::rendering_mode rendering_mode = obj.attr0.render_mode();
             const bool color_depth_8_bit = obj.attr0.color_depth_8bit();
 
@@ -948,7 +963,9 @@ void ppu_debugger::draw_obj() noexcept
             const u16 tile_idx = obj.attr2.tile_idx();
             const u8 palette_idx = obj.attr2.palette_idx();
 
-            bool is_rendered = rendering_mode != ppu::obj_attr0::rendering_mode::hidden;
+            const bool is_rendered = rendering_mode != ppu::obj_attr0::rendering_mode::hidden
+              && blend_mode != ppu::obj_attr0::blend_mode::prohibited
+              && shape_idx != 3_u32;
 
             const ppu::dimension<u32> tile_dimens{
               dimension.h / ppu::tile_dot_count,
@@ -958,22 +975,28 @@ void ppu_debugger::draw_obj() noexcept
             if(is_rendered) {
                 for(u32 ty = 0_u32; ty < tile_dimens.v; ++ty) {
                     for(u32 tx = 0_u32; tx < tile_dimens.h; ++tx) {
-                        const u32 t_idx = tile_idx + ty * (mapping_1d ? tile_dimens.h : 32_u32) + tx;
-
                         if(color_depth_8_bit) {
+                            const u32 tile_num = mapping_1d
+                              ? tile_idx + ty * (dimension.h / 4_u8) + tx * 2_u32
+                              : tile_idx + ty * 32_u32 + tx * 2_u32;
+
                             for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
                                 for(u32 px = 0_u32; px < ppu::tile_dot_count; ++px) {
-                                    const u8 color_idx = memcpy<u8>(vram, 0x1'0000_u32 + t_idx * 64_u32 + py * 8_u32 + px);
+                                    const u8 color_idx = memcpy<u8>(vram, 0x1'0000_u32 + tile_num * 32_u32 + py * ppu::tile_dot_count + px);
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
+                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 16_u8)));
                                 }
                             }
                         } else {
+                            const u32 tile_num = mapping_1d
+                              ? tile_idx + ty * (dimension.h / 8_u8) + tx
+                              : tile_idx + ty * 32_u32 + tx;
+
                             for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
                                 for(u32 px = 0_u32; px < ppu::tile_dot_count; px += 2_u32) {
-                                    const u8 color_idxs = memcpy<u8>(vram, 0x1'0000_u32 + t_idx * 32_u32 + py * 4_u32 + px / 2_u32);
+                                    const u8 color_idxs = memcpy<u8>(vram, 0x1'0000_u32 + tile_num * 32_u32 + (py * ppu::tile_dot_count / 2_u32) + (px / 2_u32));
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
@@ -1004,7 +1027,6 @@ void ppu_debugger::draw_obj() noexcept
                 ImGui::Image(obj_sprite);
 
                 const u8 y = obj.attr0.y();
-                const ppu::obj_attr0::blend_mode blend_mode = obj.attr0.blending();
                 const bool mosaic = obj.attr0.mosaic_enabled();
                 const u16 x = obj.attr1.x();
                 const u32 affine_idx = obj.attr1.affine_idx();
@@ -1015,6 +1037,7 @@ void ppu_debugger::draw_obj() noexcept
                   "y: {:02X}, x: {:03X}\n"
                   "hflip: {}, vflip: {}\n"
                   "rendering mode: {}\n"
+                  "blending mode: {}\n"
                   "color depth: {}\n"
                   "tile idx: {:03X}\n"
                   "palette idx: {:02X}\n"
@@ -1022,7 +1045,7 @@ void ppu_debugger::draw_obj() noexcept
                   "priority: {}\n"
                   "pa {:04X}, pb {:04X}, pc {:04X}, pd {:04X}",
                   dimension.v, dimension.h,
-                  y, x, hflip, vflip, to_string_view(rendering_mode),
+                  y, x, hflip, vflip, to_string_view(rendering_mode), to_string_view(blend_mode),
                   color_depth_8_bit ? "8bit" : "4bit", tile_idx, palette_idx - 16_u8,
                   affine_idx, priority,
                   obj_affine.pa, obj_affine.pb, obj_affine.pc, obj_affine.pd);
