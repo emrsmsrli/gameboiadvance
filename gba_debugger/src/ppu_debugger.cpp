@@ -93,6 +93,12 @@ std::string_view to_string_view(const ppu::obj_attr0::blend_mode mode) noexcept
     }
 }
 
+float matrix_elem_to_float(const i16 e) noexcept
+{
+    return static_cast<float>(e.get() >> 8_i16)
+      + ((e.get() & 0xFF_i16) / static_cast<float>(0xFF_i16));
+}
+
 } // namespace
 
 ppu_debugger::ppu_debugger(ppu::engine* engine)
@@ -223,9 +229,11 @@ void ppu_debugger::draw() noexcept
                         if constexpr(std::is_same_v<bg_type, ppu::bg_affine>) {
                             ImGui::Text("yref: {:08X}, internal {:08X}", bg.y_ref.ref, bg.y_ref.internal);
                             ImGui::Text("xref: {:08X}, internal {:08X}", bg.x_ref.ref, bg.x_ref.internal);
-                            ImGui::Text("pa: {:04X}, pb: {:04X}, pc: {:04X}, pd: {:04X}",
-                              make_unsigned(bg.pa), make_unsigned(bg.pb),
-                              make_unsigned(bg.pc), make_unsigned(bg.pd));
+                            ImGui::Text("pa: {:04X} ({})\npb: {:04X} ({})",
+                              bg.pa, matrix_elem_to_float(make_signed(bg.pa)), bg.pb, matrix_elem_to_float(make_signed(bg.pb)));
+                            ImGui::SameLine(0, 100.f);
+                            ImGui::Text("pc: {:04X} ({})\npd: {:04X} ({})",
+                              bg.pc, matrix_elem_to_float(make_signed(bg.pc)), bg.pd, matrix_elem_to_float(make_signed(bg.pd)));
                         }
                     };
 
@@ -1054,13 +1062,13 @@ void ppu_debugger::draw_obj() noexcept
                   "palette idx: {:02X}\n"
                   "affine idx: {:02X}\n"
                   "priority: {}\n"
-                  "pa {:04X}, pb {:04X}, pc {:04X}, pd {:04X}",
+                  "pa: {:04X} ({})\npb: {:04X} ({})\npc: {:04X} ({})\npd: {:04X} ({})",
                   dimension.v, dimension.h,
                   y, x, hflip, vflip, to_string_view(rendering_mode), to_string_view(blend_mode),
                   color_depth_8_bit ? "8bit" : "4bit", tile_idx, palette_idx - 16_u8,
                   affine_idx, priority,
-                  make_unsigned(obj_affine.pa), make_unsigned(obj_affine.pb),
-                  make_unsigned(obj_affine.pc), make_unsigned(obj_affine.pd));
+                  make_unsigned(obj_affine.pa), matrix_elem_to_float(obj_affine.pa), make_unsigned(obj_affine.pb), matrix_elem_to_float(obj_affine.pb),
+                  make_unsigned(obj_affine.pc), matrix_elem_to_float(obj_affine.pc), make_unsigned(obj_affine.pd), matrix_elem_to_float(obj_affine.pd));
 
                 ImGui::EndTooltip();
             }
