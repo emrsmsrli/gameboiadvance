@@ -125,7 +125,17 @@ void ppu_debugger::draw() noexcept
 
         sf::Sprite screen{screen_texture_};
         screen.setScale(draw_scale, draw_scale);
+        const ImVec2 img_start = ImGui::GetCursorScreenPos();
         ImGui::Image(screen);
+        if(ImGui::IsItemHovered()) {
+            const ImVec2 mouse_pos = ImGui::GetIO().MousePos;
+            const u32::type y = (mouse_pos.y - img_start.y) / draw_scale;
+            const u32::type x = (mouse_pos.x - img_start.x) / draw_scale;
+
+            ImGui::BeginTooltip();
+            ImGui::Text("x: {}, y {}", x, y);
+            ImGui::EndTooltip();
+        }
     }
 
     ImGui::End();
