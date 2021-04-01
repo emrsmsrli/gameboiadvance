@@ -224,7 +224,8 @@ void ppu_debugger::draw() noexcept
                             ImGui::Text("yref: {:08X}, internal {:08X}", bg.y_ref.ref, bg.y_ref.internal);
                             ImGui::Text("xref: {:08X}, internal {:08X}", bg.x_ref.ref, bg.x_ref.internal);
                             ImGui::Text("pa: {:04X}, pb: {:04X}, pc: {:04X}, pd: {:04X}",
-                              bg.pa, bg.pb, bg.pc, bg.pd);
+                              make_unsigned(bg.pa), make_unsigned(bg.pb),
+                              make_unsigned(bg.pc), make_unsigned(bg.pd));
                         }
                     };
 
@@ -1058,7 +1059,8 @@ void ppu_debugger::draw_obj() noexcept
                   y, x, hflip, vflip, to_string_view(rendering_mode), to_string_view(blend_mode),
                   color_depth_8_bit ? "8bit" : "4bit", tile_idx, palette_idx - 16_u8,
                   affine_idx, priority,
-                  obj_affine.pa, obj_affine.pb, obj_affine.pc, obj_affine.pd);
+                  make_unsigned(obj_affine.pa), make_unsigned(obj_affine.pb),
+                  make_unsigned(obj_affine.pc), make_unsigned(obj_affine.pd));
 
                 ImGui::EndTooltip();
             }
