@@ -309,7 +309,7 @@ private:
 
 public:
     [[maybe_unused]] fill_t _fill0;
-""    i16 pa = 0x0100_i16;
+    i16 pa = 0x0100_i16;
     [[maybe_unused]] fill_t _fill1;
     i16 pb;
     [[maybe_unused]] fill_t _fill2;
