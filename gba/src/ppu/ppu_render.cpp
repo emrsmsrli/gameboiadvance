@@ -15,11 +15,6 @@ void engine::render_obj() noexcept
         return;
     }
 
-    if(vcount_ > 127_u8) {
-        int i = 0;
-        ++i;
-    }
-
     static constexpr obj_affine identity_affine;
 
     static constexpr range<u8> bitmap_modes{3_u8, 6_u8};
