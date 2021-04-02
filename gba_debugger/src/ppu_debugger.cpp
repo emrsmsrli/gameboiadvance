@@ -186,7 +186,7 @@ void ppu_debugger::draw() noexcept
                       dispcnt.hblank_interval_free,
                       dispcnt.obj_mapping_1d,
                       dispcnt.forced_blank,
-                      fmt::join(dispcnt.enable_bg, ", "),
+                      fmt::join(dispcnt.bg_enabled, ", "),
                       dispcnt.obj_enabled,
                       fmt::join(array<bool, 2>{dispcnt.win0_enabled, dispcnt.win1_enabled}, ", "),
                       dispcnt.win_obj_enabled);
@@ -258,7 +258,7 @@ void ppu_debugger::draw() noexcept
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
                         ImGui::Spacing();
                         ImGui::Text("bg enables: {}\nobj enable: {}\nblending enable: {}",
-                          fmt::join(e.bg_enable, ", "), e.obj_enable, e.blend_enable);
+                          fmt::join(e.bg_enabled, ", "), e.obj_enabled, e.blend_enabled);
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
@@ -319,21 +319,21 @@ void ppu_debugger::draw() noexcept
                 ImGui::EndTabItem();
             }
 
-            if(dispcnt.enable_bg[0_usize]) {
+            if(dispcnt.bg_enabled[0_usize]) {
                 if(ImGui::BeginTabItem("BG0")) {
                     draw_regular_bg_map(access_private::bg0_(ppu_engine));
                     ImGui::EndTabItem();
                 }
             }
 
-            if(dispcnt.enable_bg[1_usize]) {
+            if(dispcnt.bg_enabled[1_usize]) {
                 if(ImGui::BeginTabItem("BG1")) {
                     draw_regular_bg_map(access_private::bg1_(ppu_engine));
                     ImGui::EndTabItem();
                 }
             }
 
-            if(dispcnt.enable_bg[2_usize]) {
+            if(dispcnt.bg_enabled[2_usize]) {
                 if(ImGui::BeginTabItem("BG2")) {
                     switch(dispcnt.bg_mode.get()) {
                         case 0:
@@ -353,7 +353,7 @@ void ppu_debugger::draw() noexcept
                 }
             }
 
-            if(dispcnt.enable_bg[3_usize]) {
+            if(dispcnt.bg_enabled[3_usize]) {
                 if(ImGui::BeginTabItem("BG3")) {
                     switch(dispcnt.bg_mode.get()) {
                         case 0:

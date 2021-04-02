@@ -19,7 +19,7 @@ template<typename... BG>
 void engine::render_bg_regular(BG&... bgs) noexcept
 {
     const auto render_if_enabled = [&](auto& bg) {
-        if(dispcnt_.enable_bg[bg.id]) {
+        if(dispcnt_.bg_enabled[bg.id]) {
             render_bg_regular_impl(bg);
         }
     };
@@ -31,7 +31,7 @@ template<typename... BG>
 void engine::render_bg_affine(BG&... bgs) noexcept
 {
     const auto render_if_enabled = [&](auto& bg) {
-        if(dispcnt_.enable_bg[bg.id]) {
+        if(dispcnt_.bg_enabled[bg.id]) {
             scanline_buffer& buffer = bg_buffers_[bg.id];
             const usize tile_base = bg.cnt.char_base_block * 16_kb;
             const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
@@ -103,7 +103,7 @@ void engine::compose(BG&... bgs) noexcept
 {
     static_vector<u32, 4> ids;
     const auto add_id_if_enabled = [&](auto&& bg) {
-        if(dispcnt_.enable_bg[bg.id]) {
+        if(dispcnt_.bg_enabled[bg.id]) {
             ids.push_back(bg.id);
         }
     };

@@ -512,12 +512,12 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
     auto& ppu = core_->ppu;
 
     const auto win_enable_read = [](ppu::win_enable_bits& area) {
-        return bit::from_bool<u8>(area.bg_enable[0_usize])
-          | bit::from_bool<u8>(area.bg_enable[1_usize]) << 1_u8
-          | bit::from_bool<u8>(area.bg_enable[2_usize]) << 2_u8
-          | bit::from_bool<u8>(area.bg_enable[3_usize]) << 3_u8
-          | bit::from_bool<u8>(area.obj_enable) << 4_u8
-          | bit::from_bool<u8>(area.blend_enable) << 5_u8;
+        return bit::from_bool<u8>(area.bg_enabled[0_usize])
+          | bit::from_bool<u8>(area.bg_enabled[1_usize]) << 1_u8
+          | bit::from_bool<u8>(area.bg_enabled[2_usize]) << 2_u8
+          | bit::from_bool<u8>(area.bg_enabled[3_usize]) << 3_u8
+          | bit::from_bool<u8>(area.obj_enabled) << 4_u8
+          | bit::from_bool<u8>(area.blend_enabled) << 5_u8;
     };
 
     switch(addr.get()) {
@@ -536,10 +536,10 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
               | ppu.dispcnt_.frame_select << 4_u8
               | ppu.dispcnt_.bg_mode;
         case ppu::addr_dispcnt + 1:
-            return bit::from_bool<u8>(ppu.dispcnt_.enable_bg[0_usize])
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[1_usize]) << 1_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[2_usize]) << 2_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[3_usize]) << 3_u8
+            return bit::from_bool<u8>(ppu.dispcnt_.bg_enabled[0_usize])
+            | bit::from_bool<u8>(ppu.dispcnt_.bg_enabled[1_usize]) << 1_u8
+            | bit::from_bool<u8>(ppu.dispcnt_.bg_enabled[2_usize]) << 2_u8
+            | bit::from_bool<u8>(ppu.dispcnt_.bg_enabled[3_usize]) << 3_u8
             | bit::from_bool<u8>(ppu.dispcnt_.obj_enabled) << 4_u8
             | bit::from_bool<u8>(ppu.dispcnt_.win0_enabled) << 5_u8
             | bit::from_bool<u8>(ppu.dispcnt_.win1_enabled) << 6_u8
@@ -716,12 +716,12 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
     auto& ppu = core_->ppu;
 
     const auto win_enable_write = [](ppu::win_enable_bits& area, const u8 data) {
-        area.bg_enable[0_usize] = bit::test(data, 0_u8);
-        area.bg_enable[1_usize] = bit::test(data, 1_u8);
-        area.bg_enable[2_usize] = bit::test(data, 2_u8);
-        area.bg_enable[3_usize] = bit::test(data, 3_u8);
-        area.obj_enable = bit::test(data, 4_u8);
-        area.blend_enable = bit::test(data, 5_u8);
+        area.bg_enabled[0_usize] = bit::test(data, 0_u8);
+        area.bg_enabled[1_usize] = bit::test(data, 1_u8);
+        area.bg_enabled[2_usize] = bit::test(data, 2_u8);
+        area.bg_enabled[3_usize] = bit::test(data, 3_u8);
+        area.obj_enabled = bit::test(data, 4_u8);
+        area.blend_enabled = bit::test(data, 5_u8);
     };
 
     switch(addr.get()) {
@@ -753,8 +753,8 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             ppu.dispcnt_.win0_enabled = bit::test(data, 5_u8);
             ppu.dispcnt_.win1_enabled = bit::test(data, 6_u8);
             ppu.dispcnt_.win_obj_enabled = bit::test(data, 7_u8);
-            for(u8 bg = 0_u8; bg < ppu.dispcnt_.enable_bg.size(); ++bg) {
-                ppu.dispcnt_.enable_bg[bg] = bit::test(data, bg);
+            for(u8 bg = 0_u8; bg < ppu.dispcnt_.bg_enabled.size(); ++bg) {
+                ppu.dispcnt_.bg_enabled[bg] = bit::test(data, bg);
             }
             break;
         case ppu::addr_greenswap: ppu.green_swap_ = bit::test(data, 0_u8); break;

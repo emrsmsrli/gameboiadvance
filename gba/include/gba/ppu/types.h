@@ -52,7 +52,7 @@ struct dispcnt {
     bool hblank_interval_free = false;
     bool obj_mapping_1d = false;
     bool forced_blank = false;
-    array<bool, 4> enable_bg{false, false, false, false};
+    array<bool, 4> bg_enabled{false, false, false, false};
     bool obj_enabled = false;
     bool win0_enabled = false;
     bool win1_enabled = false;
@@ -187,9 +187,9 @@ struct window {
 };
 
 struct win_enable_bits {
-    array<bool, 4> bg_enable{false, false, false, false};
-    bool obj_enable = false;
-    bool blend_enable = false;
+    array<bool, 4> bg_enabled{false, false, false, false};
+    bool obj_enabled = false;
+    bool blend_enabled = false;
 };
 
 struct win_in {
