@@ -187,9 +187,9 @@ void ppu_debugger::draw() noexcept
                       dispcnt.obj_mapping_1d,
                       dispcnt.forced_blank,
                       fmt::join(dispcnt.enable_bg, ", "),
-                      dispcnt.enable_obj,
-                      fmt::join(array<bool, 2>{dispcnt.enable_w0, dispcnt.enable_w1}, ", "),
-                      dispcnt.enable_wobj);
+                      dispcnt.obj_enabled,
+                      fmt::join(array<bool, 2>{dispcnt.win0_enabled, dispcnt.win1_enabled}, ", "),
+                      dispcnt.win_obj_enabled);
 
                     ImGui::TableNextColumn();
 

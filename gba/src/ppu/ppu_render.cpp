@@ -11,7 +11,7 @@ namespace gba::ppu {
 
 void engine::render_obj() noexcept
 {
-    if(!dispcnt_.enable_obj) {
+    if(!dispcnt_.obj_enabled) {
         return;
     }
 

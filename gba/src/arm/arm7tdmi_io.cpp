@@ -540,10 +540,10 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
             | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[1_usize]) << 1_u8
             | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[2_usize]) << 2_u8
             | bit::from_bool<u8>(ppu.dispcnt_.enable_bg[3_usize]) << 3_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_obj) << 4_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_w0) << 5_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_w1) << 6_u8
-            | bit::from_bool<u8>(ppu.dispcnt_.enable_wobj) << 7_u8;
+            | bit::from_bool<u8>(ppu.dispcnt_.obj_enabled) << 4_u8
+            | bit::from_bool<u8>(ppu.dispcnt_.win0_enabled) << 5_u8
+            | bit::from_bool<u8>(ppu.dispcnt_.win1_enabled) << 6_u8
+            | bit::from_bool<u8>(ppu.dispcnt_.win_obj_enabled) << 7_u8;
         case ppu::addr_greenswap:     return bit::from_bool<u8>(ppu.green_swap_);
         case ppu::addr_greenswap + 1: return 0_u8;
         case ppu::addr_dispstat:
@@ -749,10 +749,10 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             ppu.dispcnt_.forced_blank = bit::test(data, 7_u8);
             break;
         case ppu::addr_dispcnt + 1:
-            ppu.dispcnt_.enable_obj = bit::test(data, 4_u8);
-            ppu.dispcnt_.enable_w0 = bit::test(data, 5_u8);
-            ppu.dispcnt_.enable_w1 = bit::test(data, 6_u8);
-            ppu.dispcnt_.enable_wobj = bit::test(data, 7_u8);
+            ppu.dispcnt_.obj_enabled = bit::test(data, 4_u8);
+            ppu.dispcnt_.win0_enabled = bit::test(data, 5_u8);
+            ppu.dispcnt_.win1_enabled = bit::test(data, 6_u8);
+            ppu.dispcnt_.win_obj_enabled = bit::test(data, 7_u8);
             for(u8 bg = 0_u8; bg < ppu.dispcnt_.enable_bg.size(); ++bg) {
                 ppu.dispcnt_.enable_bg[bg] = bit::test(data, bg);
             }

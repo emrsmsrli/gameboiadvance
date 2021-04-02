@@ -53,10 +53,10 @@ struct dispcnt {
     bool obj_mapping_1d = false;
     bool forced_blank = false;
     array<bool, 4> enable_bg{false, false, false, false};
-    bool enable_obj = false;
-    bool enable_w0 = false;
-    bool enable_w1 = false;
-    bool enable_wobj = false; // window - different from enable_obj
+    bool obj_enabled = false;
+    bool win0_enabled = false;
+    bool win1_enabled = false;
+    bool win_obj_enabled = false;
 };
 
 struct dispstat {
