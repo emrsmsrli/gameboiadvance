@@ -285,31 +285,37 @@ struct obj_attr2 {
 };
 
 struct obj {
-    static constexpr array<dimension<u8>, 12> dimensions_table{{
-      {8_u8, 8_u8}, {16_u8, 16_u8}, {32_u8, 32_u8}, {64_u8, 64_u8},
-      {16_u8, 8_u8}, {32_u8, 8_u8}, {32_u8, 16_u8}, {64_u8, 32_u8},
-      {8_u8, 16_u8}, {8_u8, 32_u8}, {16_u8, 32_u8}, {32_u8, 64_u8},
-    }};
+private:
+    using dimen_t = dimension<u8>;
+    using shape_table_t = array<dimen_t, 4>;
+    using dimen_table_t = array<shape_table_t, 3>;
+
+public:
+    static constexpr dimen_table_t dimensions{
+      shape_table_t{dimen_t{8_u8, 8_u8}, dimen_t{16_u8, 16_u8}, dimen_t{32_u8, 32_u8}, dimen_t{64_u8, 64_u8}},
+      shape_table_t{dimen_t{16_u8, 8_u8}, dimen_t{32_u8, 8_u8}, dimen_t{32_u8, 16_u8}, dimen_t{64_u8, 32_u8}},
+      shape_table_t{dimen_t{8_u8, 16_u8}, dimen_t{8_u8, 32_u8}, dimen_t{16_u8, 32_u8}, dimen_t{32_u8, 64_u8}}
+    };
 
     obj_attr0 attr0;
     obj_attr1 attr1;
     obj_attr2 attr2;
     [[maybe_unused]] u16 _fill;
-
-    dimension<u8> dimensions() const noexcept { return dimensions_table[(attr0.shape_idx() << 2_u8) | attr1.size_idx()]; }
 };
 
 struct obj_affine {
+private:
     using fill_t = array<u16, 3>;
 
+public:
     [[maybe_unused]] fill_t _fill0;
-    i16 pa;
+""    i16 pa = 0x0100_i16;
     [[maybe_unused]] fill_t _fill1;
     i16 pb;
     [[maybe_unused]] fill_t _fill2;
     i16 pc;
     [[maybe_unused]] fill_t _fill3;
-    i16 pd;
+    i16 pd = 0x0100_i16;
 };
 
 } // namespace gba::ppu

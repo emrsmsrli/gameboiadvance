@@ -40,7 +40,7 @@ void engine::render_bg_affine(BG&... bgs) noexcept
             const u32 map_dot_count = map_block_size * tile_dot_count;
 
             affine_loop(bg, make_signed(map_dot_count), make_signed(map_dot_count),
-              [&](const u32 screen_x, u32 x, u32 y) {
+              [&](const u32 screen_x, const u32 x, const u32 y) {
                   const u8 tile_idx = memcpy<u8>(vram_,
                     map_entry_base + (y / tile_dot_count) * map_block_size + (x / tile_dot_count));
                   buffer[screen_x] = tile_dot_8bpp(x % tile_dot_count, y % tile_dot_count,
@@ -80,16 +80,16 @@ void engine::affine_loop(bg_affine& bg, const i32 w, const i32 h, F&& render_fun
         if(bg.cnt.wraparound) {
             if (x >= w) {
                 x %= w;
-            } else if (x < 0) {
+            } else if (x < 0_i32) {
                 x = w + (x % w);
             }
 
             if (y >= h) {
                 y %= h;
-            } else if (y < 0) {
+            } else if (y < 0_i32) {
                 y = h + (y % h);
             }
-        } else if(!range<i32>(0, w).contains(x) || !range<i32>(0, h).contains(y)) {
+        } else if(!range(w).contains(x) || !range(h).contains(y)) {
             buffer[screen_x] = color::transparent();
             continue;
         }

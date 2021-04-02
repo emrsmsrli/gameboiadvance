@@ -18,10 +18,10 @@
 
 namespace gba::ppu {
 
-constexpr auto screen_width = 240_u32;
-constexpr auto screen_height = 160_u32;
+constexpr u32::type screen_width = 240_u32;
+constexpr u32::type screen_height = 160_u32;
 
-constexpr auto tile_dot_count = 8_u32;
+constexpr u32::type tile_dot_count = 8_u32;
 
 using scanline_buffer = array<color, screen_width>;
 
@@ -56,9 +56,9 @@ class engine {
     bldcnt bldcnt_;
     blend_settings blend_settings_;
 
+    scanline_buffer final_buffer_;
     array<scanline_buffer, 4> bg_buffers_;
     scanline_buffer obj_buffer_;
-    scanline_buffer final_buffer_;
 
 public:
     static constexpr auto cycles_per_frame = 280'896_u64;
