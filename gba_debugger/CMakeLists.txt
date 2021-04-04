@@ -16,7 +16,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC include/)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         gba::gba
-        fmt::fmt
+        fmt::fmt-header-only
         imgui::sfml
         json::json
         access_private::access_private

@@ -32,6 +32,7 @@ if(ENABLE_PCH)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
-        spdlog::spdlog
+        fmt::fmt-header-only
+        spdlog::spdlog_header_only
         project_warnings
         project_options)

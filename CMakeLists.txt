@@ -60,8 +60,6 @@ if(ENABLE_PCH)
             <array> <vector> <string> <unordered_map> <utility>)
 endif()
 
-find_package(fmt CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
 find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 
