@@ -143,7 +143,7 @@ void engine::render_scanline() noexcept
             compose(bg2_, bg3_);
             break;
         case 3:
-            affine_loop(bg2_, make_signed(screen_width), make_signed(screen_height),
+            render_affine_loop(bg2_, make_signed(screen_width), make_signed(screen_height),
               [&](const u32 screen_x, const u32 x, const u32 y) {
                   bg_buffers_[2_usize][screen_x] = color{memcpy<u16>(vram_, (y * screen_width + x) * 2_u32)};
               });
@@ -152,7 +152,7 @@ void engine::render_scanline() noexcept
             compose(bg2_);
             break;
         case 4:
-            affine_loop(bg2_, make_signed(screen_width), make_signed(screen_height),
+            render_affine_loop(bg2_, make_signed(screen_width), make_signed(screen_height),
               [&](const u32 screen_x, const u32 x, const u32 y) {
                   bg_buffers_[2_usize][screen_x] = palette_color_opaque(
                     memcpy<u8>(vram_, dispcnt_.frame_select * 40_kb + (y * screen_width + x)));
@@ -164,7 +164,7 @@ void engine::render_scanline() noexcept
         case 5: {
             constexpr u32 small_bitmap_width = 160_u32;
             constexpr i32 small_bitmap_height = 128_i32;
-            affine_loop(bg2_, make_signed(small_bitmap_width), small_bitmap_height,
+            render_affine_loop(bg2_, make_signed(small_bitmap_width), small_bitmap_height,
               [&](const u32 screen_x, const u32 x, const u32 y) {
                   bg_buffers_[2_usize][screen_x] = color{memcpy<u16>(vram_,
                     dispcnt_.frame_select * 40_kb + (y * small_bitmap_width + x) * 2_u32)};

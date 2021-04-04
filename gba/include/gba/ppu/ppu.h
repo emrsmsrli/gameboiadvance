@@ -84,20 +84,21 @@ private:
     void render_scanline() noexcept;
 
     template<typename... BG>
-    void render_bg_regular(BG&... bgs) noexcept;
+    void render_bg_regular(const BG&... bgs) noexcept;
 
     template<typename... BG>
-    void render_bg_affine(BG&... bgs) noexcept;
+    void render_bg_affine(const BG&... bgs) noexcept;
+
     template<typename F>
-    void affine_loop(bg_affine& bg, i32 w, i32 h, F&& render_func) noexcept;
+    void render_affine_loop(const bg_affine& bg, i32 w, i32 h, F&& render_func) noexcept;
 
     void render_obj() noexcept;
 
     template<typename... BG>
-    void compose(BG&... bgs) noexcept;
+    void compose(const BG&... bgs) noexcept;
 
     template<typename BG>
-    void render_bg_regular_impl(BG& bg) noexcept;
+    void render_bg_regular_impl(const BG& bg) noexcept;
 
     void compose_impl(const static_vector<u32, 4>& ids) noexcept;
 

@@ -16,7 +16,7 @@
 namespace gba::ppu {
 
 template<typename... BG>
-void engine::render_bg_regular(BG&... bgs) noexcept
+void engine::render_bg_regular(const BG&... bgs) noexcept
 {
     const auto render_if_enabled = [&](auto& bg) {
         if(dispcnt_.bg_enabled[bg.id]) {
@@ -28,7 +28,7 @@ void engine::render_bg_regular(BG&... bgs) noexcept
 }
 
 template<typename... BG>
-void engine::render_bg_affine(BG&... bgs) noexcept
+void engine::render_bg_affine(const BG&... bgs) noexcept
 {
     const auto render_if_enabled = [&](auto& bg) {
         if(dispcnt_.bg_enabled[bg.id]) {
@@ -39,7 +39,7 @@ void engine::render_bg_affine(BG&... bgs) noexcept
             const u32 map_block_size = 16_u32 * (1_u32 << bg.cnt.screen_size);
             const u32 map_dot_count = map_block_size * tile_dot_count;
 
-            affine_loop(bg, make_signed(map_dot_count), make_signed(map_dot_count),
+            render_affine_loop(bg, make_signed(map_dot_count), make_signed(map_dot_count),
               [&](const u32 screen_x, const u32 x, const u32 y) {
                   const u8 tile_idx = memcpy<u8>(vram_,
                     map_entry_base + (y / tile_dot_count) * map_block_size + (x / tile_dot_count));
@@ -53,7 +53,7 @@ void engine::render_bg_affine(BG&... bgs) noexcept
 }
 
 template<typename F>
-void engine::affine_loop(bg_affine& bg, const i32 w, const i32 h, F&& render_func) noexcept
+void engine::render_affine_loop(const bg_affine& bg, const i32 w, const i32 h, F&& render_func) noexcept
 {
     scanline_buffer& buffer = bg_buffers_[bg.id];
     i32 ref_y = make_signed(bg.y_ref.internal);
@@ -99,7 +99,7 @@ void engine::affine_loop(bg_affine& bg, const i32 w, const i32 h, F&& render_fun
 }
 
 template<typename... BG>
-void engine::compose(BG&... bgs) noexcept
+void engine::compose(const BG&... bgs) noexcept
 {
     static_vector<u32, 4> ids;
     const auto add_id_if_enabled = [&](auto&& bg) {
@@ -113,7 +113,7 @@ void engine::compose(BG&... bgs) noexcept
 }
 
 template<typename BG>
-void engine::render_bg_regular_impl(BG& bg) noexcept
+void engine::render_bg_regular_impl(const BG& bg) noexcept
 {
     static constexpr array<dimension<u16>, 4> bg_map_size_masks{{
       dimension<u16>{0x0FF_u16, 0x0FF_u16}, // 32x32
