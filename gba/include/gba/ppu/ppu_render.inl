@@ -115,12 +115,12 @@ void engine::compose(BG&... bgs) noexcept
 template<typename BG>
 void engine::render_bg_regular_impl(BG& bg) noexcept
 {
-    static constexpr array bg_map_size_masks{
+    static constexpr array<dimension<u16>, 4> bg_map_size_masks{{
       dimension<u16>{0x0FF_u16, 0x0FF_u16}, // 32x32
       dimension<u16>{0x1FF_u16, 0x0FF_u16}, // 64x32
       dimension<u16>{0x0FF_u16, 0x1FF_u16}, // 32x64
       dimension<u16>{0x1FF_u16, 0x1FF_u16}, // 64x64
-    };
+    }};
 
     scanline_buffer& buffer = bg_buffers_[bg.id];
     const usize tile_base = bg.cnt.char_base_block * 16_kb;
