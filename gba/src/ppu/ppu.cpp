@@ -125,6 +125,8 @@ void engine::render_scanline() noexcept
         return;
     }
 
+    std::fill(win_buffer_.begin(), win_buffer_.end(), &win_out_.outside);
+
     switch(dispcnt_.bg_mode.get()) {
         case 0:
             render_bg_regular(bg0_, bg1_, bg2_, bg3_);

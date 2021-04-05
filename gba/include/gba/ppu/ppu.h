@@ -59,7 +59,7 @@ class engine {
 
     scanline_buffer final_buffer_;
     array<scanline_buffer, 4> bg_buffers_;
-    scanline_buffer obj_buffer_;
+    array<obj_buffer_entry, screen_width> obj_buffer_;
     array<win_enable_bits*, screen_width> win_buffer_;
 
 public:
@@ -104,7 +104,8 @@ private:
 
     void generate_window_buffer() noexcept;
     void generate_window_buffer(window& win, win_enable_bits* enable_bits) noexcept;
-    void compose_impl(const static_vector<u32, 4>& ids) noexcept;
+    void compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept;
+    color blend(color first, color second, bldcnt::effect type) noexcept;
 
     template<typename BG>
     [[nodiscard]] static FORCEINLINE u32 map_entry_index(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept

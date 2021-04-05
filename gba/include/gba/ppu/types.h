@@ -19,6 +19,12 @@ struct coord { u8 x; u8 y; };
 template<typename T>
 struct dimension { T h; T v; };
 
+struct color_unpacked {
+    u8 r;
+    u8 g;
+    u8 b;
+};
+
 struct color {
     static constexpr u16 r_mask = 0x1F_u16;
     static constexpr u16 g_mask = r_mask << 5_u8;
@@ -26,7 +32,7 @@ struct color {
 
     u16 val;
 
-    [[nodiscard]] u32 to_u32() const noexcept
+    [[nodiscard]] FORCEINLINE constexpr u32 to_u32() const noexcept
     {
         const u32 color = val;
         const u32 r = (color & r_mask) << 27_u32;
@@ -35,16 +41,33 @@ struct color {
         return r | g | b | 0xFF_u32;
     }
 
-    void swap_green(color& other) noexcept
+    constexpr void swap_green(color& other) noexcept
     {
         const u16 this_green = val & g_mask;
         val = mask::set(mask::clear(val, g_mask), other.val & g_mask);
         other.val = mask::set(mask::clear(other.val, g_mask), this_green);
     }
 
-    static color white() noexcept { return color{0x7FFF_u16}; }
-    static color transparent() noexcept { return color{0x8000_u16}; }
+    bool operator==(const color other) const noexcept { return val == other.val; }
+    bool operator!=(const color other) const noexcept { return val != other.val; }
+
+    FORCEINLINE static constexpr color white() noexcept { return color{0x7FFF_u16}; }
+    FORCEINLINE static constexpr color transparent() noexcept { return color{0x8000_u16}; }
 };
+
+FORCEINLINE constexpr color_unpacked unpack(const color packed) noexcept
+{
+    return color_unpacked{
+      narrow<u8>(packed.val & color::r_mask),
+      narrow<u8>((packed.val & color::g_mask) >> 5_u16),
+      narrow<u8>((packed.val & color::b_mask) >> 10_u8)
+    };
+}
+
+FORCEINLINE constexpr color pack(const color_unpacked unpacked) noexcept
+{
+    return color{widen<u16>(unpacked.r) | widen<u16>(unpacked.g) << 5_u16 | widen<u16>(unpacked.b) << 10_u16};
+}
 
 struct dispcnt {
     u8 bg_mode;
@@ -232,6 +255,7 @@ struct bldcnt {
     effect type{effect::none};
 };
 
+/* 1.4 fixed point */
 struct blend_settings {
     u8 eva;
     u8 evb;
@@ -316,6 +340,21 @@ public:
     i16 pc;
     [[maybe_unused]] fill_t _fill3;
     i16 pd = 0x0100_i16;
+};
+
+/*****************/
+
+struct bg_priority_pair {
+    u32 priority;
+    u32 idx;
+
+    bool operator<(const bg_priority_pair& other) const noexcept { return priority < other.priority; }
+};
+
+struct obj_buffer_entry {
+    u32 priority = 4_u32;
+    color dot = color::transparent();
+    bool is_alpha_blending = false;
 };
 
 } // namespace gba::ppu

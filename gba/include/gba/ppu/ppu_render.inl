@@ -101,10 +101,10 @@ void engine::render_affine_loop(const bg_affine& bg, const i32 w, const i32 h, F
 template<typename... BG>
 void engine::compose(const BG&... bgs) noexcept
 {
-    static_vector<u32, 4> ids;
+    static_vector<bg_priority_pair, 4> ids;
     const auto add_id_if_enabled = [&](auto&& bg) {
         if(dispcnt_.bg_enabled[bg.id]) {
-            ids.push_back(bg.id);
+            ids.push_back({bg.cnt.priority, bg.id});
         }
     };
 

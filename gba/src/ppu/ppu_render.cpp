@@ -5,9 +5,25 @@
  * Refer to the included LICENSE file.
  */
 
+#include <algorithm>
+
 #include <gba/ppu/ppu.h>
+#include <gba/helper/sort.h>
 
 namespace gba::ppu {
+
+namespace {
+
+struct layer {
+    enum class type { bg0, bg1, bg2, bg3, obj, bd };
+
+    static inline u32 invalid_priority = 4_u32;
+
+    type layer_type{type::bd};
+    u32 priority = invalid_priority;
+};
+
+} // namespace
 
 void engine::render_obj() noexcept
 {
@@ -26,7 +42,7 @@ void engine::render_obj() noexcept
       : 1210_u32;
     u32 render_cycles_spent = 0_u32;
 
-    std::fill(obj_buffer_.begin(), obj_buffer_.end(), color::transparent());
+    std::fill(obj_buffer_.begin(), obj_buffer_.end(), obj_buffer_entry{});
 
     for(const obj& obj : view<obj>{oam_}) {
         const obj_attr0::rendering_mode render_mode = obj.attr0.render_mode();
@@ -149,14 +165,103 @@ void engine::render_obj() noexcept
                 dot = tile_dot_4bpp(dot_x, dot_y, 0x1'0000_u32 + tile_idx * 32_u32, obj.attr2.palette_idx());
             }
 
-            obj_buffer_[make_unsigned(global_x)] = dot;
+            const bool is_transparent = dot == color::transparent();
+            obj_buffer_entry& obj_entry = obj_buffer_[make_unsigned(global_x)];
+            if(blend_mode == obj_attr0::blend_mode::obj_window) {
+                if(dispcnt_.win_obj_enabled && !is_transparent){
+                    win_buffer_[make_unsigned(global_x)] = &win_out_.obj;
+                }
+            } else if(const u32 priority = obj.attr2.priority(); priority < obj_entry.priority || obj_entry.dot == color::transparent()) {
+                obj_entry.priority = priority;
+                if(!is_transparent) {
+                    obj_entry.dot = dot;
+                    obj_entry.is_alpha_blending = blend_mode == obj_attr0::blend_mode::alpha_blending;
+                }
+            }
         }
     }
 }
 
-void engine::compose_impl(const static_vector<u32, 4>& ids) noexcept
+void engine::compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept
 {
-    // stub
+    const color backdrop = backdrop_color();
+
+    const auto dot_for_layer = [&](const layer& l, u32 x) {
+        switch(l.layer_type) {
+            case layer::type::bg0: case layer::type::bg1:
+            case layer::type::bg2: case layer::type::bg3:
+                return bg_buffers_[from_enum<u32>(l.layer_type)][x];
+            case layer::type::obj:
+                return obj_buffer_[x].dot;
+            case layer::type::bd:
+                return backdrop;
+            default: UNREACHABLE();
+        }
+    };
+
+    const auto is_blend_enabled = [&](bldcnt::target& target, const layer::type layer) {
+        switch(layer) {
+            case layer::type::bg0: case layer::type::bg1:
+            case layer::type::bg2: case layer::type::bg3:
+                return target.bg[from_enum<u32>(layer)];
+            case layer::type::obj:
+                return target.obj;
+            case layer::type::bd:
+                return target.backdrop;
+            default: UNREACHABLE();
+        }
+    };
+
+    // stable sort bg ids to render them in least importance order
+    insertion_sort(ids);
+    std::reverse(ids.begin(), ids.end());
+
+    const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;
+    if(any_window_enabled) {
+        generate_window_buffer();
+    }
+
+    for(u32 x : range(screen_width)) {
+        layer top_layer;
+        layer bottom_layer;
+
+        bool has_alpha_obj_dot = false;
+        win_enable_bits* win_enable = win_buffer_[x];
+
+        for(const auto& [priority, bg_id] : ids) {
+            if(!any_window_enabled || win_enable->bg_enabled[bg_id]) {
+                const color bg_dot = bg_buffers_[bg_id][x];
+                if(bg_dot != color::transparent()) {
+                    bottom_layer = std::exchange(top_layer, layer{to_enum<layer::type>(bg_id), priority});
+                }
+            }
+        }
+
+        if((!any_window_enabled || win_enable->obj_enabled) && dispcnt_.obj_enabled && obj_buffer_[x].dot != color::transparent()) {
+            const u32 obj_prio = obj_buffer_[x].priority;
+            if(obj_prio <= top_layer.priority) {
+                bottom_layer.layer_type = std::exchange(top_layer.layer_type, layer::type::obj);
+                has_alpha_obj_dot = obj_buffer_[x].is_alpha_blending;
+            } else if(obj_prio <= bottom_layer.priority) {
+                bottom_layer.layer_type = layer::type::obj;
+            }
+        }
+
+        color top_dot = dot_for_layer(top_layer, x);
+        if(!any_window_enabled || win_enable->blend_enabled || has_alpha_obj_dot) {
+            const color bottom_dot = dot_for_layer(bottom_layer, x);
+            const bool blend_dst_enabled = is_blend_enabled(bldcnt_.first, top_layer.layer_type);
+            const bool blend_src_enabled = is_blend_enabled(bldcnt_.second, bottom_layer.layer_type);
+
+            if(has_alpha_obj_dot && blend_src_enabled) {
+                top_dot = blend(top_dot, bottom_dot, bldcnt::effect::alpha_blend);
+            } else if(blend_dst_enabled && bldcnt_.type != bldcnt::effect::none && (blend_src_enabled || bldcnt_.type != bldcnt::effect::alpha_blend)) {
+                top_dot = blend(top_dot, bottom_dot, bldcnt_.type);
+            }
+        }
+
+        final_buffer_[x] = top_dot;
+    }
 
     if(UNLIKELY(green_swap_)) {
         for(u32 x = 0_u32; x < screen_width; x += 2_u32) {
@@ -199,6 +304,51 @@ color engine::tile_dot_4bpp(const u32 x, const u32 y, const usize tile_addr, con
         ? color_idxs >> 4_u8
         : color_idxs & 0xF_u8,
       palette_idx);
+}
+
+color engine::blend(const color first, const color second, const bldcnt::effect type) noexcept
+{
+    constexpr u8 max_ev = 0x10_u8;
+    constexpr u8 max_intensity = 0x1F_u8;
+
+    switch(type) {
+        case bldcnt::effect::none:
+            return first;
+        case bldcnt::effect::alpha_blend: {
+            const u32 eva = std::min(max_ev, blend_settings_.eva);
+            const u32 evb = std::min(max_ev, blend_settings_.evb);
+
+            const color_unpacked first_unpacked = unpack(first);
+            const color_unpacked second_unpacked = unpack(second);
+            return pack(color_unpacked{
+                std::min(max_intensity, narrow<u8>((first_unpacked.r * eva + second_unpacked.r * evb) >> 4_u8)),
+                std::min(max_intensity, narrow<u8>((first_unpacked.g * eva + second_unpacked.g * evb) >> 4_u8)),
+                std::min(max_intensity, narrow<u8>((first_unpacked.b * eva + second_unpacked.b * evb) >> 4_u8)),
+            });
+        }
+        case bldcnt::effect::brightness_inc: {
+            const u32 evy = std::min(max_ev, blend_settings_.evy);
+            color_unpacked unpacked = unpack(first);
+
+            unpacked.r += narrow<u8>(((max_intensity - unpacked.r) * evy) >> 4_u8);
+            unpacked.g += narrow<u8>(((max_intensity - unpacked.g) * evy) >> 4_u8);
+            unpacked.b += narrow<u8>(((max_intensity - unpacked.b) * evy) >> 4_u8);
+
+            return pack(unpacked);
+        }
+        case bldcnt::effect::brightness_dec: {
+            const u32 evy = std::min(max_ev, blend_settings_.evy);
+            color_unpacked unpacked = unpack(first);
+
+            unpacked.r -=  narrow<u8>((unpacked.r * evy) >> 4_u8);
+            unpacked.g -=  narrow<u8>((unpacked.g * evy) >> 4_u8);
+            unpacked.b -=  narrow<u8>((unpacked.b * evy) >> 4_u8);
+
+            return pack(unpacked);
+        }
+        default:
+            UNREACHABLE();
+    }
 }
 
 } // namespace gba::ppu
