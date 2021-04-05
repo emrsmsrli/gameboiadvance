@@ -135,7 +135,7 @@ void engine::render_scanline() noexcept
             render_bg_regular(bg0_, bg1_);
             render_bg_affine(bg2_);
             render_obj();
-            compose(bg0_, bg1_);
+            compose(bg0_, bg1_, bg2_);
             break;
         case 2:
             render_bg_affine(bg2_, bg3_);
