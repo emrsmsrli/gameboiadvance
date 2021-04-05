@@ -15,6 +15,8 @@
 
 namespace gba::debugger {
 
+enum class win_type { w0, w1, obj, out };
+
 struct ppu_debugger {
     ppu::engine* ppu_engine;
 
@@ -30,6 +32,10 @@ struct ppu_debugger {
     array<sf::Image, 128> obj_buffers_;
     array<sf::Texture, 128> obj_textures_;
 
+    vector<win_type> win_types_;
+    sf::Image win_buffer_;
+    sf::Texture win_texture_;
+
     explicit ppu_debugger(ppu::engine* engine);
     void draw() noexcept;
 
@@ -42,6 +48,7 @@ struct ppu_debugger {
     void draw_bg_tiles() noexcept;
     void draw_obj_tiles() noexcept;
     void draw_obj() noexcept;
+    void draw_win_buffer() noexcept;
 };
 
 } // namespace gba::debugger

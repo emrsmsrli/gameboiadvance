@@ -35,6 +35,9 @@ ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::mosaic, mosaic_obj_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::bldcnt, bldcnt_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::ppu::blend_settings, blend_settings_)
 
+using win_buffer_t = gba::array<gba::ppu::win_enable_bits*, gba::ppu::screen_width>;
+ACCESS_PRIVATE_FIELD(gba::ppu::engine, win_buffer_t, win_buffer_)
+
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color)
 ACCESS_PRIVATE_FUN(gba::ppu::engine, gba::ppu::color(gba::u8, gba::u8) const noexcept, palette_color_opaque)
 
@@ -102,7 +105,8 @@ float matrix_elem_to_float(const i16 e) noexcept
 } // namespace
 
 ppu_debugger::ppu_debugger(ppu::engine* engine)
-  : ppu_engine{engine}
+  : ppu_engine{engine},
+    win_types_{ppu::screen_height * ppu::screen_width}
 {
     screen_buffer_.create(ppu::screen_width, ppu::screen_height);
     screen_texture_.create(ppu::screen_width, ppu::screen_height);
@@ -117,6 +121,9 @@ ppu_debugger::ppu_debugger(ppu::engine* engine)
 
     tiles_buffer_.create(256, 512);
     tiles_texture_.create(256, 512);
+
+    win_buffer_.create(ppu::screen_width, ppu::screen_height);
+    win_texture_.create(ppu::screen_width, ppu::screen_height);
 
     engine->event_on_scanline.add_delegate({connect_arg<&ppu_debugger::on_scanline>, this});
     engine->event_on_vblank.add_delegate({connect_arg<&ppu_debugger::on_update_texture>, this});
@@ -388,6 +395,12 @@ void ppu_debugger::draw() noexcept
                 ImGui::EndTabItem();
             }
 
+            const bool any_window_enabled = dispcnt.win0_enabled || dispcnt.win1_enabled || dispcnt.win_obj_enabled;
+            if(any_window_enabled && ImGui::BeginTabItem("Window View")) {
+                draw_win_buffer();
+                ImGui::EndTabItem();
+            }
+
             if(ImGui::BeginTabItem("Palette View")) {
                 const auto draw_palette = [&](const char* name, usize type_offset /*1 for obj*/) {
                     ImGui::BeginGroup();
@@ -440,8 +453,22 @@ void ppu_debugger::draw() noexcept
 
 void ppu_debugger::on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept
 {
+    auto& win_buffer = access_private::win_buffer_(ppu_engine);
     for(u32 x : range(ppu::screen_width)) {
         screen_buffer_.setPixel(x.get(), screen_y.get(), to_sf_color(scanline[x]));
+
+        win_types_[ppu::screen_width * screen_y + x] = [&]() {
+            if(win_buffer[x] == &access_private::win_out_(ppu_engine).outside) {
+                return win_type::out;
+            }
+            if(win_buffer[x] == &access_private::win_in_(ppu_engine).win0) {
+                return win_type::w0;
+            }
+            if(win_buffer[x] == &access_private::win_in_(ppu_engine).win1) {
+                return win_type::w1;
+            }
+            return win_type::obj;
+        }();
     }
 }
 
@@ -1083,6 +1110,49 @@ void ppu_debugger::draw_obj() noexcept
 
         ImGui::NewLine();
     }
+}
+
+void ppu_debugger::draw_win_buffer() noexcept
+{
+    static ImVec4 out_color(1.f, 1.f, 1.f, 1.f);
+    static ImVec4 w0_color(1.f, 0.f, 0.f, 1.f);
+    static ImVec4 w1_color(0.f, 0.f, 1.f, 1.f);
+    static ImVec4 obj_color(0.f, 0.f, 0.f, 1.f);
+
+    ImGui::ColorEdit3("OUT", &out_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("WIN0", &w0_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("WIN1", &w1_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("OBJ", &obj_color.x, ImGuiColorEditFlags_NoInputs);
+
+    for(u32 y : range(ppu::screen_height)) {
+        for(u32 x : range(ppu::screen_width)) {
+            const u32 idx = ppu::screen_width * y + x;
+            switch(win_types_[idx]) {
+                case win_type::out:
+                    win_buffer_.setPixel(x.get(), y.get(), out_color);
+                    break;
+                case win_type::w0:
+                    win_buffer_.setPixel(x.get(), y.get(), w0_color);
+                    break;
+                case win_type::w1:
+                    win_buffer_.setPixel(x.get(), y.get(), w1_color);
+                    break;
+                case win_type::obj:
+                    win_buffer_.setPixel(x.get(), y.get(), obj_color);
+                    break;
+            }
+        }
+    }
+
+    win_texture_.update(win_buffer_);
+
+    static int draw_scale = 3;
+    ImGui::SetNextItemWidth(150.f);
+    ImGui::SliderInt("render scale", &draw_scale, 1, 4);
+
+    sf::Sprite win_sprite{win_texture_};
+    win_sprite.setScale(draw_scale, draw_scale);
+    ImGui::Image(win_sprite);
 }
 
 } // namespace gba::debugger

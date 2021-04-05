@@ -15,6 +15,7 @@ add_library(${PROJECT_NAME} STATIC
         src/arm/irq_controller_handle.cpp
         src/ppu/ppu.cpp
         src/ppu/ppu_render.cpp
+        src/ppu/ppu_window.cpp
         src/cartridge/backup.cpp
         src/cartridge/gamepak.cpp
         src/cartridge/rtc.cpp

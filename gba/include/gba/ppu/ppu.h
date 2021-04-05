@@ -49,6 +49,7 @@ class engine {
     window win1_{1_u32};
     win_in win_in_;
     win_out win_out_;
+    array<bool, 2> win_can_draw_flags_{false, false};
 
     bool green_swap_ = false;
     mosaic mosaic_bg_;
@@ -59,6 +60,7 @@ class engine {
     scanline_buffer final_buffer_;
     array<scanline_buffer, 4> bg_buffers_;
     scanline_buffer obj_buffer_;
+    array<win_enable_bits*, screen_width> win_buffer_;
 
 public:
     static constexpr auto cycles_per_frame = 280'896_u64;
@@ -100,6 +102,8 @@ private:
     template<typename BG>
     void render_bg_regular_impl(const BG& bg) noexcept;
 
+    void generate_window_buffer() noexcept;
+    void generate_window_buffer(window& win, win_enable_bits* enable_bits) noexcept;
     void compose_impl(const static_vector<u32, 4>& ids) noexcept;
 
     template<typename BG>
