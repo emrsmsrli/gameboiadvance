@@ -13,6 +13,7 @@ namespace gba::ppu {
 
 void engine::generate_window_buffer() noexcept
 {
+    std::fill(win_buffer_.begin(), win_buffer_.end(), &win_out_.outside);
     if(dispcnt_.win1_enabled) {
         generate_window_buffer(win1_,  &win_in_.win1);
     }
