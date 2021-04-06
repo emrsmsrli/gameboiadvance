@@ -47,7 +47,7 @@ std::string_view to_string_view(const arm::debugger_access_width access_type) no
 } // namespace
 
 window::window(core* core) noexcept
-  : window_{sf::VideoMode{1000u, 1000u}, "GBA Debugger"},
+  : window_{sf::VideoMode{1920, 1080}, "GBA Debugger"},
     window_event_{},
     core_{core},
     gamepak_debugger_{&core->pak},
