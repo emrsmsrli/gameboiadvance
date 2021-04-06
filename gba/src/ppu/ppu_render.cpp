@@ -217,9 +217,6 @@ void engine::compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept
     std::reverse(ids.begin(), ids.end());
 
     const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;
-    if(any_window_enabled) {
-        generate_window_buffer();
-    }
 
     for(u32 x : range(screen_width)) {
         layer top_layer;

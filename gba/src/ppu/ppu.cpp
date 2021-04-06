@@ -82,6 +82,11 @@ void engine::on_hblank(const u64 cycles_late) noexcept
         irq_.request_interrupt(arm::interrupt_source::hblank);
     }
 
+    const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;
+    if(any_window_enabled) {
+        generate_window_buffer();
+    }
+
     if(vcount_ < screen_height) {
         dma_.request_dma(dma::controller::occasion::hblank);
         render_scanline();
