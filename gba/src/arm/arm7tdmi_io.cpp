@@ -55,8 +55,10 @@ FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
 
 FORCEINLINE constexpr bool is_eeprom(const usize pak_size, const cartridge::backup::type type, const u32 addr) noexcept
 {
-    return (type == cartridge::backup::type::eeprom_64 || type == cartridge::backup::type::eeprom_4)
-      && (pak_size < (32_u32 * 1024_kb) || addr >= 0x0DFF'FF00_u32);
+    return (type == cartridge::backup::type::eeprom_undetected
+      || type == cartridge::backup::type::eeprom_64
+      || type == cartridge::backup::type::eeprom_4)
+      && (pak_size < 32_kb * 1024u || addr >= 0x0DFF'FF00_u32);
 }
 
 FORCEINLINE constexpr bool is_sram_flash(const cartridge::backup::type type) noexcept
@@ -262,7 +264,18 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws2_upper:
             if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
-                return core_->pak.backup_->read(addr);
+                if(bitflags::is_set(access, mem_access::dma)) {
+                    if(UNLIKELY(core_->pak.backup_type() == cartridge::backup::type::eeprom_undetected)) {
+                        const bool is_eeprom_64 = dma_controller_.channels[3_usize].internal.count == 17_u8;
+                        core_->pak.on_eeprom_bus_width_detected(is_eeprom_64
+                          ? cartridge::backup::type::eeprom_64
+                          : cartridge::backup::type::eeprom_4);
+                    }
+
+                    return core_->pak.backup_->read(addr);
+                }
+
+                return 1_u16;
             }
             [[fallthrough]];
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:
@@ -323,9 +336,17 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
             memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32, data);
             break;
         case memory_page::pak_ws2_upper:
-            if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)
-              && bitflags::is_set(access, mem_access::dma)) {
-                core_->pak.backup_->write(addr, narrow<u8>(data));
+            if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
+                if(bitflags::is_set(access, mem_access::dma)) {
+                    if(UNLIKELY(core_->pak.backup_type() == cartridge::backup::type::eeprom_undetected)) {
+                        const bool is_eeprom_64 = dma_controller_.channels[3_usize].internal.count == 17_u8;
+                        core_->pak.on_eeprom_bus_width_detected(is_eeprom_64
+                          ? cartridge::backup::type::eeprom_64
+                          : cartridge::backup::type::eeprom_4);
+                    }
+
+                    core_->pak.backup_->write(addr, narrow<u8>(data));
+                }
                 break;
             }
             [[fallthrough]];

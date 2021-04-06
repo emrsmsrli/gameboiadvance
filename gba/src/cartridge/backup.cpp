@@ -14,6 +14,14 @@ ENABLE_BITFLAG_OPS(gba::cartridge::backup_flash::cmd);
 
 namespace gba::cartridge {
 
+void backup::set_size(const usize size) noexcept
+{
+    size_ = size;
+    if(size < data_.size()) {
+        data_.resize(size);
+    }
+}
+
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
 {
     constexpr u64 read_request_pattern = 0b11_u64;
@@ -112,6 +120,12 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
     }
 
     return 0_u8;
+}
+
+void backup_eeprom::set_size(const usize size) noexcept
+{
+    backup::set_size(size);
+    bus_width_ = size == 8_kb ? 14_u8 : 6_u8;
 }
 
 void backup_sram::write(const u32 address, const u8 value) noexcept

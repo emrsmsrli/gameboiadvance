@@ -55,6 +55,8 @@ public:
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }
     [[nodiscard]] backup::type backup_type() const noexcept { return backup_type_; }
 
+    void on_eeprom_bus_width_detected(backup::type eeprom_type) noexcept;
+
 private:
     void detect_backup_type() noexcept;
 };

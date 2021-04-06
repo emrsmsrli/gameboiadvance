@@ -62,6 +62,7 @@ void gamepak_debugger::draw() const noexcept
                 switch(backup_type) {
                     case cartridge::backup::type::detect: return "detect";
                     case cartridge::backup::type::none: return "none";
+                    case cartridge::backup::type::eeprom_undetected: return "eeprom_undetected";
                     case cartridge::backup::type::eeprom_4: return "eeprom_4";
                     case cartridge::backup::type::eeprom_64: return "eeprom_64";
                     case cartridge::backup::type::sram: return "sram";
@@ -97,6 +98,7 @@ void gamepak_debugger::draw() const noexcept
             if(backup_type != cartridge::backup::type::none && backup_type != cartridge::backup::type::sram) {
                 if(ImGui::BeginTabItem(fmt::format("Backup: {}", backup_str()).c_str())) {
                     switch(backup_type) {
+                        case cartridge::backup::type::eeprom_undetected:
                         case cartridge::backup::type::eeprom_4:
                         case cartridge::backup::type::eeprom_64: {
                             auto* eeprom = dynamic_cast<cartridge::backup_eeprom*>(access_private::backup_(pak).get());

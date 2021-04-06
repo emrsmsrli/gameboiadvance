@@ -69,6 +69,7 @@ window::window(core* core) noexcept
     memory_view_.add_entry(memory_view_entry{"VRAM"sv, &access_private::vram_(core->ppu), 0x0600'0000_u32});
     memory_view_.add_entry(memory_view_entry{"OAM"sv, &access_private::oam_(core->ppu), 0x0700'0000_u32});
     switch(core->pak.backup_type()) {
+        case cartridge::backup::type::eeprom_undetected:
         case cartridge::backup::type::eeprom_4:
         case cartridge::backup::type::eeprom_64:
             memory_view_.add_entry(memory_view_entry{

@@ -32,6 +32,8 @@ std::unique_ptr<backup> make_backup_from_type(const backup::type type, const fs:
     switch(type) {
         case backup::type::none:
             return nullptr;
+        case backup::type::eeprom_undetected:
+            return std::make_unique<backup_eeprom>(pak_path);
         case backup::type::eeprom_4:
             return std::make_unique<backup_eeprom>(pak_path, 512_usize);
         case backup::type::eeprom_64:
@@ -117,7 +119,7 @@ void gamepak::detect_backup_type() noexcept
 
     using namespace std::string_view_literals;
     static constexpr array backup_type_strings{
-      std::make_pair("EEPROM_V"sv, backup::type::eeprom_64),
+      std::make_pair("EEPROM_V"sv, backup::type::eeprom_undetected),
       std::make_pair("SRAM_V"sv, backup::type::sram),
       std::make_pair("SRAM_F_V"sv, backup::type::sram),
       std::make_pair("FLASH_V"sv, backup::type::flash_64),
@@ -141,6 +143,17 @@ void gamepak::detect_backup_type() noexcept
     } else {
         LOG_INFO(gamepak, "backup: {}", to_string_view(backup_type_));
     }
+}
+
+void gamepak::on_eeprom_bus_width_detected(const backup::type eeprom_type) noexcept
+{
+    ASSERT(eeprom_type == backup::type::eeprom_4 || eeprom_type == backup::type::eeprom_64);
+
+    backup_type_ = eeprom_type;
+    LOG_INFO(gamepak, "backup: {} (detected eeprom)", to_string_view(backup_type_));
+
+    backup_eeprom* eeprom = static_cast<backup_eeprom*>(backup_.get());
+    eeprom->set_size(eeprom_type == backup::type::eeprom_64 ? 8_kb : 512_usize);
 }
 
 } // namespace gba::cartridge

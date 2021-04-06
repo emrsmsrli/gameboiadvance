@@ -20,7 +20,7 @@ class backup {
     usize size_;
 
 public:
-    enum class type { none, detect, eeprom_4, eeprom_64, sram, flash_64, flash_128 };
+    enum class type { none, detect, eeprom_undetected, eeprom_4, eeprom_64, sram, flash_64, flash_128 };
 
     virtual ~backup() = default;
     backup(const backup&) = default;
@@ -49,6 +49,8 @@ public:
 
     virtual void write(u32 address, u8 value) noexcept = 0;
     [[nodiscard]] virtual u8 read(u32 address) const noexcept = 0;
+
+    virtual void set_size(usize size) noexcept;
 };
 
 class backup_eeprom : public backup {
@@ -72,12 +74,18 @@ public:
     using state_debugger = state;
 #endif // WITH_DEBUGGER
 
-    explicit backup_eeprom(const fs::path& pak_path, const usize size)
+    // intentionally not initialize the size
+    // so we can figure it out on the first write
+    explicit backup_eeprom(const fs::path& pak_path)
+      : backup(pak_path, 8_kb) {}
+    backup_eeprom(const fs::path& pak_path, const usize size)
       : backup(pak_path, size),
         bus_width_{size == 8_kb ? 14_u8 : 6_u8} {}
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
+
+    void set_size(usize size) noexcept final;
 
     [[nodiscard]] u32 get_addr() const noexcept { return address_; }
 
@@ -142,6 +150,7 @@ constexpr std::string_view to_string_view(const backup::type type) noexcept
     switch(type) {
         case backup::type::none: return "none";
         case backup::type::detect: return "detect";
+        case backup::type::eeprom_undetected: return "eeprom_undetected";
         case backup::type::eeprom_4: return "eeprom_4";
         case backup::type::eeprom_64: return "eeprom_64";
         case backup::type::sram: return "sram";
