@@ -265,13 +265,6 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
         case memory_page::pak_ws2_upper:
             if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
                 if(bitflags::is_set(access, mem_access::dma)) {
-                    if(UNLIKELY(core_->pak.backup_type() == cartridge::backup::type::eeprom_undetected)) {
-                        const bool is_eeprom_64 = dma_controller_.channels[3_usize].internal.count == 17_u8;
-                        core_->pak.on_eeprom_bus_width_detected(is_eeprom_64
-                          ? cartridge::backup::type::eeprom_64
-                          : cartridge::backup::type::eeprom_4);
-                    }
-
                     return core_->pak.backup_->read(addr);
                 }
 
