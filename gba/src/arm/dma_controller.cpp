@@ -96,7 +96,7 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
     channel.cnt.when = to_enum<channel::control::timing>(((data >> 4_u8) & 0b11_u8));
     channel.cnt.drq = idx == 3_usize && bit::test(data, 3_u8);
     channel.cnt.size = to_enum<channel::control::transfer_size>(bit::extract(data, 2_u8));
-    channel.cnt.repeat = bit::test(data, 1_u8);
+    channel.cnt.repeat = channel.cnt.when != channel::control::timing::immediately && bit::test(data, 1_u8);
     channel.cnt.src_control = to_enum<channel::control::address_control>(
       bit::extract(from_enum<u8>(channel.cnt.src_control), 0_u8) | (bit::extract(data, 0_u8) << 1_u8));
 
