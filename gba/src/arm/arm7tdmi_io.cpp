@@ -825,15 +825,13 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_bg3y + 2:    ppu.bg3_.y_ref.set_byte<2_u8>(data); break;
         case ppu::addr_bg3y + 3:    ppu.bg3_.y_ref.set_byte<3_u8>(data); break;
 
-        // todo Garbage values of X2>240 or X1>X2 are interpreted as X2=240.
-        case ppu::addr_win0h:       ppu.win0_.bottom_right.x = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win0h:       ppu.win0_.bottom_right.x = data; break;
         case ppu::addr_win0h + 1:   ppu.win0_.top_left.x = data; break;
-        case ppu::addr_win1h:       ppu.win1_.bottom_right.x = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win1h:       ppu.win1_.bottom_right.x = data; break;
         case ppu::addr_win1h + 1:   ppu.win1_.top_left.x = data; break;
-        // todo Garbage values of Y2>160 or Y1>Y2 are interpreted as Y2=160.
-        case ppu::addr_win0v:       ppu.win0_.bottom_right.y = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win0v:       ppu.win0_.bottom_right.y = data; break;
         case ppu::addr_win0v + 1:   ppu.win0_.top_left.y = data; break;
-        case ppu::addr_win1v:       ppu.win1_.bottom_right.y = data; break; // fixme + 1 (GBATEK, means -1 actually, see mosaic)
+        case ppu::addr_win1v:       ppu.win1_.bottom_right.y = data; break;
         case ppu::addr_win1v + 1:   ppu.win1_.top_left.y = data; break;
         case ppu::addr_winin:       win_enable_write(ppu.win_in_.win0, data); break;
         case ppu::addr_winin + 1:   win_enable_write(ppu.win_in_.win1, data); break;
