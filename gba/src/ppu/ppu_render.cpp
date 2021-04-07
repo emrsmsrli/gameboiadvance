@@ -337,9 +337,9 @@ color engine::blend(const color first, const color second, const bldcnt::effect 
             const u32 evy = std::min(max_ev, blend_settings_.evy);
             color_unpacked unpacked = unpack(first);
 
-            unpacked.r -=  narrow<u8>((unpacked.r * evy) >> 4_u8);
-            unpacked.g -=  narrow<u8>((unpacked.g * evy) >> 4_u8);
-            unpacked.b -=  narrow<u8>((unpacked.b * evy) >> 4_u8);
+            unpacked.r -= narrow<u8>((unpacked.r * evy) >> 4_u8);
+            unpacked.g -= narrow<u8>((unpacked.g * evy) >> 4_u8);
+            unpacked.b -= narrow<u8>((unpacked.b * evy) >> 4_u8);
 
             return pack(unpacked);
         }

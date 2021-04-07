@@ -5,8 +5,8 @@
  * Refer to the included LICENSE file.
  */
 
-#ifndef GAMEBOIADVANCE_TYPES_H
-#define GAMEBOIADVANCE_TYPES_H
+#ifndef GAMEBOIADVANCE_PPU_TYPES_H
+#define GAMEBOIADVANCE_PPU_TYPES_H
 
 #include <type_traits>
 
@@ -359,4 +359,4 @@ struct obj_buffer_entry {
 
 } // namespace gba::ppu
 
-#endif //GAMEBOIADVANCE_TYPES_H
+#endif //GAMEBOIADVANCE_PPU_TYPES_H
