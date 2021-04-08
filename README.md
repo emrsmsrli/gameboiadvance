@@ -29,7 +29,7 @@ its features are limited compared to other emulators.
 <p align="center">
     <img src="screenshots/zelda.png" height=240 />
     <img src="screenshots/pokeemerald.png" height=240 />
-    <img src="screenshots/waio.png" height=240 />
+    <img src="screenshots/wario.png" height=240 />
 </p>
 <p align="center">
     <img src="screenshots/doom.png" height=240 />
