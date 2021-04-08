@@ -749,7 +749,7 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
             core_->keypad.keycnt_.select = bit::set_byte(core_->keypad.keycnt_.select, 1_u8, data & 0b11_u8);
             core_->keypad.keycnt_.enabled = bit::test(data, 6_u8);
             core_->keypad.keycnt_.cond_strategy =
-              to_enum<keypad::keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8));
+              to_enum<keypad::irq_control::condition_strategy>(bit::extract(data, 7_u8));
             if(core_->keypad.interrupt_available()) {
                 request_interrupt(arm::interrupt_source::keypad);
             }

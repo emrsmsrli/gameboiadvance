@@ -12,32 +12,32 @@
 
 namespace gba::keypad {
 
-struct keypad {
-    struct irq_control {
-        enum class condition_strategy : u8::type { any, all };
-
-        u16 select;
-        bool enabled = false;
-        condition_strategy cond_strategy = condition_strategy::any;
-    };
-
-    enum class key : u8::type {
-        a = 0_u8,
-        b = 1_u8,
-        select = 2_u8,
-        start = 3_u8,
-        right = 4_u8,
-        left = 5_u8,
-        up = 6_u8,
-        down = 7_u8,
-        right_shoulder = 8_u8,
-        left_shoulder = 9_u8,
+enum class key : u8::type {
+    a = 0_u8,
+    b = 1_u8,
+    select = 2_u8,
+    start = 3_u8,
+    right = 4_u8,
+    left = 5_u8,
+    up = 6_u8,
+    down = 7_u8,
+    right_shoulder = 8_u8,
+    left_shoulder = 9_u8,
 
 #if WITH_DEBUGGER
-        max = 10_u8
+    max = 10_u8
 #endif // WITH_DEBUGGER
-    };
+};
 
+struct irq_control {
+    enum class condition_strategy : u8::type { any, all };
+
+    u16 select;
+    bool enabled = false;
+    condition_strategy cond_strategy = condition_strategy::any;
+};
+
+struct keypad {
     u16 keyinput_ = 0x03FF_u16;
     irq_control keycnt_;
 
