@@ -17,9 +17,7 @@ namespace gba::cartridge {
 void backup::set_size(const usize size) noexcept
 {
     size_ = size;
-    if(size < data_.size()) {
-        data_.resize(size);
-    }
+    data_.resize(size);
 }
 
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
