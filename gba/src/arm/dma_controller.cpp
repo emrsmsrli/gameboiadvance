@@ -159,12 +159,13 @@ void controller::run_channels() noexcept
             case channel::control::transfer_size::hword: {
                 if(LIKELY(channel->internal.src >= 0x0200'0000_u32)) {
                     const u16 data = arm_->read_16(channel->internal.src, channel->next_access_type);
-                    latch_ = (widen<u32>(data) << 16_u32) | data;
+                    channel->latch = (widen<u32>(data) << 16_u32) | data;
+                    latch_ = channel->latch;
                 } else {
                     arm_->tick_internal();
                 }
 
-                arm_->write_16(channel->internal.dst, narrow<u16>(latch_), channel->next_access_type);
+                arm_->write_16(channel->internal.dst, narrow<u16>(channel->latch), channel->next_access_type);
 
                 static constexpr array modify_offsets{2_i32, -2_i32, 0_i32, 2_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];
@@ -173,12 +174,13 @@ void controller::run_channels() noexcept
             }
             case channel::control::transfer_size::word: {
                 if(LIKELY(channel->internal.src >= 0x0200'0000_u32)) {
-                    latch_ = arm_->read_32(channel->internal.src, channel->next_access_type);
+                    channel->latch = arm_->read_32(channel->internal.src, channel->next_access_type);
+                    latch_ = channel->latch;
                 } else {
                     arm_->tick_internal();
                 }
 
-                arm_->write_32(channel->internal.dst, latch_, channel->next_access_type);
+                arm_->write_32(channel->internal.dst, channel->latch, channel->next_access_type);
 
                 static constexpr array modify_offsets{4_i32, -4_i32, 0_i32, 4_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];

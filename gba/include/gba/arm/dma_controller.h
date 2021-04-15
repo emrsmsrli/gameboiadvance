@@ -53,6 +53,7 @@ struct channel : data {
 
     control cnt;
     data internal;
+    u32 latch;
 
     arm::mem_access next_access_type;
 
