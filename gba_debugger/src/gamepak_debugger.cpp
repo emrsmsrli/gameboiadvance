@@ -104,7 +104,12 @@ void gamepak_debugger::draw() const noexcept
                             auto* eeprom = dynamic_cast<cartridge::backup_eeprom*>(access_private::backup_(pak).get());
                             ASSERT(eeprom);
                             ImGui::Text("bus width: {}", access_private::bus_width_(eeprom));
-                            ImGui::Text("buffer: {:0B}", access_private::buffer_(eeprom));
+                            static bool enable_buffer_bit_view = false;
+                            ImGui::Checkbox("", &enable_buffer_bit_view); ImGui::SameLine();
+                            if(ImGui::IsItemClicked()) { // hack
+                                enable_buffer_bit_view = !enable_buffer_bit_view;
+                            }
+                            ImGui::Text(enable_buffer_bit_view ? "buffer: {:064B}" : "buffer: {:016X}", access_private::buffer_(eeprom));
                             ImGui::Text("transmission count: {}", access_private::transmission_count_(eeprom));
                             ImGui::Text("in read mode: {}", access_private::read_mode_(eeprom));
                             ImGui::Text("state: {}", [&]() {
