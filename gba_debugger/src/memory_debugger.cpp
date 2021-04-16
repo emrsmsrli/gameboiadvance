@@ -42,13 +42,20 @@ void do_draw(const memory_view_entry& entry) noexcept
 
 } // namespace
 
-void disassembly_view::draw_with_mode(const bool thumb_mode) noexcept
+void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
 {
     if(ImGui::Begin("Disassembly")) {
-        // todo breakpoints ImDrawList* draw_list = ImGui::GetWindowDrawList();
         if(ImGui::BeginTabBar("#disassembly_tab")) {
             for(const memory_view_entry& entry : entries_) {
                 if(ImGui::BeginTabItem(entry.name.data())) {
+                    static int mode = 0;
+                    static constexpr array modes{"auto", "arm", "thumb"};
+                    ImGui::Combo("mode", &mode, modes.data(), modes.size().get());
+
+                    if(mode > 0) {
+                        thumb_mode = mode == 2;
+                    }
+
                     ImGui::BeginChild("#disassembly_child");
                     if(thumb_mode) {
                         do_draw<u16>(entry);
