@@ -187,12 +187,32 @@ void gamepak_debugger::draw() const noexcept
                 if(ImGui::BeginTabItem("RTC")) {
                     auto& rtc = access_private::rtc_(pak);
 
-                    ImGui::TextUnformatted("GPIO data"); ImGui::Separator();
-                    ImGui::Text("pin states: {:0B}", access_private::pin_states_(rtc));
-                    ImGui::Text("pin directions: {:0B}", access_private::directions_(rtc));
+                    if(ImGui::BeginTable("#rtc_pininfo", 5, ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+                        const u8 pin_states = access_private::pin_states_(rtc);
+                        const u8 pin_directions = access_private::directions_(rtc);
+
+                        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+                        ImGui::TableSetColumnIndex(1); ImGui::TextUnformatted("p3");
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted("cs");
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted("sio");
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted("sck");
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn(); ImGui::Text("states:     {:04B}", pin_states);
+                        ImGui::TableNextColumn(); ImGui::Text("{}", bit::extract(pin_states, 3_u8));
+                        ImGui::TableNextColumn(); ImGui::Text("{}", bit::extract(pin_states, 2_u8));
+                        ImGui::TableNextColumn(); ImGui::Text("{}", bit::extract(pin_states, 1_u8));
+                        ImGui::TableNextColumn(); ImGui::Text("{}", bit::extract(pin_states, 0_u8));
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn(); ImGui::Text("directions: {:04B}", pin_directions);
+                        ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 3_u8), bit::test(pin_directions, 3_u8) ? "out" : "in");
+                        ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 2_u8), bit::test(pin_directions, 2_u8) ? "out" : "in");
+                        ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 1_u8), bit::test(pin_directions, 1_u8) ? "out" : "in");
+                        ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 0_u8), bit::test(pin_directions, 0_u8) ? "out" : "in");
+                        ImGui::EndTable();
+                    }
                     ImGui::Text("remaining bytes: {}", access_private::remaining_bytes_(rtc));
                     ImGui::Text("read bits: {}", access_private::bits_read_(rtc));
-                    ImGui::Text("bit buffer: {:0B}", access_private::bit_buffer_(rtc));
+                    ImGui::Text("bit buffer: {:08B}", access_private::bit_buffer_(rtc));
                     ImGui::Text("read allowed: {}", access_private::read_allowed_(rtc));
 
                     ImGui::TextUnformatted("RTC data"); ImGui::Separator();
@@ -223,13 +243,17 @@ void gamepak_debugger::draw() const noexcept
                     ImGui::TextUnformatted("Time"); ImGui::Separator();
 
                     auto& time = access_private::time_regs_(rtc);
-                    ImGui::Text("year:  {:X}", time[0_usize]);
-                    ImGui::Text("month: {:X}", time[1_usize]);
-                    ImGui::Text("mday:  {:X}", time[2_usize]);
-                    ImGui::Text("wday:  {:X}", time[3_usize]);
-                    ImGui::Text("hour:  {:X}", time[4_usize]);
-                    ImGui::Text("min:   {:X}", time[5_usize]);
-                    ImGui::Text("sec:   {:X}", time[6_usize]);
+                    ImGui::BeginGroup();
+                    ImGui::Text("year:  {:X} ({})", time[0_usize], time[0_usize]);
+                    ImGui::Text("month: {:X} ({})", time[1_usize], time[1_usize]);
+                    ImGui::Text("mday:  {:X} ({})", time[2_usize], time[2_usize]);
+                    ImGui::Text("wday:  {:X} ({})", time[3_usize], time[3_usize]);
+                    ImGui::EndGroup(); ImGui::SameLine(0.f, 100.f);
+                    ImGui::BeginGroup();
+                    ImGui::Text("hour:  {:X} ({})", time[4_usize], time[4_usize]);
+                    ImGui::Text("min:   {:X} ({})", time[5_usize], time[5_usize]);
+                    ImGui::Text("sec:   {:X} ({})", time[6_usize], time[6_usize]);
+                    ImGui::EndGroup();
 
                     ImGui::EndTabItem();
                 }
