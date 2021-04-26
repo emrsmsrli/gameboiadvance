@@ -183,6 +183,8 @@ bool window::draw() noexcept
         ImGui::Text("Scheduled event count: {}", access_private::heap_(core_->schdlr).size());
     }
 
+    ImGui::End();
+
     if(ImGui::Begin("Stats")) {
         static array framerates{0, 30, 60, 120, 144, 0};
         static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
