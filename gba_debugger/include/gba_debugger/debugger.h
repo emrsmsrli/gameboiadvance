@@ -26,6 +26,10 @@ class window {
     sf::Event window_event_;
     sf::Clock dt_;
 
+    sf::Clock frame_dt_;
+    usize total_frames_;
+    float total_frame_time_ = 0.f;
+
     core* core_;
     disassembly_view disassembly_view_;
     memory_view memory_view_;

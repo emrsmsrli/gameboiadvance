@@ -98,7 +98,8 @@ window::window(core* core) noexcept
     }
 
     window_.resetGLStates();
-    window_.setVerticalSyncEnabled(true);
+    window_.setVerticalSyncEnabled(false);
+    window_.setFramerateLimit(60);
     ImGui::SFML::Init(window_);
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
@@ -166,7 +167,8 @@ bool window::draw() noexcept
         core_->arm.tick();
     }
 
-    ImGui::SFML::Update(window_, dt_.restart());
+    const sf::Time dt = dt_.restart();
+    ImGui::SFML::Update(window_, dt);
 
     disassembly_view_.draw_with_mode(access_private::cpsr_(core_->arm).t);
     memory_view_.draw();
@@ -179,6 +181,26 @@ bool window::draw() noexcept
         ImGui::Text("Cycles: {}", core_->schdlr.now());
         ImGui::Text("Cycles to next event: {}", core_->schdlr.remaining_cycles_to_next_event());
         ImGui::Text("Scheduled event count: {}", access_private::heap_(core_->schdlr).size());
+    }
+
+    if(ImGui::Begin("Stats")) {
+        static array framerates{0, 30, 60, 120, 144, 0};
+        static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
+        static int framerate_idx = 2;
+        ImGui::SetNextItemWidth(150.f);
+        if(ImGui::Combo("framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
+            window_.setFramerateLimit(framerates[static_cast<u32::type>(framerate_idx)]);
+            window_.setVerticalSyncEnabled(framerate_idx == 5);
+
+            total_frames_ = 0_usize;
+            total_frame_time_ = 0.f;
+        }
+
+        ImGui::Text("current FPS: {}", 1.f / dt.asSeconds());
+        ImGui::Text("frame count: {}", total_frames_);
+        ImGui::Text("avg frametime: {}", total_frames_ == 0_usize
+          ? 0.f
+          : total_frame_time_ / total_frames_.get());
     }
 
     ImGui::End();
@@ -260,6 +282,11 @@ void window::on_scanline(u8, const ppu::scanline_buffer&) noexcept
 
 void window::on_vblank() noexcept
 {
+    if(const float frame_time = frame_dt_.restart().asSeconds(); frame_time < .3f) {
+        ++total_frames_;
+        total_frame_time_ += frame_time;
+    }
+
     if(execution_request_ == arm_debugger::execution_request::frame) {
         tick_allowed_ = false;
         execution_request_ = arm_debugger::execution_request::none;
