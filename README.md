@@ -29,17 +29,17 @@ its features are limited compared to other emulators.
 ## Screenshots
 
 <p align="center">
-    <img src=".github/screenshots/zelda.png" height=240 />
-    <img src=".github/screenshots/pokeemerald.png" height=240 />
-    <img src=".github/screenshots/wario.png" height=240 />
+    <img src=".github/screenshots/zelda.png" height=200 />
+    <img src=".github/screenshots/pokeemerald.png" height=200 />
+    <img src=".github/screenshots/wario.png" height=200 />
 </p>
 <p align="center">
-    <img src=".github/screenshots/doom.png" height=240 />
-    <img src=".github/screenshots/advancewars.png" height=240 />
-    <img src=".github/screenshots/supermario.png" height=240 />
+    <img src=".github/screenshots/doom.png" height=200 />
+    <img src=".github/screenshots/advancewars.png" height=200 />
+    <img src=".github/screenshots/supermario.png" height=200 />
 </p>
 <p align="center">
-    <img src=".github/screenshots/debugger.png" width=750 />
+    <img src=".github/screenshots/debugger.png" width=800 />
 </p>
 
 ## Using as a library
