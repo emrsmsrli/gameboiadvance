@@ -1,3 +1,5 @@
+<img src=".github/logo/logo.png" />
+
 # gameboi advance
 
 [![Build Status](https://travis-ci.com/emrsmsrli/gameboiadvance.svg?branch=master)](https://travis-ci.com/emrsmsrli/gameboiadvance)
@@ -27,17 +29,17 @@ its features are limited compared to other emulators.
 ## Screenshots
 
 <p align="center">
-    <img src="screenshots/zelda.png" height=240 />
-    <img src="screenshots/pokeemerald.png" height=240 />
-    <img src="screenshots/wario.png" height=240 />
+    <img src=".github/screenshots/zelda.png" height=240 />
+    <img src=".github/screenshots/pokeemerald.png" height=240 />
+    <img src=".github/screenshots/wario.png" height=240 />
 </p>
 <p align="center">
-    <img src="screenshots/doom.png" height=240 />
-    <img src="screenshots/advancewars.png" height=240 />
-    <img src="screenshots/supermario.png" height=240 />
+    <img src=".github/screenshots/doom.png" height=240 />
+    <img src=".github/screenshots/advancewars.png" height=240 />
+    <img src=".github/screenshots/supermario.png" height=240 />
 </p>
 <p align="center">
-    <img src="screenshots/debugger.png" width=750 />
+    <img src=".github/screenshots/debugger.png" width=750 />
 </p>
 
 ## Using as a library
