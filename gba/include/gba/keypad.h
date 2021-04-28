@@ -46,11 +46,14 @@ struct keypad {
 
     [[nodiscard]] bool interrupt_available() const noexcept
     {
-        if(keyinput_ == 0_u16) { return false; }
+        if(!keycnt_.enabled) {
+            return false;
+        }
 
+        const u16 input_mask = ~keyinput_ & 0x03FF_u16;
         switch(keycnt_.cond_strategy) {
-            case irq_control::condition_strategy::any: return (keycnt_.select & keyinput_) != 0_u16;
-            case irq_control::condition_strategy::all: return keycnt_.select == keyinput_;
+            case irq_control::condition_strategy::any: return (keycnt_.select & input_mask) != 0_u16;
+            case irq_control::condition_strategy::all: return keycnt_.select == input_mask;
             default:
                 UNREACHABLE();
         }
