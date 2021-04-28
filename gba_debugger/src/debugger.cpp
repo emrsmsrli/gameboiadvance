@@ -61,6 +61,7 @@ window::window(core* core) noexcept
     disassembly_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
     disassembly_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(core->arm), 0x0200'0000_u32});
     disassembly_view_.add_entry(memory_view_entry{"IWRAM"sv, &access_private::iwram_(core->arm), 0x0300'0000_u32});
+    disassembly_view_.add_custom_disassembly_entry();
 
     memory_view_.add_entry(memory_view_entry{"ROM"sv, &access_private::pak_data_(core->pak), 0x0800'0000_u32});
     memory_view_.add_entry(memory_view_entry{"EWRAM"sv, &access_private::wram_(core->arm), 0x0200'0000_u32});
