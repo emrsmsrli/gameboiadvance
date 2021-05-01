@@ -64,7 +64,7 @@ void channel::write_count(const u8 n, const u8 data) noexcept
 u8 channel::read_cnt_l() const noexcept
 {
     return from_enum<u8>(cnt.dst_control) << 5_u8
-      | bit::extract(from_enum<u8>(cnt.src_control), 1_u8) << 7_u8;
+      | bit::extract(from_enum<u8>(cnt.src_control), 0_u8) << 7_u8;
 }
 
 u8 channel::read_cnt_h() const noexcept
