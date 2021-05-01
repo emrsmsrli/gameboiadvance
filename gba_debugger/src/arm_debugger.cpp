@@ -850,7 +850,7 @@ void arm_debugger::draw_disassembly() noexcept
             // probably something is broken at this point
             // or we're execution in vram, which is very unlikely
             // don't think we'll support disassembly for it
-            LOG_WARN(debugger, "unknown execution page");
+            LOG_WARN(debugger, "unknown execution page {:02X}", pc >> 24_u32);
             return;
         }
 
