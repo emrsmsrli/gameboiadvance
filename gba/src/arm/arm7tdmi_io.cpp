@@ -206,7 +206,7 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(is_sram_flash(core_->pak.backup_type())) {
-                return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
+                core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u32 * (addr & 0b11_u32))));
             }
             break;
         default:
@@ -355,7 +355,7 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(is_sram_flash(core_->pak.backup_type())) {
-                return core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
+                core_->pak.backup_->write(addr, narrow<u8>(data >> (8_u16 * (narrow<u16>(addr) & 0b1_u16))));
             }
             break;
         default:
@@ -454,7 +454,7 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
             addr &= 0x0EFF'FFFF_u32;
             if(is_sram_flash(core_->pak.backup_type())) {
-                return core_->pak.backup_->write(addr, data);
+                core_->pak.backup_->write(addr, data);
             }
             break;
         default:
