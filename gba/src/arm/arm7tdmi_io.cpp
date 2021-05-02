@@ -501,7 +501,7 @@ u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
                     data = pipeline_.executing | (pipeline_.decoding << 16_u32);
                 } else {
                     // LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
-                    data = (widen<u32>(read_16(r15_ + 6_u32, mem_access::dry_run)) << 16_u32) | pipeline_.decoding;
+                    data = (widen<u32>(read_16(r15_ + 2_u32, mem_access::dry_run)) << 16_u32) | pipeline_.decoding;
                 }
                 break;
             case memory_page::iwram:
