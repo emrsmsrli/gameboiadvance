@@ -132,7 +132,7 @@ ppu_debugger::ppu_debugger(ppu::engine* engine)
 void ppu_debugger::draw() noexcept
 {
     if(ImGui::Begin("Framebuffer", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        static int draw_scale = 1;
+        static int draw_scale = 2;
         ImGui::SetNextItemWidth(150.f);
         ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
