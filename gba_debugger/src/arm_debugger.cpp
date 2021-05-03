@@ -9,14 +9,16 @@
 
 #include <algorithm>
 #include <sstream>
+#include <string_view>
 
 #include <imgui.h>
 #include <access_private.h>
 
 #include <gba/core.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/breakpoint_database.h>
 #include <gba_debugger/disassembler.h>
-#include <gba/helper/range.h>
+#include <gba_debugger/disassembly_entry.h>
 
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r0_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r1_)
@@ -97,7 +99,7 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         }
     };
 
-    const auto psr_tooltip = [](arm::psr& p) {
+    const auto psr_tooltip = [](arm::psr p) {
         if(ImGui::IsItemHovered()) {
             ImGui::BeginTooltip();
             ImGui::Text("n: {}", p.n);  // signed flag
@@ -324,25 +326,7 @@ std::string_view to_string_view(const arm::debugger_access_width width) noexcept
     }
 }
 
-std::string_view to_string_view(const arm_debugger::access_breakpoint::type type) noexcept
-{
-    switch(type) {
-        case arm_debugger::access_breakpoint::type::read: return "read";
-        case arm_debugger::access_breakpoint::type::write: return "write";
-        case arm_debugger::access_breakpoint::type::read_write: return "read_write";
-        default:
-            UNREACHABLE();
-    }
-}
-
 } // namespace
-
-bool arm_debugger::access_breakpoint::operator==(const arm_debugger::access_breakpoint& other) const noexcept {
-    return address_range.contains(other.address_range)
-      && other.access_width == access_width
-      && other.access_type == access_type
-      && (access_width == arm::debugger_access_width::any || other.data == data);
-}
 
 void arm_debugger::draw() noexcept
 {
@@ -705,19 +689,15 @@ void arm_debugger::draw_execution_breakpoints() noexcept
                 breakpoint.hit_count_target = static_cast<u32::type>(hit_count_target_buf);
             }
 
-            if(std::find(
-              execution_breakpoints_.begin(),
-              execution_breakpoints_.end(), breakpoint) == execution_breakpoints_.end())
-            {
+            if(bp_db_->add_execution_breakpoint(breakpoint)) {
                 hit_count_target_buf = 0;
-                execution_breakpoints_.push_back(breakpoint);
             }
         }
     }
 
     ImGui::Spacing();
     ImGui::Spacing();
-    draw_bps(execution_breakpoints_, [](const execution_breakpoint& bp) {
+    draw_bps(bp_db_->get_execution_breakpoints(), [](const execution_breakpoint& bp) {
         ImGui::Text("{:08X} | hit count: {} | hit target: {}", bp.address, bp.hit_count, bp.hit_count_target);
     });
 }
@@ -792,22 +772,7 @@ void arm_debugger::draw_access_breakpoints() noexcept
                     breakpoint.data = static_cast<u32::type>(std::strtoul(data_buf.data(), nullptr, 16));
                 }
 
-                const auto not_exists_with_access = [&](access_breakpoint bp,
-                  arm::debugger_access_width width, access_breakpoint::type type) {
-                    bp.access_width = width;
-                    bp.access_type = type;
-                    return std::find(
-                      access_breakpoints_.begin(),
-                      access_breakpoints_.end(), bp) == access_breakpoints_.end();
-                };
-
-                if(not_exists_with_access(breakpoint, arm::debugger_access_width::any, access_breakpoint::type::read_write)
-                  && not_exists_with_access(breakpoint, breakpoint.access_width, access_breakpoint::type::read_write)
-                  && not_exists_with_access(breakpoint, arm::debugger_access_width::any, breakpoint.access_type)
-                  && not_exists_with_access(breakpoint, breakpoint.access_width, breakpoint.access_type)
-                ) {
-                    access_breakpoints_.push_back(breakpoint);
-                }
+                bp_db_->add_access_breakpoint(breakpoint);
             } else {
                 incorrect_range = true;
             }
@@ -816,7 +781,7 @@ void arm_debugger::draw_access_breakpoints() noexcept
 
     ImGui::Spacing();
     ImGui::Spacing();
-    draw_bps(access_breakpoints_, [](const access_breakpoint& bp) {
+    draw_bps(bp_db_->get_access_breakpoints(), [](const access_breakpoint& bp) {
         ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X}",
           bp.address_range.min(), bp.address_range.max(),
           to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
@@ -864,112 +829,20 @@ void arm_debugger::draw_disassembly() noexcept
             instr_idx -= 9_u32;
         }
 
-        const auto get_execution_breakpoint = [&](const u32 address) {
-            return std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
-              [&](const execution_breakpoint& bp) { return bp.address == address; });
-        };
-
-        const auto modify_execution_breakpoint = [&](const u32 address, bool toggle) {
-            const auto it = get_execution_breakpoint(address);
-
-            if(it != execution_breakpoints_.end()) {
-                if(toggle) {
-                    it->enabled = !it->enabled;
-                } else {
-                    execution_breakpoints_.erase(it);
-                }
-            } else {
-                execution_breakpoints_.push_back(execution_breakpoint{address, 0_u32, std::nullopt, true});
-            }
-        };
-
         const usize max = std::min(15_usize + instr_idx, memory->size() / instr_width);
         for(; instr_idx < max; ++instr_idx) {
             const u32 physical_address = instr_width * narrow<u32>(instr_idx);
             const u32 virtual_address = physical_address + offset;
 
-            ImGui::BeginGroup();
-            const float radius = ImGui::GetTextLineHeight() * .5f + 1.f;
-            if(const auto it = get_execution_breakpoint(virtual_address); it != execution_breakpoints_.end()) {
-                ImVec2 cursor = ImGui::GetCursorScreenPos();
-                if(it->enabled) {
-                    ImGui::GetWindowDrawList()->AddCircleFilled(ImVec2(cursor.x + radius, cursor.y + radius),
-                      radius, 0xFF0000FF);
-                } else {
-                    ImGui::GetWindowDrawList()->AddCircle(ImVec2(cursor.x + radius, cursor.y + radius),
-                      radius, 0xFF0000FF, 0, 1.5f);
-                }
-            }
+            const bool is_thumb = access_private::cpsr_(arm_).t;
+            const u32 instr = is_thumb ? memcpy<u16>(*memory, physical_address) : memcpy<u32>(*memory, physical_address);
+            const bool is_pc = is_thumb ? virtual_address == pc - 4_u32 : virtual_address == pc - 8_u32;
 
-            ImGui::Dummy(ImVec2{radius * 2, radius * 2});
-            ImGui::SameLine(0.f, 5.f);
-
-            if(access_private::cpsr_(arm_).t) {
-                const u16 inst = memcpy<u16>(*memory, physical_address);
-                if(virtual_address == pc - 4_u32) {
-                    ImGui::TextColored(ImColor(0xFF0000FF), "%08X | %04X | %s",
-                      virtual_address.get(), inst.get(),
-                      disassembler::disassemble_thumb(virtual_address, inst).c_str());
-                } else {
-                    ImGui::Text("{:08X} | {:04X} | {}", virtual_address,
-                      inst, disassembler::disassemble_thumb(virtual_address, inst));
-                }
-            } else {
-                const u32 inst = memcpy<u32>(*memory, physical_address);
-                if(virtual_address == pc - 8_u32) {
-                    ImGui::TextColored(ImColor(0xFF0000FF), "%08X | %08X | %s",
-                      virtual_address.get(), inst.get(),
-                      disassembler::disassemble_arm(virtual_address, inst).c_str());
-                } else {
-                    ImGui::Text("{:08X} | {:08X} | {}", virtual_address,
-                      inst, disassembler::disassemble_arm(virtual_address, inst));
-                }
-            }
-            ImGui::EndGroup();
-
-            if(ImGui::IsItemClicked()) {
-                const ImGuiIO& io = ImGui::GetIO();
-                modify_execution_breakpoint(virtual_address, io.KeyShift);
-            }
+            disassembly_entry entry{bp_db_, virtual_address, instr, is_thumb, is_pc};
+            entry.draw();
         }
         ImGui::EndChild();
     }
-}
-
-arm_debugger::execution_breakpoint* arm_debugger::get_execution_breakpoint(const u32 address) noexcept
-{
-    const auto it = std::find_if(execution_breakpoints_.begin(), execution_breakpoints_.end(),
-      [&](const execution_breakpoint& bp) {
-          return bp.enabled && bp.address == address;
-      });
-    if(it == execution_breakpoints_.end()) {
-        return nullptr;
-    }
-    return &*it;
-}
-
-bool arm_debugger::has_enabled_read_breakpoint(const u32 address, const arm::debugger_access_width access_width) noexcept
-{
-    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
-      [&](const access_breakpoint& bp) {
-          return bp.enabled
-            && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
-            && bp.address_range.contains(address)
-            && bitflags::is_set(bp.access_type, access_breakpoint::type::read);
-      }) != access_breakpoints_.end();
-}
-
-bool arm_debugger::has_enabled_write_breakpoint(const u32 address, const u32 data,
-  const arm::debugger_access_width access_width) noexcept
-  {
-    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
-      [&](const access_breakpoint& bp) {
-          return bp.enabled
-            && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
-            && bp.address_range.contains(address)
-            && bitflags::is_set(bp.access_type, access_breakpoint::type::write)
-            && (!bp.data.has_value() || *bp.data == data);
-      }) != access_breakpoints_.end();
 }
 
 } // namespace gba::debugger

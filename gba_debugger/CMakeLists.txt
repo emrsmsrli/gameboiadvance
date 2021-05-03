@@ -3,7 +3,9 @@ project(gba_debugger CXX)
 
 add_library(${PROJECT_NAME} STATIC
         src/debugger.cpp
+        src/breakpoint_database.cpp
         src/disassembler.cpp
+        src/disassembly_entry.cpp
         src/memory_debugger.cpp
         src/arm_debugger.cpp
         src/gamepak_debugger.cpp

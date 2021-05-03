@@ -15,6 +15,8 @@
 
 namespace gba::debugger {
 
+class breakpoint_database;
+
 struct custom_disassembly_entry {};
 
 struct memory_view_entry {
@@ -24,9 +26,13 @@ struct memory_view_entry {
 };
 
 class disassembly_view {
+    breakpoint_database* bp_db_;
     vector<std::variant<custom_disassembly_entry, memory_view_entry>> entries_;
 
 public:
+    disassembly_view(breakpoint_database* bp_db) noexcept
+      : bp_db_(bp_db) {}
+
     void add_entry(memory_view_entry entry) noexcept { entries_.push_back(std::move(entry)); }
     void add_custom_disassembly_entry() noexcept { entries_.push_back(custom_disassembly_entry{}); }
     void draw_with_mode(bool thumb_mode) noexcept;

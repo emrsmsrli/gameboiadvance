@@ -13,6 +13,7 @@
 #include <SFML/Window/Event.hpp>
 
 #include <gba/core/fwd.h>
+#include <gba_debugger/breakpoint_database.h>
 #include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
 #include <gba_debugger/arm_debugger.h>
@@ -31,6 +32,7 @@ class window {
     float total_frame_time_ = 0.f;
 
     core* core_;
+    breakpoint_database breakpoint_database_;
     disassembly_view disassembly_view_;
     memory_view memory_view_;
     gamepak_debugger gamepak_debugger_;

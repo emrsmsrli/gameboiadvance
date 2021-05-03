@@ -50,8 +50,9 @@ window::window(core* core) noexcept
   : window_{sf::VideoMode{1920, 1080}, "GBA Debugger"},
     window_event_{},
     core_{core},
+    disassembly_view_{&breakpoint_database_},
     gamepak_debugger_{&core->pak},
-    arm_debugger_{&core->arm},
+    arm_debugger_{&core->arm, &breakpoint_database_},
     ppu_debugger_{&core->ppu},
     keypad_debugger_{&core->keypad}
 {
@@ -225,8 +226,8 @@ bool window::on_instruction_execute(const u32 address) noexcept
         return false;
     }
 
-    arm_debugger::execution_breakpoint* exec_bp = arm_debugger_.get_execution_breakpoint(address);
-    if(!exec_bp || !should_break) {
+    execution_breakpoint* exec_bp = breakpoint_database_.get_execution_breakpoint(address);
+    if(!exec_bp || !exec_bp->enabled || !should_break) {
         return false;
     }
 
@@ -250,7 +251,7 @@ bool window::on_instruction_execute(const u32 address) noexcept
 
 void window::on_io_read(const u32 address, const arm::debugger_access_width access_type) noexcept
 {
-    if(tick_allowed_ && arm_debugger_.has_enabled_read_breakpoint(address, access_type)) {
+    if(tick_allowed_ && breakpoint_database_.has_enabled_read_breakpoint(address, access_type)) {
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "read breakpoint hit: {:08X}, {} access", address, to_string_view(access_type));
     }
@@ -258,7 +259,7 @@ void window::on_io_read(const u32 address, const arm::debugger_access_width acce
 
 void window::on_io_write(const u32 address, const u32 data, const arm::debugger_access_width access_type) noexcept
 {
-    if(tick_allowed_ && arm_debugger_.has_enabled_write_breakpoint(address, data, access_type)) {
+    if(tick_allowed_ && breakpoint_database_.has_enabled_write_breakpoint(address, data, access_type)) {
         tick_allowed_ = false;
         LOG_DEBUG(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
           address, data, to_string_view(access_type));

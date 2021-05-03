@@ -11,37 +11,10 @@
 #include <imgui_memory_editor/imgui_memory_editor.h>
 
 #include <gba_debugger/disassembler.h>
+#include <gba_debugger/disassembly_entry.h>
 #include <gba/helper/variant_visit.h>
 
 namespace gba::debugger {
-
-namespace {
-
-template<typename InstrType>
-void do_draw(const memory_view_entry& entry) noexcept
-{
-    constexpr auto instr_size = sizeof(InstrType);
-    ImGuiListClipper clipper(static_cast<int>(entry.data->size().get() / instr_size));
-    while(clipper.Step()) {
-        for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-            const auto address = static_cast<u32::type>(instr_size * i);
-            InstrType inst = memcpy<InstrType>(*entry.data, address);
-            if constexpr(instr_size == 2) {
-                ImGui::Text("%08X | %04X | %s",
-                  entry.base_addr.get() + address,
-                  inst.get(),
-                  disassembler::disassemble_thumb(address, inst).c_str());
-            } else {
-                ImGui::Text("%08X | %08X | %s",
-                  entry.base_addr.get() + address,
-                  inst.get(),
-                  disassembler::disassemble_arm(address, inst).c_str());
-            }
-        }
-    }
-}
-
-} // namespace
 
 void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
 {
@@ -60,10 +33,16 @@ void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
                             }
 
                             ImGui::BeginChild("#disassembly_child");
-                            if(thumb_mode) {
-                                do_draw<u16>(entry);
-                            } else {
-                                do_draw<u32>(entry);
+                            const u32::type instr_size = thumb_mode ? 2_u32 : 4_u32;
+                            ImGuiListClipper clipper(static_cast<int>(entry.data->size().get() / instr_size));
+                            while(clipper.Step()) {
+                                for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+                                    const u32 address = static_cast<u32::type>(instr_size * i);
+                                    const u32 instr = thumb_mode ? memcpy<u16>(*entry.data, address) : memcpy<u32>(*entry.data, address);
+
+                                    disassembly_entry disassembly_entry{bp_db_, entry.base_addr + address, instr, thumb_mode, false};
+                                    disassembly_entry.draw();
+                                }
                             }
                             ImGui::EndChild();
                             ImGui::EndTabItem();
