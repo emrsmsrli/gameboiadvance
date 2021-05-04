@@ -201,10 +201,14 @@ bool window::draw() noexcept
         }
 
         ImGui::Text("current FPS: {}", 1.f / dt.asSeconds());
-        ImGui::Text("frame count: {}", total_frames_);
         ImGui::Text("avg frametime: {}", total_frames_ == 0_usize
           ? 0.f
           : total_frame_time_ / total_frames_.get());
+        ImGui::Text("frame count: {}", total_frames_);
+        ImGui::Text("instruction count: {}", total_instructions_); ImGui::SameLine();
+        if(ImGui::Button("reset")) {
+            total_instructions_ = 0_usize;
+        }
     }
 
     ImGui::End();

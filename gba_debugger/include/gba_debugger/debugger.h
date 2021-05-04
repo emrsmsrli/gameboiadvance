@@ -28,6 +28,7 @@ class window {
     sf::Clock dt_;
 
     sf::Clock frame_dt_;
+    usize total_instructions_;
     usize total_frames_;
     float total_frame_time_ = 0.f;
 
