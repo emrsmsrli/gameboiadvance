@@ -201,6 +201,7 @@ bool window::draw() noexcept
         }
 
         ImGui::Text("current FPS: {}", 1.f / dt.asSeconds());
+        ImGui::Text("current frametime: {}", dt.asSeconds());
         ImGui::Text("avg frametime: {}", total_frames_ == 0_usize
           ? 0.f
           : total_frame_time_ / total_frames_.get());
