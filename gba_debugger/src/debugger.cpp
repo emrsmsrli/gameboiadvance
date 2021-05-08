@@ -222,6 +222,8 @@ bool window::draw() noexcept
 
 bool window::on_instruction_execute(const u32 address) noexcept
 {
+    ++total_instructions_;
+
     bool should_break = last_executed_addr_ != address;
     last_executed_addr_ = address;
 
