@@ -18,6 +18,8 @@ namespace gba::debugger {
 
 void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
 {
+    static constexpr array modes{"auto", "arm", "thumb"};
+
     if(ImGui::Begin("Disassembly")) {
         if(ImGui::BeginTabBar("#disassembly_tab")) {
             for(const auto& entry_var : entries_) {
@@ -25,7 +27,6 @@ void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
                     [&](const memory_view_entry& entry) {
                         if(ImGui::BeginTabItem(entry.name.data())) {
                             static int mode = 0;
-                            static constexpr array modes{"auto", "arm", "thumb"};
                             ImGui::Combo("mode", &mode, modes.data(), modes.size().get());
 
                             if(mode > 0) {
@@ -51,13 +52,12 @@ void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
                     [](custom_disassembly_entry) {
                         if(ImGui::BeginTabItem("Custom")) {
                             static int mode = 0;
-                            static constexpr array modes{"arm", "thumb"};
                             static array<char, 9> address_buf{};
                             static array<char, 9> instr_buf{};
                             static u32 inst = 0x0000'0000_u32;
                             static u32 addr = 0x0000'0000_u32;
 
-                            if(ImGui::Combo("mode", &mode, modes.data(), modes.size().get())) {
+                            if(ImGui::Combo("mode", &mode, modes.data() + 1, modes.size().get() - 1)) {
                                 std::memset(instr_buf.data(), 0, 9);
                             }
 
