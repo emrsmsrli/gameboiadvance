@@ -87,10 +87,11 @@ void gamepak::load(const fs::path& path)
 
     detect_backup_type();
     if(has_mirroring_) {
-        mirror_mask_ = 0_u32;
+        mirror_mask_ = 1_u32;
         while(mirror_mask_ < pak_data_.size()) {
             mirror_mask_ <<= 1_u32;
         }
+        mirror_mask_ -= 1_u32;
     } else {
         mirror_mask_ = default_mirror_mask;
     }
