@@ -326,59 +326,57 @@ void ppu_debugger::draw() noexcept
                 ImGui::EndTabItem();
             }
 
-            if(dispcnt.bg_enabled[0_usize]) {
-                if(ImGui::BeginTabItem("BG0")) {
-                    draw_regular_bg_map(access_private::bg0_(ppu_engine));
+            const auto draw_tab = [](const char* name, const bool can_be_opened, auto&& draw_func) {
+                if(!can_be_opened) {
+                    ImGui::PushStyleColor(ImGuiCol_Tab, 0x212529FF);
+                    ImGui::PushStyleColor(ImGuiCol_TabHovered, 0x343A40FF);
+                    ImGui::PushStyleColor(ImGuiCol_TabActive, 0x495057DC);
+                }
+                if(ImGui::BeginTabItem(name)) {
+                    draw_func();
                     ImGui::EndTabItem();
                 }
-            }
+                if(!can_be_opened) {
+                    ImGui::PopStyleColor(3);
+                }
+            };
 
-            if(dispcnt.bg_enabled[1_usize]) {
-                if(ImGui::BeginTabItem("BG1")) {
-                    draw_regular_bg_map(access_private::bg1_(ppu_engine));
-                    ImGui::EndTabItem();
-                }
-            }
+            draw_tab("BG0", dispcnt.bg_enabled[0_usize], [&]() {
+                draw_regular_bg_map(access_private::bg0_(ppu_engine));
+            });
 
-            if(dispcnt.bg_enabled[2_usize]) {
-                if(ImGui::BeginTabItem("BG2")) {
-                    switch(dispcnt.bg_mode.get()) {
-                        case 0:
-                            draw_regular_bg_map(to_regular(access_private::bg2_(ppu_engine)));
-                            break;
-                        case 1: case 2:
-                            draw_affine_bg_map(access_private::bg2_(ppu_engine));
-                            break;
-                        case 3: case 4: case 5:
-                            draw_bitmap_bg(access_private::bg2_(ppu_engine), dispcnt.bg_mode);
-                            break;
-                        default:
-                            ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
-                            break;
-                    }
-                    ImGui::EndTabItem();
-                }
-            }
+            draw_tab("BG1", dispcnt.bg_enabled[1_usize], [&]() {
+                draw_regular_bg_map(access_private::bg1_(ppu_engine));
+            });
 
-            if(dispcnt.bg_enabled[3_usize]) {
-                if(ImGui::BeginTabItem("BG3")) {
-                    switch(dispcnt.bg_mode.get()) {
-                        case 0:
-                            draw_regular_bg_map(to_regular(access_private::bg3_(ppu_engine)));
-                            break;
-                        case 2:
-                            draw_affine_bg_map(access_private::bg3_(ppu_engine));
-                            break;
-                        case 1: case 3: case 4: case 5:
-                            ImGui::Text("not used in mode {}", dispcnt.bg_mode.get());
-                            break;
-                        default:
-                            ImGui::Text("invalid mode {}", dispcnt.bg_mode.get());
-                            break;
-                    }
-                    ImGui::EndTabItem();
+            draw_tab("BG2", dispcnt.bg_enabled[2_usize] && dispcnt.bg_mode < 6_u32, [&]() {
+                switch(dispcnt.bg_mode.get()) {
+                    case 0:
+                        draw_regular_bg_map(to_regular(access_private::bg2_(ppu_engine)));
+                        break;
+                    case 1: case 2:
+                        draw_affine_bg_map(access_private::bg2_(ppu_engine));
+                        break;
+                    case 3: case 4: case 5:
+                        draw_bitmap_bg(access_private::bg2_(ppu_engine), dispcnt.bg_mode);
+                        break;
+                    default:
+                        UNREACHABLE();
                 }
-            }
+            });
+
+            draw_tab("BG3", dispcnt.bg_enabled[3_usize] && dispcnt.bg_mode == 0_u32 || dispcnt.bg_mode == 2_u32, [&]() {
+                switch(dispcnt.bg_mode.get()) {
+                    case 0:
+                        draw_regular_bg_map(to_regular(access_private::bg3_(ppu_engine)));
+                        break;
+                    case 2:
+                        draw_affine_bg_map(access_private::bg3_(ppu_engine));
+                        break;
+                    default:
+                        UNREACHABLE();
+                }
+            });
 
             if(ImGui::BeginTabItem("BG Tiles")) {
                 draw_bg_tiles();
@@ -390,16 +388,14 @@ void ppu_debugger::draw() noexcept
                 ImGui::EndTabItem();
             }
 
-            if(ImGui::BeginTabItem("OAM")) {
+            draw_tab("OAM", dispcnt.obj_enabled, [&]() {
                 draw_obj();
-                ImGui::EndTabItem();
-            }
+            });
 
             const bool any_window_enabled = dispcnt.win0_enabled || dispcnt.win1_enabled || dispcnt.win_obj_enabled;
-            if(any_window_enabled && ImGui::BeginTabItem("Window View")) {
+            draw_tab("Window View", any_window_enabled, [&]() {
                 draw_win_buffer();
-                ImGui::EndTabItem();
-            }
+            });
 
             if(ImGui::BeginTabItem("Palette View")) {
                 const auto draw_palette = [&](const char* name, usize type_offset /*1 for obj*/) {
