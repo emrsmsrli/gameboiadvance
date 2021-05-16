@@ -132,7 +132,7 @@ void controller::run_channels() noexcept
 
     is_running_ = true;
 
-    array<bool, channel_count_> first_run{false, false, false, false};
+    array<bool, channel_count_> first_run{true, true, true, true};
 
     while(!running_channels_.empty()) {
         channel* channel = running_channels_.back(); // always has highest priority
@@ -140,6 +140,7 @@ void controller::run_channels() noexcept
         if(first_run[channel->id]
           && (!addr_in_rom_area(running_channels_.back()->src)
           || !addr_in_rom_area(running_channels_.back()->dst))) {
+            first_run[channel->id] = false;
             arm_->tick_internal();
             arm_->tick_internal();
         }
