@@ -8,6 +8,7 @@
 #include <cxxopts.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <sdl2cpp/sdl_core.h>
 
 #include <gba/core.h>
 #include <gba/version.h>
@@ -47,6 +48,8 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    sdl::init();
+
     gba::vector<gba::u8> bios;
     if(parsed["bios"].count() != 0) {
         bios = gba::fs::read_file(parsed["bios"].as<std::string>());
@@ -63,5 +66,6 @@ int main(int argc, char** argv)
         }
     }
 
+    sdl::quit();
     return 0;
 }

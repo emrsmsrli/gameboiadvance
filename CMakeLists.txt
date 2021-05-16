@@ -75,12 +75,10 @@ target_link_libraries(gameboiadvance PRIVATE
         gba::gba
         $<$<BOOL:${ENABLE_DEBUGGER}>:gba::debugger>
         cxxopts::cxxopts
-        $<IF:$<BOOL:${BUILDING_FOR_RPI3}>,SDL2,SDL2::SDL2>
+        SDL2::CXX
         imgui::sfml
         project_warnings
         project_options)
-
-target_compile_definitions(gameboiadvance PRIVATE SDL_MAIN_HANDLED)
 
 if(ENABLE_TESTING)
     enable_testing()

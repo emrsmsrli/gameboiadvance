@@ -11,7 +11,5 @@ add_library(${PROJECT_NAME} STATIC
 
 add_library(imgui::sfml ALIAS ${PROJECT_NAME})
 
-target_link_libraries(${PROJECT_NAME}
-        PRIVATE sfml-graphics)
-target_include_directories(${PROJECT_NAME}
-        PUBLIC ${PROJECT_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} PUBLIC sfml-graphics project_options)
+target_include_directories(${PROJECT_NAME} PUBLIC include/)
