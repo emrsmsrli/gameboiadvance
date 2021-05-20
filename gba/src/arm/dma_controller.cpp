@@ -276,7 +276,7 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
     }
 }
 
-void controller::on_channel_start(const u64 /*cycles_late*/) noexcept
+void controller::on_channel_start(const u64 /*late_cycles*/) noexcept
 {
     channel* ch = scheduled_channels_.back();
     scheduled_channels_.pop_back();

@@ -80,8 +80,8 @@ private:
 
     using tile_line = array<color, tile_dot_count>;
 
-    void on_hblank(u64 cycles_late) noexcept;
-    void on_hdraw(u64 cycles_late) noexcept;
+    void on_hblank(u64 late_cycles) noexcept;
+    void on_hdraw(u64 late_cycles) noexcept;
 
     void render_scanline() noexcept;
 

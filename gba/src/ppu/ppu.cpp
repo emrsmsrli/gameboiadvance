@@ -43,9 +43,9 @@ void engine::check_vcounter_irq() noexcept
     }
 }
 
-void engine::on_hdraw(const u64 cycles_late) noexcept
+void engine::on_hdraw(const u64 late_cycles) noexcept
 {
-    scheduler_->add_event(cycles_hdraw - cycles_late, {connect_arg<&engine::on_hblank>, this});
+    scheduler_->add_event(cycles_hdraw - late_cycles, {connect_arg<&engine::on_hblank>, this});
     dispstat_.hblank = false;
 
     vcount_ = (vcount_ + 1_u8) % total_lines;
@@ -73,9 +73,9 @@ void engine::on_hdraw(const u64 cycles_late) noexcept
     check_vcounter_irq();
 }
 
-void engine::on_hblank(const u64 cycles_late) noexcept
+void engine::on_hblank(const u64 late_cycles) noexcept
 {
-    scheduler_->add_event(cycles_hblank - cycles_late, {connect_arg<&engine::on_hdraw>, this});
+    scheduler_->add_event(cycles_hblank - late_cycles, {connect_arg<&engine::on_hdraw>, this});
     dispstat_.hblank = true;
 
     if(dispstat_.hblank_irq_enabled) {
