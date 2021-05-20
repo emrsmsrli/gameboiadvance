@@ -29,6 +29,8 @@ struct keypad;
 
 namespace arm {
 
+static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
+
 class arm7tdmi;
 enum class mem_access : u32::type;
 

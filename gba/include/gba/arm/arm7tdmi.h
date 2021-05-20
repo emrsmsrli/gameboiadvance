@@ -195,8 +195,6 @@ public:
     delegate<void(u32, u32, debugger_access_width)> on_io_write;
 #endif // WITH_DEBUGGER
 
-    static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
-
     explicit arm7tdmi(core* core) noexcept : arm7tdmi(core, {}) {}
     arm7tdmi(core* core, vector<u8> bios) noexcept;
 
