@@ -9,6 +9,7 @@
 
 #include <gba/core.h>
 #include <gba/arm/mmio_addr.h>
+#include <gba/arm/timer.h>
 
 namespace gba::arm {
 
@@ -332,7 +333,7 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
             if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
                 if(bitflags::is_set(access, mem_access::dma)) {
                     if(UNLIKELY(core_->pak.backup_type() == cartridge::backup::type::eeprom_undetected)) {
-                        const bool is_eeprom_64 = dma_controller_.channels[3_usize].internal.count == 17_u8;
+                        const bool is_eeprom_64 = core_->dma_controller.channels[3_usize].internal.count == 17_u8;
                         core_->pak.on_eeprom_bus_width_detected(is_eeprom_64
                           ? cartridge::backup::type::eeprom_64
                           : cartridge::backup::type::eeprom_4);
@@ -481,7 +482,7 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
 u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
 {
     if(UNLIKELY(bitflags::is_set(access, mem_access::dma))) {
-        return dma_controller_.latch() >> ((addr & 0b11_u32) << 3_u32);
+        return core_->dma_controller.latch() >> ((addr & 0b11_u32) << 3_u32);
     }
 
     u32 data;
@@ -524,6 +525,8 @@ u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
 u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
 {
     auto& ppu = core_->ppu;
+    auto& timer_controller = core_->timer_controller;
+    auto& dma_controller = core_->dma_controller;
 
     const auto win_enable_read = [](ppu::win_enable_bits& area) {
         return bit::from_bool<u8>(area.bg_enabled[0_usize])
@@ -664,39 +667,39 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
         case sio::addr_joystat + 1:
             return 0_u8;
 
-        case addr_tm0cnt_l:     return timers_[0_usize].read(timer::register_type::cnt_l_lsb);
-        case addr_tm0cnt_l + 1: return timers_[0_usize].read(timer::register_type::cnt_l_msb);
-        case addr_tm0cnt_h:     return timers_[0_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm0cnt_l:     return timer_controller[0_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm0cnt_l + 1: return timer_controller[0_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm0cnt_h:     return timer_controller[0_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm0cnt_h + 1: return 0_u8;
-        case addr_tm1cnt_l:     return timers_[1_usize].read(timer::register_type::cnt_l_lsb);
-        case addr_tm1cnt_l + 1: return timers_[1_usize].read(timer::register_type::cnt_l_msb);
-        case addr_tm1cnt_h:     return timers_[1_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm1cnt_l:     return timer_controller[1_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm1cnt_l + 1: return timer_controller[1_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm1cnt_h:     return timer_controller[1_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm1cnt_h + 1: return 0_u8;
-        case addr_tm2cnt_l:     return timers_[2_usize].read(timer::register_type::cnt_l_lsb);
-        case addr_tm2cnt_l + 1: return timers_[2_usize].read(timer::register_type::cnt_l_msb);
-        case addr_tm2cnt_h:     return timers_[2_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm2cnt_l:     return timer_controller[2_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm2cnt_l + 1: return timer_controller[2_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm2cnt_h:     return timer_controller[2_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm2cnt_h + 1: return 0_u8;
-        case addr_tm3cnt_l:     return timers_[3_usize].read(timer::register_type::cnt_l_lsb);
-        case addr_tm3cnt_l + 1: return timers_[3_usize].read(timer::register_type::cnt_l_msb);
-        case addr_tm3cnt_h:     return timers_[3_usize].read(timer::register_type::cnt_h_lsb);
+        case addr_tm3cnt_l:     return timer_controller[3_usize].read(timer::register_type::cnt_l_lsb);
+        case addr_tm3cnt_l + 1: return timer_controller[3_usize].read(timer::register_type::cnt_l_msb);
+        case addr_tm3cnt_h:     return timer_controller[3_usize].read(timer::register_type::cnt_h_lsb);
         case addr_tm3cnt_h + 1: return 0_u8;
 
         case addr_dma0cnt_l:
         case addr_dma0cnt_l + 1: return 0_u8;
-        case addr_dma0cnt_h:     return dma_controller_.channels[0_usize].read_cnt_l();
-        case addr_dma0cnt_h + 1: return dma_controller_.channels[0_usize].read_cnt_h();
+        case addr_dma0cnt_h:     return dma_controller.channels[0_usize].read_cnt_l();
+        case addr_dma0cnt_h + 1: return dma_controller.channels[0_usize].read_cnt_h();
         case addr_dma1cnt_l:
         case addr_dma1cnt_l + 1: return 0_u8;
-        case addr_dma1cnt_h:     return dma_controller_.channels[1_usize].read_cnt_l();
-        case addr_dma1cnt_h + 1: return dma_controller_.channels[1_usize].read_cnt_h();
+        case addr_dma1cnt_h:     return dma_controller.channels[1_usize].read_cnt_l();
+        case addr_dma1cnt_h + 1: return dma_controller.channels[1_usize].read_cnt_h();
         case addr_dma2cnt_l:
         case addr_dma2cnt_l + 1: return 0_u8;
-        case addr_dma2cnt_h:     return dma_controller_.channels[2_usize].read_cnt_l();
-        case addr_dma2cnt_h + 1: return dma_controller_.channels[2_usize].read_cnt_h();
+        case addr_dma2cnt_h:     return dma_controller.channels[2_usize].read_cnt_l();
+        case addr_dma2cnt_h + 1: return dma_controller.channels[2_usize].read_cnt_h();
         case addr_dma3cnt_l:
         case addr_dma3cnt_l + 1: return 0_u8;
-        case addr_dma3cnt_h:     return dma_controller_.channels[3_usize].read_cnt_l();
-        case addr_dma3cnt_h + 1: return dma_controller_.channels[3_usize].read_cnt_h();
+        case addr_dma3cnt_h:     return dma_controller.channels[3_usize].read_cnt_l();
+        case addr_dma3cnt_h + 1: return dma_controller.channels[3_usize].read_cnt_h();
 
         case addr_ime:     return bit::from_bool<u8>(ime_);
         case addr_ime + 1: return 0_u8;
@@ -728,6 +731,8 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 {
     auto& ppu = core_->ppu;
+    auto& timer_controller = core_->timer_controller;
+    auto& dma_controller = core_->dma_controller;
 
     const auto win_enable_write = [](ppu::win_enable_bits& area, const u8 data) {
         area.bg_enabled[0_usize] = bit::test(data, 0_u8);
@@ -883,67 +888,67 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_bldy:         ppu.blend_settings_.evy = data & 0x1F_u8; break;
 
         // cnt_h_msb is unused
-        case addr_tm0cnt_l:     timers_[0_usize].write(timer::register_type::cnt_l_lsb, data); break;
-        case addr_tm0cnt_l + 1: timers_[0_usize].write(timer::register_type::cnt_l_msb, data); break;
-        case addr_tm0cnt_h:     timers_[0_usize].write(timer::register_type::cnt_h_lsb, data); break;
-        case addr_tm1cnt_l:     timers_[1_usize].write(timer::register_type::cnt_l_lsb, data); break;
-        case addr_tm1cnt_l + 1: timers_[1_usize].write(timer::register_type::cnt_l_msb, data); break;
-        case addr_tm1cnt_h:     timers_[1_usize].write(timer::register_type::cnt_h_lsb, data); break;
-        case addr_tm2cnt_l:     timers_[2_usize].write(timer::register_type::cnt_l_lsb, data); break;
-        case addr_tm2cnt_l + 1: timers_[2_usize].write(timer::register_type::cnt_l_msb, data); break;
-        case addr_tm2cnt_h:     timers_[2_usize].write(timer::register_type::cnt_h_lsb, data); break;
-        case addr_tm3cnt_l:     timers_[3_usize].write(timer::register_type::cnt_l_lsb, data); break;
-        case addr_tm3cnt_l + 1: timers_[3_usize].write(timer::register_type::cnt_l_msb, data); break;
-        case addr_tm3cnt_h:     timers_[3_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm0cnt_l:     timer_controller[0_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm0cnt_l + 1: timer_controller[0_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm0cnt_h:     timer_controller[0_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm1cnt_l:     timer_controller[1_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm1cnt_l + 1: timer_controller[1_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm1cnt_h:     timer_controller[1_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm2cnt_l:     timer_controller[2_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm2cnt_l + 1: timer_controller[2_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm2cnt_h:     timer_controller[2_usize].write(timer::register_type::cnt_h_lsb, data); break;
+        case addr_tm3cnt_l:     timer_controller[3_usize].write(timer::register_type::cnt_l_lsb, data); break;
+        case addr_tm3cnt_l + 1: timer_controller[3_usize].write(timer::register_type::cnt_l_msb, data); break;
+        case addr_tm3cnt_h:     timer_controller[3_usize].write(timer::register_type::cnt_h_lsb, data); break;
 
-        case addr_dma0sad:       dma_controller_.channels[0_usize].write_src(0_u8, data); break;
-        case addr_dma0sad + 1:   dma_controller_.channels[0_usize].write_src(1_u8, data); break;
-        case addr_dma0sad + 2:   dma_controller_.channels[0_usize].write_src(2_u8, data); break;
-        case addr_dma0sad + 3:   dma_controller_.channels[0_usize].write_src(3_u8, data); break;
-        case addr_dma0dad:       dma_controller_.channels[0_usize].write_dst(0_u8, data); break;
-        case addr_dma0dad + 1:   dma_controller_.channels[0_usize].write_dst(1_u8, data); break;
-        case addr_dma0dad + 2:   dma_controller_.channels[0_usize].write_dst(2_u8, data); break;
-        case addr_dma0dad + 3:   dma_controller_.channels[0_usize].write_dst(3_u8, data); break;
-        case addr_dma0cnt_l:     dma_controller_.channels[0_usize].write_count(0_u8, data); break;
-        case addr_dma0cnt_l + 1: dma_controller_.channels[0_usize].write_count(1_u8, data); break;
-        case addr_dma0cnt_h:     dma_controller_.write_cnt_l(0_usize, data); break;
-        case addr_dma0cnt_h + 1: dma_controller_.write_cnt_h(0_usize, data); break;
-        case addr_dma1sad:       dma_controller_.channels[1_usize].write_src(0_u8, data); break;
-        case addr_dma1sad + 1:   dma_controller_.channels[1_usize].write_src(1_u8, data); break;
-        case addr_dma1sad + 2:   dma_controller_.channels[1_usize].write_src(2_u8, data); break;
-        case addr_dma1sad + 3:   dma_controller_.channels[1_usize].write_src(3_u8, data); break;
-        case addr_dma1dad:       dma_controller_.channels[1_usize].write_dst(0_u8, data); break;
-        case addr_dma1dad + 1:   dma_controller_.channels[1_usize].write_dst(1_u8, data); break;
-        case addr_dma1dad + 2:   dma_controller_.channels[1_usize].write_dst(2_u8, data); break;
-        case addr_dma1dad + 3:   dma_controller_.channels[1_usize].write_dst(3_u8, data); break;
-        case addr_dma1cnt_l:     dma_controller_.channels[1_usize].write_count(0_u8, data); break;
-        case addr_dma1cnt_l + 1: dma_controller_.channels[1_usize].write_count(1_u8, data); break;
-        case addr_dma1cnt_h:     dma_controller_.write_cnt_l(1_usize, data); break;
-        case addr_dma1cnt_h + 1: dma_controller_.write_cnt_h(1_usize, data); break;
-        case addr_dma2sad:       dma_controller_.channels[2_usize].write_src(0_u8, data); break;
-        case addr_dma2sad + 1:   dma_controller_.channels[2_usize].write_src(1_u8, data); break;
-        case addr_dma2sad + 2:   dma_controller_.channels[2_usize].write_src(2_u8, data); break;
-        case addr_dma2sad + 3:   dma_controller_.channels[2_usize].write_src(3_u8, data); break;
-        case addr_dma2dad:       dma_controller_.channels[2_usize].write_dst(0_u8, data); break;
-        case addr_dma2dad + 1:   dma_controller_.channels[2_usize].write_dst(1_u8, data); break;
-        case addr_dma2dad + 2:   dma_controller_.channels[2_usize].write_dst(2_u8, data); break;
-        case addr_dma2dad + 3:   dma_controller_.channels[2_usize].write_dst(3_u8, data); break;
-        case addr_dma2cnt_l:     dma_controller_.channels[2_usize].write_count(0_u8, data); break;
-        case addr_dma2cnt_l + 1: dma_controller_.channels[2_usize].write_count(1_u8, data); break;
-        case addr_dma2cnt_h:     dma_controller_.write_cnt_l(2_usize, data); break;
-        case addr_dma2cnt_h + 1: dma_controller_.write_cnt_h(2_usize, data); break;
-        case addr_dma3sad:       dma_controller_.channels[3_usize].write_src(0_u8, data); break;
-        case addr_dma3sad + 1:   dma_controller_.channels[3_usize].write_src(1_u8, data); break;
-        case addr_dma3sad + 2:   dma_controller_.channels[3_usize].write_src(2_u8, data); break;
-        case addr_dma3sad + 3:   dma_controller_.channels[3_usize].write_src(3_u8, data); break;
-        case addr_dma3dad:       dma_controller_.channels[3_usize].write_dst(0_u8, data); break;
-        case addr_dma3dad + 1:   dma_controller_.channels[3_usize].write_dst(1_u8, data); break;
-        case addr_dma3dad + 2:   dma_controller_.channels[3_usize].write_dst(2_u8, data); break;
-        case addr_dma3dad + 3:   dma_controller_.channels[3_usize].write_dst(3_u8, data); break;
-        case addr_dma3cnt_l:     dma_controller_.channels[3_usize].write_count(0_u8, data); break;
-        case addr_dma3cnt_l + 1: dma_controller_.channels[3_usize].write_count(1_u8, data); break;
-        case addr_dma3cnt_h:     dma_controller_.write_cnt_l(3_usize, data); break;
-        case addr_dma3cnt_h + 1: dma_controller_.write_cnt_h(3_usize, data); break;
+        case addr_dma0sad:       dma_controller.channels[0_usize].write_src(0_u8, data); break;
+        case addr_dma0sad + 1:   dma_controller.channels[0_usize].write_src(1_u8, data); break;
+        case addr_dma0sad + 2:   dma_controller.channels[0_usize].write_src(2_u8, data); break;
+        case addr_dma0sad + 3:   dma_controller.channels[0_usize].write_src(3_u8, data); break;
+        case addr_dma0dad:       dma_controller.channels[0_usize].write_dst(0_u8, data); break;
+        case addr_dma0dad + 1:   dma_controller.channels[0_usize].write_dst(1_u8, data); break;
+        case addr_dma0dad + 2:   dma_controller.channels[0_usize].write_dst(2_u8, data); break;
+        case addr_dma0dad + 3:   dma_controller.channels[0_usize].write_dst(3_u8, data); break;
+        case addr_dma0cnt_l:     dma_controller.channels[0_usize].write_count(0_u8, data); break;
+        case addr_dma0cnt_l + 1: dma_controller.channels[0_usize].write_count(1_u8, data); break;
+        case addr_dma0cnt_h:     dma_controller.write_cnt_l(0_usize, data); break;
+        case addr_dma0cnt_h + 1: dma_controller.write_cnt_h(0_usize, data); break;
+        case addr_dma1sad:       dma_controller.channels[1_usize].write_src(0_u8, data); break;
+        case addr_dma1sad + 1:   dma_controller.channels[1_usize].write_src(1_u8, data); break;
+        case addr_dma1sad + 2:   dma_controller.channels[1_usize].write_src(2_u8, data); break;
+        case addr_dma1sad + 3:   dma_controller.channels[1_usize].write_src(3_u8, data); break;
+        case addr_dma1dad:       dma_controller.channels[1_usize].write_dst(0_u8, data); break;
+        case addr_dma1dad + 1:   dma_controller.channels[1_usize].write_dst(1_u8, data); break;
+        case addr_dma1dad + 2:   dma_controller.channels[1_usize].write_dst(2_u8, data); break;
+        case addr_dma1dad + 3:   dma_controller.channels[1_usize].write_dst(3_u8, data); break;
+        case addr_dma1cnt_l:     dma_controller.channels[1_usize].write_count(0_u8, data); break;
+        case addr_dma1cnt_l + 1: dma_controller.channels[1_usize].write_count(1_u8, data); break;
+        case addr_dma1cnt_h:     dma_controller.write_cnt_l(1_usize, data); break;
+        case addr_dma1cnt_h + 1: dma_controller.write_cnt_h(1_usize, data); break;
+        case addr_dma2sad:       dma_controller.channels[2_usize].write_src(0_u8, data); break;
+        case addr_dma2sad + 1:   dma_controller.channels[2_usize].write_src(1_u8, data); break;
+        case addr_dma2sad + 2:   dma_controller.channels[2_usize].write_src(2_u8, data); break;
+        case addr_dma2sad + 3:   dma_controller.channels[2_usize].write_src(3_u8, data); break;
+        case addr_dma2dad:       dma_controller.channels[2_usize].write_dst(0_u8, data); break;
+        case addr_dma2dad + 1:   dma_controller.channels[2_usize].write_dst(1_u8, data); break;
+        case addr_dma2dad + 2:   dma_controller.channels[2_usize].write_dst(2_u8, data); break;
+        case addr_dma2dad + 3:   dma_controller.channels[2_usize].write_dst(3_u8, data); break;
+        case addr_dma2cnt_l:     dma_controller.channels[2_usize].write_count(0_u8, data); break;
+        case addr_dma2cnt_l + 1: dma_controller.channels[2_usize].write_count(1_u8, data); break;
+        case addr_dma2cnt_h:     dma_controller.write_cnt_l(2_usize, data); break;
+        case addr_dma2cnt_h + 1: dma_controller.write_cnt_h(2_usize, data); break;
+        case addr_dma3sad:       dma_controller.channels[3_usize].write_src(0_u8, data); break;
+        case addr_dma3sad + 1:   dma_controller.channels[3_usize].write_src(1_u8, data); break;
+        case addr_dma3sad + 2:   dma_controller.channels[3_usize].write_src(2_u8, data); break;
+        case addr_dma3sad + 3:   dma_controller.channels[3_usize].write_src(3_u8, data); break;
+        case addr_dma3dad:       dma_controller.channels[3_usize].write_dst(0_u8, data); break;
+        case addr_dma3dad + 1:   dma_controller.channels[3_usize].write_dst(1_u8, data); break;
+        case addr_dma3dad + 2:   dma_controller.channels[3_usize].write_dst(2_u8, data); break;
+        case addr_dma3dad + 3:   dma_controller.channels[3_usize].write_dst(3_u8, data); break;
+        case addr_dma3cnt_l:     dma_controller.channels[3_usize].write_count(0_u8, data); break;
+        case addr_dma3cnt_l + 1: dma_controller.channels[3_usize].write_count(1_u8, data); break;
+        case addr_dma3cnt_h:     dma_controller.write_cnt_l(3_usize, data); break;
+        case addr_dma3cnt_h + 1: dma_controller.write_cnt_h(3_usize, data); break;
 
         case addr_ime:
             ime_ = bit::test(data, 0_u8);

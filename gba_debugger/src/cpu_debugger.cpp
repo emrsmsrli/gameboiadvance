@@ -5,7 +5,7 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba_debugger/arm_debugger.h>
+#include <gba_debugger/cpu_debugger.h>
 
 #include <algorithm>
 #include <sstream>
@@ -55,15 +55,15 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::waitstate_control, waitcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::halt_control, haltcnt_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u8, post_boot_)
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::arm7tdmi::timers_debugger, timers_)
-ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, id_)
-ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u32, counter_)
-ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::u16, reload_)
-ACCESS_PRIVATE_FIELD(gba::arm::timer, gba::arm::timer_control, control_)
+using timers_t = gba::array<gba::timer::timer, 4>;
+ACCESS_PRIVATE_FIELD(gba::timer::controller, timers_t, timers_)
+ACCESS_PRIVATE_FIELD(gba::timer::timer, gba::u32, id_)
+ACCESS_PRIVATE_FIELD(gba::timer::timer, gba::u32, counter_)
+ACCESS_PRIVATE_FIELD(gba::timer::timer, gba::u16, reload_)
+ACCESS_PRIVATE_FIELD(gba::timer::timer, gba::timer::timer_cnt, control_)
 
-ACCESS_PRIVATE_FUN(gba::arm::timer, gba::u32() const noexcept, calculate_counter_delta)
+ACCESS_PRIVATE_FUN(gba::timer::timer, gba::u32() const noexcept, calculate_counter_delta)
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::dma::controller, dma_controller_)
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::u32, latch_)
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, running_channels_)
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, scheduled_channels_)
@@ -328,11 +328,11 @@ std::string_view to_string_view(const arm::debugger_access_width width) noexcept
 
 } // namespace
 
-void arm_debugger::draw() noexcept
+void cpu_debugger::draw() noexcept
 {
-    if(ImGui::Begin("ARM")) {
+    if(ImGui::Begin("CPU")) {
         if(ImGui::BeginTabBar("#arm_tab")) {
-            if(ImGui::BeginTabItem("Registers")) {
+            if(ImGui::BeginTabItem("ARM")) {
                 draw_regs(arm_);
 
                 ImGui::Spacing();
@@ -507,7 +507,7 @@ void arm_debugger::draw() noexcept
             }
 
             if(ImGui::BeginTabItem("Timers")) {
-                for(auto& timer : access_private::timers_(arm_)) {
+                for(auto& timer : access_private::timers_(timer_controller_)) {
                     constexpr array prescalar_shifts{0_u8, 6_u8, 8_u8, 10_u8};
                     auto& cnt = access_private::control_(timer);
 
@@ -545,18 +545,16 @@ void arm_debugger::draw() noexcept
                     return s.str();
                 };
 
-                auto& controller = access_private::dma_controller_(arm_);
-
                 ImGui::Text("Scheduled channels: {}",
-                  fmt_channels(access_private::scheduled_channels_(controller)));
+                  fmt_channels(access_private::scheduled_channels_(dma_controller_)));
                 ImGui::Text("Running channels: {}",
-                  fmt_channels(access_private::running_channels_(controller)));
+                  fmt_channels(access_private::running_channels_(dma_controller_)));
 
                 ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::Spacing();
 
-                for(dma::channel& channel : controller.channels) {
+                for(dma::channel& channel : dma_controller_->channels) {
                     ImGui::Text("DMA {}", channel.id);
                     ImGui::Separator();
                     ImGui::BeginGroup(); {
@@ -633,7 +631,7 @@ void arm_debugger::draw() noexcept
     ImGui::End();
 }
 
-void arm_debugger::draw_breakpoints() noexcept
+void cpu_debugger::draw_breakpoints() noexcept
 {
     if(ImGui::BeginChild("#breakpointtypeschild", ImVec2(0, 300), true)) {
         ImGui::TextUnformatted("Run:"); ImGui::SameLine();
@@ -666,7 +664,7 @@ void arm_debugger::draw_breakpoints() noexcept
     }
 }
 
-void arm_debugger::draw_execution_breakpoints() noexcept
+void cpu_debugger::draw_execution_breakpoints() noexcept
 {
     static array<char, 9> address_buf{};
     static int hit_count_target_buf;
@@ -702,7 +700,7 @@ void arm_debugger::draw_execution_breakpoints() noexcept
     });
 }
 
-void arm_debugger::draw_access_breakpoints() noexcept
+void cpu_debugger::draw_access_breakpoints() noexcept
 {
     static bool incorrect_range = false;
     static constexpr array access_type_strs{"read", "write", "read&write"};
@@ -788,7 +786,7 @@ void arm_debugger::draw_access_breakpoints() noexcept
     });
 }
 
-void arm_debugger::draw_disassembly() noexcept
+void cpu_debugger::draw_disassembly() noexcept
 {
     if(ImGui::BeginChild("#armdisassemblychild")) {
         vector<u8>* memory;

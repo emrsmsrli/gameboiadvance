@@ -7,7 +7,7 @@ add_library(${PROJECT_NAME} STATIC
         src/disassembler.cpp
         src/disassembly_entry.cpp
         src/memory_debugger.cpp
-        src/arm_debugger.cpp
+        src/cpu_debugger.cpp
         src/gamepak_debugger.cpp
         src/ppu_debugger.cpp
         src/keypad_debugger.cpp)

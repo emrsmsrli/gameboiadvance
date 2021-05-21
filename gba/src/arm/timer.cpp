@@ -8,7 +8,7 @@
 #include <gba/arm/timer.h>
 #include <gba/arm/arm7tdmi.h>
 
-namespace gba::arm {
+namespace gba::timer {
 
 namespace {
 
@@ -18,7 +18,7 @@ constexpr u32 overflow_value = 0x1'0000_u32;
 
 } // namespace
 
-u8 timer::read(const timer::register_type reg) const noexcept
+u8 timer::read(const register_type reg) const noexcept
 {
     u32 counter = counter_;
     if(scheduler_->has_event(handle_)) {
@@ -63,10 +63,8 @@ void timer::write(const register_type reg, const u8 data) noexcept
                 }
             }
 
-            if(id_ > 0_u32) {
-                arm_->timers_[id_ - 1_u32]
-                  .on_overflow
-                  .remove_delegate({connect_arg<&timer::tick_internal>, this});
+            if(cascade_instance) {
+                cascade_instance->on_overflow.remove_delegate({connect_arg<&timer::tick_internal>, this});
             }
 
             if(control_.enabled) {
@@ -75,9 +73,7 @@ void timer::write(const register_type reg, const u8 data) noexcept
                 }
 
                 if(control_.cascaded) {
-                    arm_->timers_[id_ - 1_u32]
-                      .on_overflow
-                      .add_delegate({connect_arg<&timer::tick_internal>, this});
+                    cascade_instance->on_overflow.add_delegate({connect_arg<&timer::tick_internal>, this});
                 } else {
                     u64 delay = scheduler_->now() & start_delay_masks[control_.prescalar];
                     if(!was_enabled) {
@@ -113,8 +109,8 @@ void timer::overflow_internal() noexcept
     counter_ = reload_;
 
     if(control_.irq_enabled) {
-        arm_->request_interrupt(to_enum<interrupt_source>(
-          from_enum<u32>(interrupt_source::timer_0_overflow) << id_));
+        irq_handle_.request_interrupt(to_enum<arm::interrupt_source>(
+          from_enum<u32>(arm::interrupt_source::timer_0_overflow) << id_));
     }
 
     on_overflow(this);

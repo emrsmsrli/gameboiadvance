@@ -5,8 +5,8 @@
  * Refer to the included LICENSE file.
  */
 
-#ifndef GAMEBOIADVANCE_ARM_DEBUGGER_H
-#define GAMEBOIADVANCE_ARM_DEBUGGER_H
+#ifndef GAMEBOIADVANCE_CPU_DEBUGGER_H
+#define GAMEBOIADVANCE_CPU_DEBUGGER_H
 
 #include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
@@ -15,19 +15,25 @@ namespace gba::debugger {
 
 class breakpoint_database;
 
-class arm_debugger {
+class cpu_debugger {
 public:
     enum class execution_request { none, instruction, scanline, frame };
 
 private:
+    dma::controller* dma_controller_;
+    timer::controller* timer_controller_;
     arm::arm7tdmi* arm_;
     breakpoint_database* bp_db_;
 
 public:
     event<execution_request> on_execution_requested;
 
-    arm_debugger(arm::arm7tdmi* arm, breakpoint_database* bp_db) noexcept
-      : arm_{arm}, bp_db_{bp_db} {}
+    cpu_debugger(timer::controller* timer_controller, dma::controller* dma_controller,
+      arm::arm7tdmi* arm, breakpoint_database* bp_db) noexcept
+      : dma_controller_{dma_controller},
+        timer_controller_{timer_controller},
+        arm_{arm},
+        bp_db_{bp_db} {}
 
     void draw() noexcept;
 
@@ -40,4 +46,4 @@ private:
 
 } // namespace gba::debugger
 
-#endif //GAMEBOIADVANCE_ARM_DEBUGGER_H
+#endif //GAMEBOIADVANCE_CPU_DEBUGGER_H

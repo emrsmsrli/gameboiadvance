@@ -40,6 +40,19 @@ enum class debugger_access_width : u32::type;
 
 } // namespace arm
 
+namespace timer {
+
+class controller;
+class timer;
+
+} // namespace timer
+
+namespace dma {
+
+class controller;
+
+} // namespace timer
+
 namespace ppu {
 
 class engine;

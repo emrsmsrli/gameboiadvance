@@ -128,7 +128,6 @@ struct pipeline {
 };
 
 class arm7tdmi {
-    friend timer;
     friend dma::controller;
 
     core* core_;
@@ -171,9 +170,6 @@ class arm7tdmi {
     bool scheduled_irq_signal_ = false;
     scheduler::event::handle irq_signal_delay_handle_;
 
-    array<timer, 4> timers_;
-    dma::controller dma_controller_{this};
-
     pipeline pipeline_;
 
     waitstate_control waitcnt_;
@@ -188,8 +184,6 @@ class arm7tdmi {
 
 public:
 #if WITH_DEBUGGER
-    using timers_debugger = array<timer, 4>;
-
     delegate<bool(u32)> on_instruction_execute;
     delegate<void(u32, debugger_access_width)> on_io_read;
     delegate<void(u32, u32, debugger_access_width)> on_io_write;
@@ -207,7 +201,6 @@ public:
     }
 
     irq_controller_handle get_interrupt_handle() noexcept { return irq_controller_handle{this}; }
-    dma::controller_handle get_dma_cnt_handle() noexcept { return dma::controller_handle{&dma_controller_}; }
 
     u32& r(u8 index) noexcept;
     psr& cpsr() noexcept { return cpsr_; }

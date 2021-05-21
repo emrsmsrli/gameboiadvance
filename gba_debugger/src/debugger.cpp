@@ -52,7 +52,7 @@ window::window(core* core) noexcept
     core_{core},
     disassembly_view_{&breakpoint_database_},
     gamepak_debugger_{&core->pak},
-    arm_debugger_{&core->arm, &breakpoint_database_},
+    arm_debugger_{&core_->timer_controller, &core_->dma_controller, &core->arm, &breakpoint_database_},
     ppu_debugger_{&core->ppu},
     keypad_debugger_{&core->keypad}
 {
@@ -227,9 +227,9 @@ bool window::on_instruction_execute(const u32 address) noexcept
     bool should_break = last_executed_addr_ != address;
     last_executed_addr_ = address;
 
-    if(execution_request_ == arm_debugger::execution_request::instruction) {
+    if(execution_request_ == cpu_debugger::execution_request::instruction) {
         tick_allowed_ = false;
-        execution_request_ = arm_debugger::execution_request::none;
+        execution_request_ = cpu_debugger::execution_request::none;
         return false;
     }
 
@@ -273,9 +273,9 @@ void window::on_io_write(const u32 address, const u32 data, const arm::debugger_
     }
 }
 
-void window::on_execution_requested(const arm_debugger::execution_request request) noexcept
+void window::on_execution_requested(const cpu_debugger::execution_request request) noexcept
 {
-    if(execution_request_ != arm_debugger::execution_request::none) {
+    if(execution_request_ != cpu_debugger::execution_request::none) {
         return;
     }
 
@@ -285,9 +285,9 @@ void window::on_execution_requested(const arm_debugger::execution_request reques
 
 void window::on_scanline(u8, const ppu::scanline_buffer&) noexcept
 {
-    if(execution_request_ == arm_debugger::execution_request::scanline) {
+    if(execution_request_ == cpu_debugger::execution_request::scanline) {
         tick_allowed_ = false;
-        execution_request_ = arm_debugger::execution_request::none;
+        execution_request_ = cpu_debugger::execution_request::none;
     }
 }
 
@@ -298,9 +298,9 @@ void window::on_vblank() noexcept
         total_frame_time_ += frame_time;
     }
 
-    if(execution_request_ == arm_debugger::execution_request::frame) {
+    if(execution_request_ == cpu_debugger::execution_request::frame) {
         tick_allowed_ = false;
-        execution_request_ = arm_debugger::execution_request::none;
+        execution_request_ = cpu_debugger::execution_request::none;
     }
 }
 
