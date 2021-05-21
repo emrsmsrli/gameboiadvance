@@ -547,7 +547,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
 
         if(is_ldm) {
             r(reg) = read_32(rn_addr, access_type);
-            if(reg == 15_u8 && load_psr && in_privileged_mode()) {
+            if(reg == 15_u8 && load_psr && in_exception_mode()) {
                 cpsr() = spsr();
             }
         } else if(reg == rn) {
