@@ -12,8 +12,20 @@
 #include <functional> // std::greater
 #include <type_traits> // std::forward
 
+#ifdef WITH_DEBUGGER
+  #include <string>
+#endif // WITH_DEBUGGER
+
 #include <gba/core/container.h>
 #include <gba/core/event/delegate.h>
+
+#ifdef WITH_DEBUGGER
+  #define ADD_EVENT_NAMED(delay, callback, name) add_event(delay, {connect_arg<&callback>, this}, name)
+#else
+  #define ADD_EVENT_NAMED(delay, callback, name) add_event(delay, {connect_arg<&callback>, this})
+#endif // WITH_DEBUGGER
+
+#define ADD_EVENT(delay, callback) ADD_EVENT_NAMED(delay, callback, #callback)
 
 namespace gba {
 
@@ -25,6 +37,10 @@ public:
         delegate<void(u64 /*late_cycles*/)> callback;
         u64 timestamp;
         handle h;
+
+#ifdef WITH_DEBUGGER
+        std::string name;
+#endif // WITH_DEBUGGER
 
         bool operator>(const event& other) const noexcept { return timestamp > other.timestamp; }
     };
@@ -42,12 +58,21 @@ public:
         heap_.reserve(64_usize);
     }
 
+#ifdef WITH_DEBUGGER
+    event::handle add_event(const u64 delay, const delegate<void(u64)> callback, std::string name)
+    {
+        heap_.push_back(event{callback, now_ + delay, ++next_event_handle, std::move(name)});
+        std::push_heap(heap_.begin(), heap_.end(), predicate{});
+        return next_event_handle;
+    }
+#else
     event::handle add_event(const u64 delay, const delegate<void(u64)> callback)
     {
         heap_.push_back(event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
         return next_event_handle;
     }
+#endif // WITH_DEBUGGER
 
     [[nodiscard]] bool has_event(const event::handle handle)
     {
@@ -75,7 +100,12 @@ public:
         now_ += cycles;
         if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
             while(!heap_.empty() && timestamp_of_next_event() <= now_) {
+#ifdef WITH_DEBUGGER
+                const auto [callback, timestamp, handle, name] = heap_[0_usize];
+                LOG_TRACE(scheduler, "executing event {}:{}", handle, name);
+#else
                 const auto [callback, timestamp, handle] = heap_[0_usize];
+#endif // WITH_DEBUGGER
 
                 std::pop_heap(heap_.begin(), heap_.end(), predicate{});
                 heap_.pop_back();

@@ -93,9 +93,9 @@ void timer::write(const register_type reg, const u8 data) noexcept
 void timer::schedule_overflow(const u64 late_cycles) noexcept
 {
     last_scheduled_timestamp_ = scheduler_->now() - late_cycles;
-    handle_ = scheduler_->add_event(
+    handle_ = scheduler_->ADD_EVENT_NAMED(
       ((overflow_value - counter_) << prescalar_shifts[control_.prescalar]) - late_cycles,
-      {connect_arg<&timer::overflow>, this});
+      timer::overflow, fmt::format("timer::overflow ({})", id_));
 }
 
 void timer::overflow(const u64 late_cycles) noexcept

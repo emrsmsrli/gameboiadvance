@@ -179,10 +179,21 @@ bool window::draw() noexcept
     ppu_debugger_.draw();
     keypad_debugger_.draw();
 
-    if(ImGui::Begin("Scheduler")) {
-        ImGui::Text("Cycles: {}", core_->schdlr.now());
-        ImGui::Text("Cycles to next event: {}", core_->schdlr.remaining_cycles_to_next_event());
-        ImGui::Text("Scheduled event count: {}", access_private::heap_(core_->schdlr).size());
+    if(ImGui::Begin("Scheduler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const scheduler& scheduler = core_->schdlr;
+        vector<scheduler::event> events = access_private::heap_(scheduler);
+        std::sort(events.begin(), events.end(), [](const scheduler::event& e1, const scheduler::event& e2) {
+            return e1.timestamp < e2.timestamp;
+        });
+
+        ImGui::Text("Cycles: {}", scheduler.now());
+        ImGui::Text("Scheduled event count: {}", events.size());
+
+        ImGui::Spacing();
+        ImGui::Spacing();
+        for(const scheduler::event& event : events) {
+            ImGui::Text("{}, timestamp: {} ({})", event.name, event.timestamp, event.timestamp - scheduler.now());
+        }
     }
 
     ImGui::End();

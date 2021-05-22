@@ -289,8 +289,8 @@ void controller::schedule(channel& channel, const channel::control::timing timin
     if(channel.cnt.enabled
       && channel.cnt.when == timing
       && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
-        channel.last_event_handle = arm_->core_->schdlr.add_event(2_usize,
-          {connect_arg<&controller::on_channel_start>, this});
+        channel.last_event_handle = arm_->core_->schdlr.ADD_EVENT_NAMED(2_usize, controller::on_channel_start,
+          fmt::format("dma::controller::on_channel_start ({})", channel.id));
         scheduled_channels_.push_back(&channel);
         sort_by_priority(scheduled_channels_);
     }
