@@ -65,8 +65,12 @@ int main(int argc, char** argv)
 
 #if WITH_DEBUGGER
     gba::debugger::window debugger_window(&gba);
-#endif //WITH_DEBUGGER
 
+    while(true) {
+        // debugger window handles input, video and audio output
+        debugger_window.tick();
+    }
+#else
     gba.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
     gba.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
     gba.apu.on_audio_buffer_full.add_delegate(gba::connect_arg<&on_audio>);
@@ -75,14 +79,10 @@ int main(int argc, char** argv)
         // gba.press_key(gba::keypad::key::a);
         // gba.release_key(gba::keypad::key::start);
 
-#if WITH_DEBUGGER
-        // debugger window handles input, video and audio output
-        debugger_window.tick();
-#elif
         gba.tick_one_frame();
         // or gba.tick(n); which executes n instructions every iteration
-#endif //WITH_DEBUGGER
     }
+#endif // WITH_DEBUGGER
 
     return 0;
 }
