@@ -5,7 +5,7 @@
 [![Build Status](https://travis-ci.com/emrsmsrli/gameboiadvance.svg?branch=master)](https://travis-ci.com/emrsmsrli/gameboiadvance)
 [![GitHub license](https://img.shields.io/github/license/emrsmsrli/gameboiadvance)](https://github.com/emrsmsrli/gameboiadvance/blob/master/LICENSE)
 
-A Gameboy Advance emulator built upon the GBC emulator [gameboi](https://github.com/emrsmsrli/gameboi/)
+A Game Boy Advance emulator built upon the GBC emulator [gameboi](https://github.com/emrsmsrli/gameboi/)
 
 ## Features
 
@@ -18,7 +18,7 @@ its features are limited compared to other emulators.
 - EEPROM, FLASH and SRAM save-load capability
 - RTC support _(sadly, no other GPIO extensions)_
 - Disassembler and a powerful debugger
-  - Capable of showing all of the internals of the emulator
+  - Capable of showing all the internals of the emulator
   - Execution and data access breakpoint support
   
 ### Feature TODO
