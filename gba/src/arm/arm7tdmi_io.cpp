@@ -211,7 +211,7 @@ void arm7tdmi::write_32(u32 addr, const u32 data, const mem_access access) noexc
             }
             break;
         default:
-            LOG_WARN(arm::io, "invalid write32 to address {:08X}, {:08X}", addr, data);
+            LOG_DEBUG(arm::io, "invalid write32 to address {:08X}, {:08X}", addr, data);
             break;
     }
 }
@@ -360,7 +360,7 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
             }
             break;
         default:
-            LOG_WARN(arm::io, "invalid write16 to address {:08X}, {:04X}", addr, data);
+            LOG_DEBUG(arm::io, "invalid write16 to address {:08X}, {:04X}", addr, data);
             break;
     }
 }
@@ -459,7 +459,7 @@ void arm7tdmi::write_8(u32 addr, const u8 data, const mem_access access) noexcep
             }
             break;
         default:
-            LOG_WARN(arm::io, "invalid write8 to address {:08X}, {:02X}", addr, data);
+            LOG_DEBUG(arm::io, "invalid write8 to address {:08X}, {:02X}", addr, data);
             break;
     }
 }
