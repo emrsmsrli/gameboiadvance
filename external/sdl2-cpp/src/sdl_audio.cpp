@@ -20,17 +20,25 @@ std::string_view audio_device::device_name(const int32_t index) noexcept
 audio_device::audio_device(const char* device_name, uint8_t channels, audio_device::format format,
   uint32_t sampling_rate, uint16_t sample_count) noexcept
 {
-    SDL_AudioSpec spec;
-    SDL_zero(spec);
-    spec.channels = channels;
-    spec.format = static_cast<SDL_AudioFormat>(format);
-    spec.freq = sampling_rate;
-    spec.samples = sample_count;
+    SDL_AudioSpec desired;
+    SDL_zero(desired);
+    desired.channels = channels;
+    desired.format = static_cast<SDL_AudioFormat>(format);
+    desired.freq = sampling_rate;
+    desired.samples = sample_count;
 
-    device_id_ = SDL_OpenAudioDevice(device_name, SDL_FALSE, &spec, nullptr, 0);
+    SDL_AudioSpec obtained;
+    SDL_zero(obtained);
+
+    device_id_ = SDL_OpenAudioDevice(device_name, SDL_FALSE, &desired, &obtained,
+      SDL_AUDIO_ALLOW_SAMPLES_CHANGE | SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
     SDL_CHECK(device_id_);
 
-    SPDLOG_TRACE("opened audio device: {}, id: {}", device_name != nullptr ? device_name : "default", device_id_);
+    frequency_ = obtained.freq;
+    sample_count_ = obtained.samples;
+
+    SPDLOG_ERROR("opened audio device: {}, id: {}, freq: {}, samples: {}",
+      device_name != nullptr ? device_name : "default", device_id_, frequency_, sample_count_);
 }
 
 audio_device::~audio_device() noexcept

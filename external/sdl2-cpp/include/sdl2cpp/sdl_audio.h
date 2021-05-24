@@ -9,6 +9,8 @@ namespace sdl {
 
 class audio_device {
     uint32_t device_id_ = invalid_id;
+    uint32_t frequency_;
+    uint32_t sample_count_;
 
 public:
     static constexpr int32_t invalid_id = 0;
@@ -44,7 +46,9 @@ public:
     void enqueue(const void* data, size_t size_in_bytes) noexcept;
     [[nodiscard]] size_t queue_size() noexcept;
 
-    [[nodiscard]] uint32_t get_id() const noexcept { return device_id_; }
+    [[nodiscard]] uint32_t id() const noexcept { return device_id_; }
+    [[nodiscard]] uint32_t frequency() const noexcept { return frequency_; }
+    [[nodiscard]] uint32_t sample_count() const noexcept { return sample_count_; }
 
 private:
     audio_device(const char* device_name,
