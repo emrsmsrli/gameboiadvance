@@ -12,7 +12,6 @@
 #include <gba/arm/arm7tdmi.h>
 #include <gba/cartridge/gamepak.h>
 #include <gba/ppu/ppu.h>
-#include <gba/apu/apu.h>
 #include <gba/keypad.h>
 
 namespace gba {
