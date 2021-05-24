@@ -37,7 +37,7 @@ audio_device::audio_device(const char* device_name, uint8_t channels, audio_devi
     frequency_ = obtained.freq;
     sample_count_ = obtained.samples;
 
-    SPDLOG_ERROR("opened audio device: {}, id: {}, freq: {}, samples: {}",
+    SPDLOG_TRACE("opened audio device: {}, id: {}, freq: {}, samples: {}",
       device_name != nullptr ? device_name : "default", device_id_, frequency_, sample_count_);
 }
 
