@@ -7,6 +7,9 @@ add_library(${PROJECT_NAME} STATIC
         src/imgui_widgets.cpp
         src/imgui_tables.cpp
         src/imgui_demo.cpp
+        src/implot.cpp
+        src/implot_demo.cpp
+        src/implot_items.cpp
         src/imgui-SFML.cpp)
 
 add_library(imgui::sfml ALIAS ${PROJECT_NAME})

@@ -23,9 +23,9 @@ namespace ImGui
 {
     namespace SFML
     {
-        IMGUI_SFML_API void Init(sf::RenderWindow& window, bool loadDefaultFont = true);
-        IMGUI_SFML_API void Init(sf::Window& window, sf::RenderTarget& target, bool loadDefaultFont = true);
-        IMGUI_SFML_API void Init(sf::Window& window, const sf::Vector2f& displaySize, bool loadDefaultFont = true);
+        IMGUI_SFML_API void Init(sf::RenderWindow& window, bool initImPlot = false, bool loadDefaultFont = true);
+        IMGUI_SFML_API void Init(sf::Window& window, sf::RenderTarget& target, bool initImPlot = false, bool loadDefaultFont = true);
+        IMGUI_SFML_API void Init(sf::Window& window, const sf::Vector2f& displaySize, bool initImPlot = false, bool loadDefaultFont = true);
 
         IMGUI_SFML_API void SetCurrentWindow(const sf::Window& window);
         IMGUI_SFML_API void ProcessEvent(const sf::Event& event);

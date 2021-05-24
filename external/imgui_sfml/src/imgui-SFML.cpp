@@ -1,5 +1,6 @@
 #include "imgui-SFML.h"
 #include <imgui.h>
+#include <implot.h>
 
 #include <SFML/Config.hpp>
 #include <SFML/Graphics/Color.hpp>
@@ -132,6 +133,7 @@ struct StickInfo {
 struct WindowContext {
     sf::Window* window;
     ImGuiContext* im_ctx;
+    ImPlotContext* implot_ctx;
 
     bool windowHasFocus = false;
     std::array<bool, 3> mousePressed{false, false, false};
@@ -206,15 +208,15 @@ void updateMouseCursor(sf::Window& window);
 namespace ImGui {
 namespace SFML {
 
-void Init(sf::RenderWindow& window, bool loadDefaultFont) {
-    Init(window, window, loadDefaultFont);
+void Init(sf::RenderWindow& window, bool initImPlot, bool loadDefaultFont) {
+    Init(window, window, initImPlot, loadDefaultFont);
 }
 
-void Init(sf::Window& window, sf::RenderTarget& target, bool loadDefaultFont) {
-    Init(window, static_cast<sf::Vector2f>(target.getSize()), loadDefaultFont);
+void Init(sf::Window& window, sf::RenderTarget& target, bool initImPlot, bool loadDefaultFont) {
+    Init(window, static_cast<sf::Vector2f>(target.getSize()), initImPlot, loadDefaultFont);
 }
 
-void Init(sf::Window& window, const sf::Vector2f& displaySize, bool loadDefaultFont) {
+void Init(sf::Window& window, const sf::Vector2f& displaySize, bool initImPlot, bool loadDefaultFont) {
 #if __cplusplus < 201103L  // runtime assert when using earlier than C++11 as no
                            // static_assert support
     assert(
@@ -222,10 +224,14 @@ void Init(sf::Window& window, const sf::Vector2f& displaySize, bool loadDefaultF
         sizeof(ImTextureID));  // ImTextureID is not large enough to fit GLuint.
 #endif
 
-    windowContexts.push_back(WindowContext{&window, ImGui::CreateContext()});
+    windowContexts.push_back(WindowContext{&window, ImGui::CreateContext(), initImPlot ? ImPlot::CreateContext() : nullptr});
     s_currentWindowContext = &windowContexts.back();
 
     ImGui::SetCurrentContext(s_currentWindowContext->im_ctx);
+    if(s_currentWindowContext->implot_ctx) {
+        ImPlot::SetCurrentContext(s_currentWindowContext->implot_ctx);
+    }
+
     ImGuiIO& io = ImGui::GetIO();
 
     // tell ImGui which features we support
@@ -310,6 +316,9 @@ void Init(sf::Window& window, const sf::Vector2f& displaySize, bool loadDefaultF
 void SetCurrentWindow(const sf::Window& window) {
     s_currentWindowContext = findContext(window);
     ImGui::SetCurrentContext(s_currentWindowContext->im_ctx);
+    if(s_currentWindowContext->implot_ctx) {
+        ImPlot::SetCurrentContext(s_currentWindowContext->implot_ctx);
+    }
 }
 
 void ProcessEvent(const sf::Event& event) {
@@ -512,6 +521,9 @@ void Shutdown() {
     }
 
     ImGui::DestroyContext(s_currentWindowContext->im_ctx);
+    if(s_currentWindowContext->implot_ctx) {
+        ImPlot::DestroyContext(s_currentWindowContext->implot_ctx);
+    }
 
     windowContexts.erase(std::remove_if(begin(windowContexts), end(windowContexts), [](const WindowContext& ctx) {
         return s_currentWindowContext->window->getSystemHandle() == ctx.window->getSystemHandle();
