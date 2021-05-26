@@ -32,6 +32,15 @@ struct array_enforce_same {
 
 template<typename T, usize::type N>
 struct array {
+    using value_type = T;
+    using size_type = usize;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = value_type*;
+    using const_pointer = const value_type*;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
     T _data[N]; // NOLINT
 
     [[nodiscard]] constexpr T& operator[](const usize idx) noexcept { return _data[idx.get()]; }
@@ -66,6 +75,15 @@ class vector {
     std::vector<T> data_;
 
 public:
+    using value_type = T;
+    using size_type = usize;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = typename std::vector<T>::pointer;
+    using const_pointer = typename std::vector<T>::const_pointer;
+    using iterator = typename std::vector<T>::iterator;
+    using const_iterator = typename std::vector<T>::const_iterator;
+
     vector() = default;
     explicit vector(const usize size)
       : data_(size.get()) {}
@@ -92,24 +110,22 @@ public:
     T& back() noexcept { return at(size() - 1_usize); }
     const T& back() const noexcept { return at(size() - 1_usize); }
 
-    auto erase(typename std::vector<T>::iterator pos) { return data_.erase(pos); }
-    auto erase(typename std::vector<T>::const_iterator pos) { return data_.erase(pos); }
-    auto erase(typename std::vector<T>::iterator first,
-      typename std::vector<T>::iterator last) noexcept { return data_.erase(first, last); }
-    auto erase(typename std::vector<T>::const_iterator first,
-      typename std::vector<T>::const_iterator last) { return data_.erase(first, last); }
+    iterator erase(iterator pos) { return data_.erase(pos); }
+    iterator erase(const_iterator pos) { return data_.erase(pos); }
+    iterator erase(iterator first, iterator last) noexcept { return data_.erase(first, last); }
+    iterator erase(const_iterator first, const_iterator last) { return data_.erase(first, last); }
     void pop_back() noexcept { data_.pop_back(); }
 
     void clear() noexcept { data_.clear(); }
     void resize(const usize new_size) { data_.resize(new_size.get()); }
     void reserve(const usize new_size) { data_.reserve(new_size.get()); }
 
-    auto begin() noexcept { return data_.begin(); }
-    auto end() noexcept { return data_.end(); }
-    auto begin() const noexcept { return data_.begin(); }
-    auto end() const noexcept { return data_.end(); }
-    auto cbegin() const noexcept { return data_.cbegin(); }
-    auto cend() const noexcept { return data_.cend(); }
+    iterator begin() noexcept { return data_.begin(); }
+    iterator end() noexcept { return data_.end(); }
+    const_iterator begin() const noexcept { return data_.begin(); }
+    const_iterator end() const noexcept { return data_.end(); }
+    const_iterator cbegin() const noexcept { return data_.cbegin(); }
+    const_iterator cend() const noexcept { return data_.cend(); }
 };
 
 template<typename T, usize::type Capacity>
@@ -120,6 +136,15 @@ class static_vector {
     usize size_;
 
 public:
+    using value_type = T;
+    using size_type = usize;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using pointer = T*;
+    using const_pointer = const T*;
+    using iterator = pointer;
+    using const_iterator = const_pointer;
+
     static_vector() noexcept = default;
     ~static_vector() noexcept { destroy_range(begin(), end()); }
     static_vector(const static_vector&) noexcept = default;
@@ -173,14 +198,14 @@ public:
     T& back() noexcept { return at(size() - 1_usize); }
     const T& back() const noexcept { return at(size() - 1_usize); }
 
-    void erase(T* first, T* last) noexcept
+    void erase(iterator first, iterator last) noexcept
     {
         destroy_range(first, last);
         std::rotate(first, last, end());
         size_ -= static_cast<usize::type>(std::distance(first, last));
     }
 
-    void erase(T* iter) noexcept { erase(iter, iter + 1); }
+    void erase(iterator iter) noexcept { erase(iter, iter + 1); }
 
     constexpr void pop_back() noexcept { destroy_range(end() - 1, end()); --size_; }
 
@@ -190,12 +215,12 @@ public:
         size_ = 0_usize;
     }
 
-    constexpr auto begin() noexcept { return ptr(0_usize); }
-    constexpr auto end() noexcept { return ptr(size_); }
-    constexpr auto begin() const noexcept { return ptr(0_usize); }
-    constexpr auto end() const noexcept { return ptr(size_); }
-    constexpr auto cbegin() const noexcept { return ptr(0_usize); }
-    constexpr auto cend() const noexcept { return ptr(size_); }
+    constexpr iterator begin() noexcept { return ptr(0_usize); }
+    constexpr iterator end() noexcept { return ptr(size_); }
+    constexpr const_iterator begin() const noexcept { return ptr(0_usize); }
+    constexpr const_iterator end() const noexcept { return ptr(size_); }
+    constexpr const_iterator cbegin() const noexcept { return ptr(0_usize); }
+    constexpr const_iterator cend() const noexcept { return ptr(size_); }
 
 private:
     void destroy_range([[maybe_unused]] T* b, [[maybe_unused]] T* e)
@@ -215,6 +240,13 @@ class view {
     usize size_;
 
 public:
+    using value_type = T;
+    using size_type = usize;
+    using reference = value_type&;
+    using const_reference = const value_type&;
+    using const_pointer = const T*;
+    using const_iterator = const_pointer;
+
     template<typename Container>
     constexpr view(const Container& container) noexcept
       : entries_{reinterpret_cast<const T*>(container.data())},
@@ -235,10 +267,10 @@ public:
     constexpr const T& front() const noexcept { return at(0_usize); }
     constexpr const T& back() const noexcept { return at(size() - 1_usize); }
 
-    constexpr auto begin() const noexcept { return ptr(0_usize); }
-    constexpr auto end() const noexcept { return ptr(size_); }
-    constexpr auto cbegin() const noexcept { return ptr(0_usize); }
-    constexpr auto cend() const noexcept { return ptr(size_); }
+    constexpr const_iterator begin() const noexcept { return ptr(0_usize); }
+    constexpr const_iterator end() const noexcept { return ptr(size_); }
+    constexpr const_iterator cbegin() const noexcept { return ptr(0_usize); }
+    constexpr const_iterator cend() const noexcept { return ptr(size_); }
 };
 
 template<typename T, typename Container>
