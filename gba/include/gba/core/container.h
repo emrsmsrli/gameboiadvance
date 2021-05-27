@@ -112,7 +112,7 @@ public:
 
     iterator erase(iterator pos) { return data_.erase(pos); }
     iterator erase(const_iterator pos) { return data_.erase(pos); }
-    iterator erase(iterator first, iterator last) noexcept { return data_.erase(first, last); }
+    iterator erase(iterator first, iterator last) { return data_.erase(first, last); }
     iterator erase(const_iterator first, const_iterator last) { return data_.erase(first, last); }
     void pop_back() noexcept { data_.pop_back(); }
 
