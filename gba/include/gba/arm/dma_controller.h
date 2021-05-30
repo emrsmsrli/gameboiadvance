@@ -17,6 +17,8 @@ namespace gba::dma {
 
 constexpr auto channel_count_ = 4_u32;
 
+enum class occasion : u32::type { vblank, hblank, video, fifo_a, fifo_b };
+
 struct data { u32 src; u32 dst; u32 count; };
 
 struct channel : data {
@@ -70,10 +72,6 @@ struct channel : data {
 
 // todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
-public:
-    enum class occasion { vblank, hblank, video, fifo_a, fifo_b };
-
-private:
     arm::arm7tdmi* arm_;
 
     static_vector<channel*, channel_count_> running_channels_;
@@ -117,7 +115,7 @@ class controller_handle {
 public:
     controller_handle() = default;
     explicit controller_handle(controller* controller) noexcept : controller_{controller} {}
-    void request_dma(const controller::occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
+    void request_dma(const occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
     void disable_video_transfer() noexcept
     {
         auto& channel = controller_->channels[3_usize];

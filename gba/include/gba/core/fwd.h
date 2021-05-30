@@ -50,6 +50,7 @@ class timer;
 namespace dma {
 
 class controller;
+enum class occasion : u32::type;
 
 } // namespace timer
 

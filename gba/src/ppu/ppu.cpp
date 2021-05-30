@@ -53,7 +53,7 @@ void engine::on_hdraw(const u64 late_cycles) noexcept
         dispstat_.vblank = true;
         event_on_vblank();
 
-        dma_.request_dma(dma::controller::occasion::vblank);
+        dma_.request_dma(dma::occasion::vblank);
 
         if(dispstat_.vblank_irq_enabled) {
             irq_.request_interrupt(arm::interrupt_source::vblank);
@@ -88,7 +88,7 @@ void engine::on_hblank(const u64 late_cycles) noexcept
     }
 
     if(vcount_ < screen_height) {
-        dma_.request_dma(dma::controller::occasion::hblank);
+        dma_.request_dma(dma::occasion::hblank);
         render_scanline();
 
         mosaic_bg_.update_internal_v();
@@ -119,7 +119,7 @@ void engine::on_hblank(const u64 late_cycles) noexcept
     if(vcount_ == video_dma_range.max()) {
         dma_.disable_video_transfer();
     } else if(video_dma_range.contains(vcount_)) {
-        dma_.request_dma(dma::controller::occasion::video);
+        dma_.request_dma(dma::occasion::video);
     }
 }
 
