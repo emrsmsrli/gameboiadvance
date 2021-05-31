@@ -564,12 +564,14 @@ void cpu_debugger::draw() noexcept
                         ImGui::Text("drq: {}", channel.cnt.drq);
                         ImGui::Text("dst control: {}", to_string_view(channel.cnt.dst_control));
                         ImGui::Text("src control: {}", to_string_view(channel.cnt.src_control));
-                        ImGui::Text("timing: {}", [&]() {
+                        ImGui::Text("timing: {}", [&]() -> std::string {
+                            static constexpr array special_name{"prohibited", "fifo", "fifo", "video"};
                             switch(channel.cnt.when) {
                                 case dma::channel::control::timing::immediately: return "immediately";
                                 case dma::channel::control::timing::vblank: return "vblank";
                                 case dma::channel::control::timing::hblank: return "hblank";
-                                case dma::channel::control::timing::special: return "special";
+                                case dma::channel::control::timing::special:
+                                    return fmt::format("special ({})", special_name[channel.id]);
                                 default:
                                     UNREACHABLE();
                             }
