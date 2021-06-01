@@ -17,7 +17,7 @@ option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(WITH_WARNINGS "Enable compiler warnings" ON)
-option(LOG_LEVEL "Log level" "")
+option(LOG_LEVEL "Log level" "OFF")
 
 set(LOG_LEVELS "TRACE" "DEBUG" "INFO" "WARN" "ERROR" "CRITICAL" "OFF")
 list(FIND LOG_LEVELS ${LOG_LEVEL} LOG_LEVEL_IDX)
