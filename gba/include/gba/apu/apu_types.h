@@ -227,7 +227,7 @@ public:
     bool enabled = true;
     bool dac_enabled = true;
 
-    pulse_channel(scheduler* scheduler) noexcept;
+    explicit pulse_channel(scheduler* scheduler) noexcept;
 
     void generate_output_sample(u64 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
@@ -280,7 +280,7 @@ public:
     using wave_pattern_bank = array<u8, 16>;
     array<wave_pattern_bank, 2> wave_ram{};
 
-    wave_channel(scheduler* scheduler) noexcept;
+    explicit wave_channel(scheduler* scheduler) noexcept;
 
     void generate_output_sample(u64 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
@@ -323,7 +323,7 @@ public:
     bool enabled = true;
     bool dac_enabled = true;
 
-    noise_channel(scheduler* scheduler) noexcept;
+    explicit noise_channel(scheduler* scheduler) noexcept;
 
     void generate_output_sample(u64 late_cycles) noexcept;
     [[nodiscard]] FORCEINLINE i8 get_output() const noexcept { return output; }
@@ -357,7 +357,7 @@ class fifo {
     u32 size_;
 
 public:
-    explicit fifo(cnt::fifo_cnt* control, dma::occasion dma_occasion)
+    fifo(cnt::fifo_cnt* control, dma::occasion dma_occasion)
       : control_{control},
         dma_occasion_{dma_occasion} {}
 
