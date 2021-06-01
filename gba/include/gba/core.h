@@ -12,6 +12,7 @@
 #include <gba/arm/arm7tdmi.h>
 #include <gba/cartridge/gamepak.h>
 #include <gba/ppu/ppu.h>
+#include <gba/apu/apu.h>
 #include <gba/keypad.h>
 
 namespace gba {
@@ -23,6 +24,7 @@ struct core {
     timer::controller timer_controller;
     dma::controller dma_controller;
     ppu::engine ppu;
+    apu::engine apu;
     keypad::keypad keypad;
 
     core() : core(vector<u8>{}) { LOG_ERROR(core, "no BIOS file provided"); }
@@ -31,12 +33,14 @@ struct core {
         arm{this, std::move(bios)},
         timer_controller{&schdlr},
         dma_controller{&arm},
-        ppu{&schdlr}
+        ppu{&schdlr},
+        apu{&timer_controller[0_u32], &timer_controller[1_u32], &schdlr}
     {
         ppu.set_dma_controller_handle(dma::controller_handle{&dma_controller});
+        apu.set_dma_controller_handle(dma::controller_handle{&dma_controller});
+
         ppu.set_irq_controller_handle(arm.get_interrupt_handle());
         pak.set_irq_controller_handle(arm.get_interrupt_handle());
-        //apu.set_irq_controller_handle(arm.get_interrupt_handle());
         //sio.set_irq_controller_handle(arm.get_interrupt_handle());
         timer_controller.set_irq_controller_handle(arm.get_interrupt_handle());
     }

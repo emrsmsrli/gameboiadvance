@@ -13,6 +13,7 @@
 #include <SFML/Window/Event.hpp>
 
 #include <gba/core/fwd.h>
+#include <gba/apu/apu_types.h>
 #include <gba_debugger/breakpoint_database.h>
 #include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
@@ -34,7 +35,7 @@ class window {
     usize total_frames_;
     float total_frame_time_ = 0.f;
 
-    sdl::audio_device audio_device;
+    sdl::audio_device audio_device_;
 
     core* core_;
     breakpoint_database breakpoint_database_;
@@ -63,6 +64,7 @@ private:
     void on_execution_requested(cpu_debugger::execution_request type) noexcept;
     void on_scanline(u8, const ppu::scanline_buffer&) noexcept;
     void on_vblank() noexcept;
+    void on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept;
 };
 
 } // namespace gba::debugger

@@ -10,6 +10,7 @@ add_library(${PROJECT_NAME} STATIC
         src/cpu_debugger.cpp
         src/gamepak_debugger.cpp
         src/ppu_debugger.cpp
+        src/apu_debugger.cpp
         src/keypad_debugger.cpp)
 
 add_library(gba::debugger ALIAS ${PROJECT_NAME})
@@ -20,6 +21,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         gba::gba
         fmt::fmt-header-only
         imgui::sfml
+        SDL2::CXX
         json::json
         access_private::access_private
         sfml-system

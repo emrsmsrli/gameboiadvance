@@ -14,6 +14,7 @@ its features are limited compared to other emulators.
 
 - Accurate ARM7 emulation
 - Scanline based PPU emulation 
+- APU emulation (based on [gameboi](https://github.com/emrsmsrli/gameboi/))
 - Accurate DMA interleaving
 - EEPROM, FLASH and SRAM save-load capability
 - RTC support _(sadly, no other GPIO extensions)_
@@ -23,8 +24,7 @@ its features are limited compared to other emulators.
   
 ### Feature TODO
 - Gamepak prefetch emulation
-- APU emulation (based on [gameboi](https://github.com/emrsmsrli/gameboi/))
-- SIO emulation, and networked multiplayer support (TODO)
+- SIO emulation, and networked multiplayer support
 
 ## Screenshots
 
@@ -55,7 +55,7 @@ gameboiadvance library can be easily integrated to your own frontend implementat
 
 void on_scanline(const gba::u8 line_number, const gba::ppu::scanline_buffer& buffer) noexcept;
 void on_vblank() noexcept;
-void on_audio(const gba::apu::sound_buffer& buffer) noexcept;
+void on_audio(const gba::vector<apu::stereo_sample<float>>& buffer) noexcept;
 
 int main(int argc, char** argv) 
 {
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
 #else
     gba.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
     gba.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
-    gba.apu.on_audio_buffer_full.add_delegate(gba::connect_arg<&on_audio>);
+    gba.apu.get_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
 
     while(true) {
         // gba.press_key(gba::keypad::key::a);

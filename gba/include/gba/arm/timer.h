@@ -56,6 +56,8 @@ public:
     [[nodiscard]] u8 read(register_type reg) const noexcept;
     void write(register_type reg, u8 data) noexcept;
 
+    [[nodiscard]] FORCEINLINE u32 id() const noexcept { return id_; }
+
 private:
     [[nodiscard]] u32 calculate_counter_delta() const noexcept;
 

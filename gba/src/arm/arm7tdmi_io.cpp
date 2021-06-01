@@ -524,6 +524,7 @@ u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
 
 u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
 {
+    auto& apu = core_->apu;
     auto& ppu = core_->ppu;
     auto& timer_controller = core_->timer_controller;
     auto& dma_controller = core_->dma_controller;
@@ -603,45 +604,63 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
         case ppu::addr_bldalpha: return ppu.blend_settings_.eva;
         case ppu::addr_bldalpha + 1: return ppu.blend_settings_.evb;
 
-        case apu::addr_sound1cnt_l:
-        case apu::addr_sound1cnt_l + 1:
-        case apu::addr_sound1cnt_h:
-        case apu::addr_sound1cnt_h + 1:
-        case apu::addr_sound1cnt_x:
-        case apu::addr_sound1cnt_x + 1:
-        case apu::addr_sound2cnt_l:
-        case apu::addr_sound2cnt_l + 1:
-        case apu::addr_sound2cnt_h:
-        case apu::addr_sound2cnt_h + 1:
+        case apu::addr_sound1cnt_l:     return apu.channel_1_.swp.read();
+        case apu::addr_sound1cnt_l + 1: return 0_u8;
+        case apu::addr_sound1cnt_h:     return apu.channel_1_.wav_data.read();
+        case apu::addr_sound1cnt_h + 1: return apu.channel_1_.env.read();
+        case apu::addr_sound1cnt_x:     return 0_u8;
+        case apu::addr_sound1cnt_x + 1: return apu.channel_1_.freq_data.freq_control.read();
+        case apu::addr_sound1cnt_x + 2: return 0_u8;
+        case apu::addr_sound1cnt_x + 3: return 0_u8;
+        case apu::addr_sound2cnt_l:     return apu.channel_2_.wav_data.read();
+        case apu::addr_sound2cnt_l + 1: return apu.channel_2_.env.read();
+        case apu::addr_sound2cnt_h:     return 0_u8;
+        case apu::addr_sound2cnt_h + 1: return apu.channel_2_.freq_data.freq_control.read();
+        case apu::addr_sound2cnt_h + 2: return 0_u8;
+        case apu::addr_sound2cnt_h + 3: return 0_u8;
         case apu::addr_sound3cnt_l:
-        case apu::addr_sound3cnt_l + 1:
-        case apu::addr_sound3cnt_h:
+            return bit::from_bool<u8>(apu.channel_3_.wave_bank_2d) << 5_u8
+              | apu.channel_3_.wave_bank << 6_u8
+              | bit::from_bool<u8>(apu.channel_3_.dac_enabled) << 7_u8;
+        case apu::addr_sound3cnt_l + 1: return 0_u8;
+        case apu::addr_sound3cnt_h:     return 0_u8;
         case apu::addr_sound3cnt_h + 1:
-        case apu::addr_sound3cnt_x:
-        case apu::addr_sound3cnt_x + 1:
-        case apu::addr_sound4cnt_l:
-        case apu::addr_sound4cnt_l + 1:
-        case apu::addr_sound4cnt_h:
-        case apu::addr_sound4cnt_h + 1:
-        case apu::addr_soundcnt_l:
-        case apu::addr_soundcnt_l + 1:
-        case apu::addr_soundcnt_h:
-        case apu::addr_soundcnt_h + 1:
+            return apu.channel_3_.output_level << 5_u8
+              | bit::from_bool<u8>(apu.channel_3_.force_output_level) << 7_u8;
+        case apu::addr_sound3cnt_x:     return 0_u8;
+        case apu::addr_sound3cnt_x + 1: return apu.channel_3_.freq_data.freq_control.read();
+        case apu::addr_sound3cnt_x + 2: return 0_u8;
+        case apu::addr_sound3cnt_x + 3: return 0_u8;
+        case apu::addr_sound4cnt_l:     return 0_u8;
+        case apu::addr_sound4cnt_l + 1: return apu.channel_4_.env.read();
+        case apu::addr_sound4cnt_l + 2: return 0_u8;
+        case apu::addr_sound4cnt_l + 3: return 0_u8;
+        case apu::addr_sound4cnt_h:     return apu.channel_4_.polynomial_cnt.read();
+        case apu::addr_sound4cnt_h + 1: return apu.channel_4_.freq_control.read();
+        case apu::addr_sound4cnt_h + 2: return 0_u8;
+        case apu::addr_sound4cnt_h + 3: return 0_u8;
+        case apu::addr_soundcnt_l:      return apu.control_.read<0>();
+        case apu::addr_soundcnt_l + 1:  return apu.control_.read<1>();
+        case apu::addr_soundcnt_h:      return apu.control_.read<2>();
+        case apu::addr_soundcnt_h + 1:  return apu.control_.read<3>();
         case apu::addr_soundcnt_x:
-        case apu::addr_soundcnt_x + 1:
-        case apu::addr_soundbias:
-        case apu::addr_soundbias + 1:
-        case apu::addr_wave_ram:
-        case apu::addr_wave_ram + 1: //???
-        case apu::addr_fifo_a:
-        case apu::addr_fifo_a + 1:
-        case apu::addr_fifo_a + 2:
-        case apu::addr_fifo_a + 3:
-        case apu::addr_fifo_b:
-        case apu::addr_fifo_b + 1:
-        case apu::addr_fifo_b + 2:
-        case apu::addr_fifo_b + 3:
-            return 0_u8;
+            return bit::from_bool<u8>(apu.power_on_) << 7_u8
+              | bit::from_bool<u8>(apu.channel_4_.enabled) << 3_u8
+              | bit::from_bool<u8>(apu.channel_3_.enabled) << 2_u8
+              | bit::from_bool<u8>(apu.channel_2_.enabled) << 1_u8
+              | bit::from_bool<u8>(apu.channel_1_.enabled) << 0_u8;
+        case apu::addr_soundcnt_x + 1:  return 0_u8;
+        case apu::addr_soundcnt_x + 2:  return 0_u8;
+        case apu::addr_soundcnt_x + 3:  return 0_u8;
+        case apu::addr_soundbias:       return narrow<u8>(apu.soundbias_.bias);
+        case apu::addr_soundbias + 1:   return (narrow<u8>((apu.soundbias_.bias >> 8_u16)) & 0b11_u8) | apu.soundbias_.resolution << 6_u8;
+        case apu::addr_soundbias + 2:   return 0_u8;
+        case apu::addr_soundbias + 3:   return 0_u8;
+        case apu::addr_wave_ram:      case apu::addr_wave_ram + 1:  case apu::addr_wave_ram + 2:  case apu::addr_wave_ram + 3:
+        case apu::addr_wave_ram + 4:  case apu::addr_wave_ram + 5:  case apu::addr_wave_ram + 6:  case apu::addr_wave_ram + 7:
+        case apu::addr_wave_ram + 8:  case apu::addr_wave_ram + 9:  case apu::addr_wave_ram + 10: case apu::addr_wave_ram + 11:
+        case apu::addr_wave_ram + 12: case apu::addr_wave_ram + 13: case apu::addr_wave_ram + 14: case apu::addr_wave_ram + 15:
+            return apu.channel_3_.read_wave_ram(addr & 0xF_u32);
 
         case sio::addr_siomulti0:
         case sio::addr_siomulti0 + 1:
@@ -730,6 +749,7 @@ u8 arm7tdmi::read_io(const u32 addr, const mem_access access) noexcept
 
 void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
 {
+    auto& apu = core_->apu;
     auto& ppu = core_->ppu;
     auto& timer_controller = core_->timer_controller;
     auto& dma_controller = core_->dma_controller;
@@ -886,6 +906,77 @@ void arm7tdmi::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_bldalpha:     ppu.blend_settings_.eva = data & 0x1F_u8; break;
         case ppu::addr_bldalpha + 1: ppu.blend_settings_.evb = data & 0x1F_u8; break;
         case ppu::addr_bldy:         ppu.blend_settings_.evy = data & 0x1F_u8; break;
+
+        case apu::addr_sound1cnt_l:     apu.write<1>(apu::pulse_channel::register_index::sweep, data); break;
+        case apu::addr_sound1cnt_h:     apu.write<1>(apu::pulse_channel::register_index::wave_data, data); break;
+        case apu::addr_sound1cnt_h + 1: apu.write<1>(apu::pulse_channel::register_index::envelope, data); break;
+        case apu::addr_sound1cnt_x:     apu.write<1>(apu::pulse_channel::register_index::freq_data, data); break;
+        case apu::addr_sound1cnt_x + 1: apu.write<1>(apu::pulse_channel::register_index::freq_control, data); break;
+        case apu::addr_sound2cnt_l:     apu.write<2>(apu::pulse_channel::register_index::wave_data, data); break;
+        case apu::addr_sound2cnt_l + 1: apu.write<2>(apu::pulse_channel::register_index::envelope, data); break;
+        case apu::addr_sound2cnt_h:     apu.write<2>(apu::pulse_channel::register_index::freq_data, data); break;
+        case apu::addr_sound2cnt_h + 1: apu.write<2>(apu::pulse_channel::register_index::freq_control, data); break;
+        case apu::addr_sound3cnt_l:     apu.write<3>(apu::wave_channel::register_index::enable, data); break;
+        case apu::addr_sound3cnt_h:     apu.write<3>(apu::wave_channel::register_index::sound_length, data); break;
+        case apu::addr_sound3cnt_h + 1: apu.write<3>(apu::wave_channel::register_index::output_level, data); break;
+        case apu::addr_sound3cnt_x:     apu.write<3>(apu::wave_channel::register_index::freq_data, data); break;
+        case apu::addr_sound3cnt_x + 1: apu.write<3>(apu::wave_channel::register_index::freq_control, data); break;
+        case apu::addr_sound4cnt_l:     apu.write<4>(apu::noise_channel::register_index::sound_length, data); break;
+        case apu::addr_sound4cnt_l + 1: apu.write<4>(apu::noise_channel::register_index::envelope, data); break;
+        case apu::addr_sound4cnt_h:     apu.write<4>(apu::noise_channel::register_index::polynomial_counter, data); break;
+        case apu::addr_sound4cnt_h + 1: apu.write<4>(apu::noise_channel::register_index::freq_control, data); break;
+        case apu::addr_soundcnt_l:      apu.control_.write<0>(data); break;
+        case apu::addr_soundcnt_l + 1:  apu.control_.write<1>(data); break;
+        case apu::addr_soundcnt_h:      apu.control_.write<2>(data); break;
+        case apu::addr_soundcnt_h + 1: {
+            apu.control_.write<3>(data);
+            if(bit::test(data, 3_u8)) { core_->apu.fifo_a_.reset(); }
+            if(bit::test(data, 7_u8)) { core_->apu.fifo_b_.reset(); }
+            break;
+        }
+        case apu::addr_soundcnt_x:
+            if(!bit::test(data, 7_u8)) {
+                for(u32 apu_reg_addr : range(apu::addr_sound1cnt_l, apu::addr_soundcnt_l)) {
+                    write_io(apu_reg_addr, 0x00_u8);
+                }
+
+                apu.channel_1_.disable();
+                apu.channel_2_.disable();
+                apu.channel_3_.disable();
+                apu.channel_4_.disable();
+
+                apu.power_on_ = false;
+            } else if(!apu.power_on_) {
+                apu.frame_sequencer_ = 0_u8;
+                apu.power_on_ = true;
+            }
+            break;
+        case apu::addr_soundbias:
+            apu.soundbias_.bias = bit::set_byte(apu.soundbias_.bias, 0_u8, bit::clear(data, 0_u8));
+            break;
+        case apu::addr_soundbias + 1:
+            apu.soundbias_.bias = bit::set_byte(apu.soundbias_.bias, 1_u8, data & 0b11_u8);
+            apu.soundbias_.resolution = data >> 6_u8;
+            apu.resampler_.set_src_sample_rate(apu.soundbias_.sample_rate());
+            break;
+        case apu::addr_wave_ram:      case apu::addr_wave_ram + 1:  case apu::addr_wave_ram + 2:  case apu::addr_wave_ram + 3:
+        case apu::addr_wave_ram + 4:  case apu::addr_wave_ram + 5:  case apu::addr_wave_ram + 6:  case apu::addr_wave_ram + 7:
+        case apu::addr_wave_ram + 8:  case apu::addr_wave_ram + 9:  case apu::addr_wave_ram + 10: case apu::addr_wave_ram + 11:
+        case apu::addr_wave_ram + 12: case apu::addr_wave_ram + 13: case apu::addr_wave_ram + 14: case apu::addr_wave_ram + 15:
+            apu.channel_3_.write_wave_ram(addr & 0xF_u32, data);
+            break;
+        case apu::addr_fifo_a:
+        case apu::addr_fifo_a + 1:
+        case apu::addr_fifo_a + 2:
+        case apu::addr_fifo_a + 3:
+            apu.fifo_a_.write(data);
+            break;
+        case apu::addr_fifo_b:
+        case apu::addr_fifo_b + 1:
+        case apu::addr_fifo_b + 2:
+        case apu::addr_fifo_b + 3:
+            apu.fifo_b_.write(data);
+            break;
 
         // cnt_h_msb is unused
         case addr_tm0cnt_l:     timer_controller[0_usize].write(timer::register_type::cnt_l_lsb, data); break;

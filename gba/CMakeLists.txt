@@ -5,6 +5,10 @@ configure_file(cmake/version.h.in
         ${CMAKE_CURRENT_SOURCE_DIR}/include/gba/version.h)
 
 add_library(${PROJECT_NAME} STATIC
+        src/apu/apu.cpp
+        src/apu/apu_pulse_channel.cpp
+        src/apu/apu_noise_channel.cpp
+        src/apu/apu_wave_channel.cpp
         src/arm/arm7tdmi.cpp
         src/arm/arm7tdmi_alu.cpp
         src/arm/arm7tdmi_isa_arm.cpp

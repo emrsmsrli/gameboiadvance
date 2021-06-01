@@ -49,11 +49,13 @@ std::string_view to_string_view(const arm::debugger_access_width access_type) no
 window::window(core* core) noexcept
   : window_{sf::VideoMode{1920, 1080}, "GBA Debugger"},
     window_event_{},
+    audio_device_{2, sdl::audio_device::format::f32, 48000, 2048},
     core_{core},
     disassembly_view_{&breakpoint_database_},
     gamepak_debugger_{&core->pak},
     arm_debugger_{&core_->timer_controller, &core_->dma_controller, &core->arm, &breakpoint_database_},
     ppu_debugger_{&core->ppu},
+    apu_debugger_{&core->apu},
     keypad_debugger_{&core->keypad}
 {
     window_.setFramerateLimit(60);
@@ -102,7 +104,9 @@ window::window(core* core) noexcept
     window_.resetGLStates();
     window_.setVerticalSyncEnabled(false);
     window_.setFramerateLimit(60);
-    ImGui::SFML::Init(window_);
+    ImGui::SFML::Init(window_, true);
+
+    audio_device_.resume();
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
     LOG_TRACE(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
@@ -115,6 +119,11 @@ window::window(core* core) noexcept
     arm_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
     core_->ppu.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
     core_->ppu.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
+    core_->apu.get_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
+
+    core_->apu.set_dst_sample_rate(audio_device_.frequency());
+    core_->apu.set_buffer_capacity(audio_device_.sample_count());
+    apu_debugger_.set_buffer_capacity(audio_device_.sample_count());
 }
 
 bool window::draw() noexcept
@@ -177,6 +186,7 @@ bool window::draw() noexcept
     gamepak_debugger_.draw();
     arm_debugger_.draw();
     ppu_debugger_.draw();
+    apu_debugger_.draw();
     keypad_debugger_.draw();
 
     if(ImGui::Begin("Scheduler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
@@ -312,6 +322,16 @@ void window::on_vblank() noexcept
     if(execution_request_ == cpu_debugger::execution_request::frame) {
         tick_allowed_ = false;
         execution_request_ = cpu_debugger::execution_request::none;
+    }
+}
+
+void window::on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept
+{
+    const usize buffer_size_in_bytes = sizeof(apu::stereo_sample<float>) * buffer.size();
+    audio_device_.enqueue(reinterpret_cast<const void*>(buffer.data()), buffer_size_in_bytes.get());
+    while(audio_device_.queue_size() > buffer_size_in_bytes) {
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(1ms);
     }
 }
 
