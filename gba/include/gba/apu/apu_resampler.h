@@ -30,7 +30,7 @@ public:
 
     virtual void write_sample(const Sample sample) = 0;
 
-    void set_src_sample_rate(const u32 src_sample_rate) noexcept
+    FORCEINLINE void set_src_sample_rate(const u32 src_sample_rate) noexcept
     {
         src_sample_rate_ = src_sample_rate;
         calculate_resample_interval();
