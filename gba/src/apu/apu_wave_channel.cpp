@@ -18,12 +18,12 @@ constexpr array<i8, 4> volume_table{0_i8, 4_i8, 2_i8, 1_i8};
 wave_channel::wave_channel(scheduler* scheduler) noexcept
   : scheduler_{scheduler}
 {
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate(), wave_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), wave_channel::generate_output_sample);
 }
 
 void wave_channel::generate_output_sample(const u64 late_cycles) noexcept
 {
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate() - late_cycles, wave_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, wave_channel::generate_output_sample);
 
     if(enabled && dac_enabled) {
         u8 sample_pair = wave_ram[wave_bank][sample_index / 2_u8];
@@ -66,7 +66,7 @@ void wave_channel::length_click() noexcept
 void wave_channel::restart() noexcept
 {
     scheduler_->remove_event(timer_event_id);
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate(), wave_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), wave_channel::generate_output_sample);
 
     enabled = true;
     sample_index = 0_u8;

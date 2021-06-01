@@ -51,7 +51,7 @@ struct channel : data {
 
     u32 id;
 
-    scheduler::event::handle last_event_handle;
+    scheduler::hw_event::handle last_event_handle;
 
     control cnt;
     data internal;

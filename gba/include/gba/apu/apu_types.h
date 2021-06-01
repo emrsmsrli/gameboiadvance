@@ -202,7 +202,7 @@ struct polynomial_counter {
 struct pulse_channel {
 private:
     scheduler* scheduler_;
-    scheduler::event::handle timer_event_id;
+    scheduler::hw_event::handle timer_event_id;
 
 public:
     enum class register_index {
@@ -251,7 +251,7 @@ public:
 struct wave_channel {
 private:
     scheduler* scheduler_;
-    scheduler::event::handle timer_event_id;
+    scheduler::hw_event::handle timer_event_id;
 
 public:
     enum class register_index {
@@ -300,7 +300,7 @@ public:
 struct noise_channel {
 private:
     scheduler* scheduler_;
-    scheduler::event::handle timer_event_id;
+    scheduler::hw_event::handle timer_event_id;
 
 public:
     enum class register_index {

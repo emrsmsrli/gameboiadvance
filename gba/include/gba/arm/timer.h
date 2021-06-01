@@ -37,7 +37,7 @@ class timer {
     arm::irq_controller_handle irq_handle_;
     timer* cascade_instance = nullptr;
 
-    scheduler::event::handle handle_;
+    scheduler::hw_event::handle handle_;
 
     u32 id_;
     u64 last_scheduled_timestamp_;

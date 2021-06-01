@@ -32,8 +32,8 @@ engine::engine(timer::timer* timer1, timer::timer* timer2, scheduler* scheduler)
     fifo_b_{&control_.fifo_b, dma::occasion::fifo_b},
     resampler_{buffer_}
 {
-    scheduler_->ADD_EVENT(frame_sequencer_cycles, apu::engine::tick_sequencer);
-    scheduler_->ADD_EVENT(soundbias_.sample_interval(), apu::engine::tick_mixer);
+    scheduler_->ADD_HW_EVENT(frame_sequencer_cycles, apu::engine::tick_sequencer);
+    scheduler_->ADD_HW_EVENT(soundbias_.sample_interval(), apu::engine::tick_mixer);
 
     timer1->on_overflow.add_delegate({connect_arg<&engine::on_timer_overflow>, this});
     timer2->on_overflow.add_delegate({connect_arg<&engine::on_timer_overflow>, this});
@@ -43,7 +43,7 @@ engine::engine(timer::timer* timer1, timer::timer* timer2, scheduler* scheduler)
 
 void engine::tick_sequencer(const u64 late_cycles) noexcept
 {
-    scheduler_->ADD_EVENT(frame_sequencer_cycles - late_cycles, apu::engine::tick_sequencer);
+    scheduler_->ADD_HW_EVENT(frame_sequencer_cycles - late_cycles, apu::engine::tick_sequencer);
 
     switch(frame_sequencer_.get()) {
         case 0:
@@ -80,7 +80,7 @@ void engine::tick_mixer(const u64 late_cycles) noexcept
       generate_sample(terminal::right).get() / float(0x200)
     });
 
-    scheduler_->ADD_EVENT(soundbias_.sample_interval() - late_cycles, apu::engine::tick_mixer);
+    scheduler_->ADD_HW_EVENT(soundbias_.sample_interval() - late_cycles, apu::engine::tick_mixer);
 }
 
 i16 engine::generate_sample(const u32 terminal) noexcept

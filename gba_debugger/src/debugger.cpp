@@ -28,7 +28,7 @@ ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::unique_ptr<gba::cartridge::ba
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, oam_)
-ACCESS_PRIVATE_FIELD(gba::scheduler, gba::vector<gba::scheduler::event>, heap_)
+ACCESS_PRIVATE_FIELD(gba::scheduler, gba::vector<gba::scheduler::hw_event>, heap_)
 
 namespace gba::debugger {
 
@@ -191,8 +191,8 @@ bool window::draw() noexcept
 
     if(ImGui::Begin("Scheduler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         const scheduler& scheduler = core_->schdlr;
-        vector<scheduler::event> events = access_private::heap_(scheduler);
-        std::sort(events.begin(), events.end(), [](const scheduler::event& e1, const scheduler::event& e2) {
+        vector<scheduler::hw_event> events = access_private::heap_(scheduler);
+        std::sort(events.begin(), events.end(), [](const scheduler::hw_event& e1, const scheduler::hw_event& e2) {
             return e1.timestamp < e2.timestamp;
         });
 
@@ -201,7 +201,7 @@ bool window::draw() noexcept
 
         ImGui::Spacing();
         ImGui::Spacing();
-        for(const scheduler::event& event : events) {
+        for(const scheduler::hw_event& event : events) {
             ImGui::Text("{}, timestamp: {} ({})", event.name, event.timestamp, event.timestamp - scheduler.now());
         }
     }

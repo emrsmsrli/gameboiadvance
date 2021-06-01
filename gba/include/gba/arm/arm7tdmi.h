@@ -168,7 +168,7 @@ class arm7tdmi {
     bool ime_ = false;
     bool irq_signal_ = false;
     bool scheduled_irq_signal_ = false;
-    scheduler::event::handle irq_signal_delay_handle_;
+    scheduler::hw_event::handle irq_signal_delay_handle_;
 
     pipeline pipeline_;
 

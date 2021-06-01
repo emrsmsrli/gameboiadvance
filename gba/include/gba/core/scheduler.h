@@ -20,18 +20,19 @@
 #include <gba/core/event/delegate.h>
 
 #ifdef WITH_DEBUGGER
-  #define ADD_EVENT_NAMED(delay, callback, name) add_event(delay, {connect_arg<&callback>, this}, name)
+  #define ADD_HW_EVENT_NAMED(delay, callback, name) add_hw_event(delay, {connect_arg<&callback>, this}, name)
 #else
   #define ADD_EVENT_NAMED(delay, callback, name) add_event(delay, {connect_arg<&callback>, this})
 #endif // WITH_DEBUGGER
 
-#define ADD_EVENT(delay, callback) ADD_EVENT_NAMED(delay, callback, #callback)
+#define ADD_HW_EVENT(delay, callback) ADD_HW_EVENT_NAMED(delay, callback, #callback)
 
 namespace gba {
 
 class scheduler {
 public:
-    struct event {
+    // represents an hardware event
+    struct hw_event {
         using handle = u64;
 
         delegate<void(u64 /*late_cycles*/)> callback;
@@ -42,13 +43,13 @@ public:
         std::string name;
 #endif // WITH_DEBUGGER
 
-        bool operator>(const event& other) const noexcept { return timestamp > other.timestamp; }
+        bool operator>(const hw_event& other) const noexcept { return timestamp > other.timestamp; }
     };
 
 private:
-    using predicate = std::greater<scheduler::event>;
+    using predicate = std::greater<scheduler::hw_event>;
 
-    vector<event> heap_;
+    vector<hw_event> heap_;
     u64 now_;
     u64 next_event_handle;
 
@@ -59,14 +60,14 @@ public:
     }
 
 #ifdef WITH_DEBUGGER
-    event::handle add_event(const u64 delay, const delegate<void(u64)> callback, std::string name)
+    hw_event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback, std::string name)
     {
-        heap_.push_back(event{callback, now_ + delay, ++next_event_handle, std::move(name)});
+        heap_.push_back(hw_event{callback, now_ + delay, ++next_event_handle, std::move(name)});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
         return next_event_handle;
     }
 #else
-    event::handle add_event(const u64 delay, const delegate<void(u64)> callback)
+    event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback)
     {
         heap_.push_back(event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
@@ -74,18 +75,18 @@ public:
     }
 #endif // WITH_DEBUGGER
 
-    [[nodiscard]] bool has_event(const event::handle handle)
+    [[nodiscard]] bool has_event(const hw_event::handle handle)
     {
-        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const event& e) {
+        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const hw_event& e) {
             return e.h == handle;
         });
 
         return it != heap_.end();
     }
 
-    void remove_event(const event::handle handle)
+    void remove_event(const hw_event::handle handle)
     {
-        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const event& e) {
+        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const hw_event& e) {
             return e.h == handle;
         });
 
@@ -117,7 +118,7 @@ public:
     }
 
     [[nodiscard]] u64 now() const noexcept { return now_; }
-    [[nodiscard]] u64 timestamp_of_next_event() const noexcept { ASSERT(!heap_.empty()); return heap_[0_usize].timestamp; }
+    [[nodiscard]] u64 timestamp_of_next_event() const noexcept { ASSERT(!heap_.empty()); return heap_.front().timestamp; }
     [[nodiscard]] u64 remaining_cycles_to_next_event() const noexcept { return timestamp_of_next_event() - now(); }
 };
 

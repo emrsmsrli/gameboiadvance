@@ -23,7 +23,7 @@ constexpr array<i32, 32> wave_duty{
 pulse_channel::pulse_channel(scheduler* scheduler) noexcept
   : scheduler_{scheduler}
 {
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
 }
 
 void pulse_channel::generate_output_sample(const u64 late_cycles) noexcept
@@ -32,7 +32,7 @@ void pulse_channel::generate_output_sample(const u64 late_cycles) noexcept
     adjust_waveform_duty_index();
     adjust_output_volume();
 
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate() - late_cycles, pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, pulse_channel::generate_output_sample);
 }
 
 i8 pulse_channel::get_output() const noexcept
@@ -102,7 +102,7 @@ void pulse_channel::envelope_click() noexcept
 void pulse_channel::restart() noexcept
 {
     scheduler_->remove_event(timer_event_id);
-    timer_event_id = scheduler_->ADD_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
 
     enabled = true;
     length_counter = 64_u32 - wav_data.sound_length;
