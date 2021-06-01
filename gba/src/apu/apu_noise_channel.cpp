@@ -103,17 +103,9 @@ void noise_channel::write(const register_index index, const u8 data) noexcept
             break;
         case register_index::envelope:
             dac_enabled = (data & 0xF8_u8) != 0x00_u32;
-            // ?fixme if(!dac_enabled) {
-            // ?fixme     disable();
-            // ?fixme }
-
             env.period = data & 0x7_u8;
             env.direction = to_enum<envelope::mode>(bit::extract(data, 3_u8));
             env.initial_volume = data >> 4_u8;
-
-            // ?fixme env.timer = env.period;
-            // ?fixme volume = env.initial_volume;
-            // ?fixme adjust_output_volume();
             break;
         case register_index::polynomial_counter:
             polynomial_cnt.dividing_ratio = data & 0x7_u8;

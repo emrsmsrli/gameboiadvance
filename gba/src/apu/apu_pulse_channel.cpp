@@ -177,17 +177,9 @@ void pulse_channel::write(const register_index index, const u8 data)
             break;
         case register_index::envelope:
             dac_enabled = (data & 0xF8_u8) != 0x00_u32;
-            // ?fixme if(!dac_enabled) {
-            // ?fixme     disable();
-            // ?fixme }
-
             env.period = data & 0x7_u8;
             env.direction = to_enum<envelope::mode>(bit::extract(data, 3_u8));
             env.initial_volume = data >> 4_u8;
-
-            // ?fixme env.timer = env.period;
-            // ?fixme volume = env.initial_volume;
-            // ?fixme adjust_output_volume();
             break;
         case register_index::freq_data:
             freq_data.sample_rate = bit::set_byte(freq_data.sample_rate, 0_u8, data);
