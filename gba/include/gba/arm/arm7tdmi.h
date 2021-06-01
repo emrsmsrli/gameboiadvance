@@ -59,6 +59,7 @@ struct psr {
           | bit::from_bool(n) << 31_u32;
     }
 
+    psr& operator=(const psr&) = default;
     psr& operator=(const u32 data) noexcept
     {
         mode = to_enum<privilege_mode>(data & 0x1F_u32);
