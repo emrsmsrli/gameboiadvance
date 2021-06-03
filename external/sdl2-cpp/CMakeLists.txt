@@ -9,7 +9,7 @@ add_library(SDL2::CXX ALIAS ${PROJECT_NAME})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
         $<IF:$<BOOL:${BUILDING_FOR_RPI3}>,SDL2,SDL2::SDL2>
-        spdlog::spdlog
+        spdlog::spdlog_header_only
         project_options)
 target_include_directories(${PROJECT_NAME} PUBLIC include/)
 target_compile_definitions(${PROJECT_NAME} PRIVATE SDL_MAIN_HANDLED)
