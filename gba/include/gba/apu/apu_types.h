@@ -338,9 +338,8 @@ public:
 
     [[nodiscard]] u32 calculate_sample_rate() const noexcept
     {
-        // fixme from crab >>>>> ((@divisor_code == 0 ? 8_u32 : @divisor_code.to_u32 << 4) << @clock_shift) * 4
         const u8 divisor = polynomial_cnt.dividing_ratio;
-        return (divisor == 0_u8 ? 4_u8 : divisor * 8_u32) << polynomial_cnt.shift_clock_frequency;
+        return ((divisor == 0_u8 ? 8_u8 : divisor * 16_u32) << polynomial_cnt.shift_clock_frequency) * 4_u32;
     }
 };
 
