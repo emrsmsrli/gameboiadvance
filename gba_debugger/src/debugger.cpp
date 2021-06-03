@@ -14,6 +14,7 @@
 #include <access_private.h>
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <implot.h>
 #include <SFML/OpenGL.hpp>
 
 #include <gba/core.h>
@@ -220,15 +221,28 @@ bool window::draw() noexcept
             total_frame_time_ = 0.f;
         }
 
+        const usize frame_time_idx = total_frames_ % frame_time_history_.size();
+        frame_time_history_[frame_time_idx] = dt.asSeconds();
+
+        ImGui::Text("frame count: {}", total_frames_);
+        ImGui::Text("instruction count: {}", total_instructions_); ImGui::SameLine();
+        if(ImGui::Button("reset")) {
+            total_instructions_ = 0_usize;
+        }
         ImGui::Text("current FPS: {}", 1.f / dt.asSeconds());
         ImGui::Text("current frametime: {}", dt.asSeconds());
         ImGui::Text("avg frametime: {}", total_frames_ == 0_usize
           ? 0.f
           : total_frame_time_ / total_frames_.get());
-        ImGui::Text("frame count: {}", total_frames_);
-        ImGui::Text("instruction count: {}", total_instructions_); ImGui::SameLine();
-        if(ImGui::Button("reset")) {
-            total_instructions_ = 0_usize;
+
+        ImPlot::SetNextPlotLimitsY(-.0075, .03f, ImGuiCond_Always);
+        if(ImPlot::BeginPlot("Frametime", nullptr, nullptr, ImVec2{300.f, 150.f},
+          ImPlotFlags_NoMenus | ImPlotFlags_NoLegend, ImPlotAxisFlags_RangeFit | ImPlotAxisFlags_NoTickLabels, ImPlotAxisFlags_Lock)) {
+            ImPlot::PlotLine("frametime_line", frame_time_history_.data(), frame_time_history_.size().get(),
+              1.f, 0.f, frame_time_idx.get());
+            const float ideal_frame_time = 1.f / 60.f;
+            ImPlot::PlotHLines("ideal_frame_time", &ideal_frame_time, 1);
+            ImPlot::EndPlot();
         }
     }
 

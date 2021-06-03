@@ -30,6 +30,7 @@ class window {
     sf::Event window_event_;
     sf::Clock dt_;
 
+    vector<float> frame_time_history_{128_usize};
     sf::Clock frame_dt_;
     usize total_instructions_;
     usize total_frames_;
