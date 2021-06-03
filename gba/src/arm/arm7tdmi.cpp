@@ -5,6 +5,8 @@
  * Refer to the included LICENSE file.
  */
 
+#include <algorithm>
+
 #include <gba/arm/arm7tdmi.h>
 #include <gba/core.h>
 
@@ -19,16 +21,19 @@ arm7tdmi::arm7tdmi(core* core, vector<u8> bios) noexcept
       0xF000'0000_u32
     }
 {
+    cpsr().mode = privilege_mode::svc;
+    switch_mode(cpsr().mode);
+    cpsr().i = true;
+    cpsr().f = true;
+
     if(bios_.empty()) {
-        r(0_u8) = 0x0000'0CA5_u32;
-        r(13_u8) = 0x0300'7F00_u32;
-        r(14_u8) = 0x0800'0000_u32;
-        r(15_u8) = 0x0800'0000_u32;
-        irq_.r13 = 0x0300'7FA0_u32;
-        svc_.r13 = 0x0300'7FE0_u32;
-        irq_.spsr.mode = privilege_mode::usr;
-        svc_.spsr.mode = privilege_mode::usr;
-        cpsr().mode = privilege_mode::sys;
+        r_[0_u8] = 0x0000'0CA5_u32;
+        sp() = 0x0300'7F00_u32;
+        lr() = 0x0800'0000_u32;
+        pc() = 0x0800'0000_u32;
+        reg_banks_[register_bank::irq].named.r13 = 0x0300'7FA0_u32;
+        reg_banks_[register_bank::svc].named.r13 = 0x0300'7FE0_u32;
+        switch_mode(privilege_mode::sys);
     } else {
         ASSERT(bios_.size() == 16_kb);
     }
@@ -47,10 +52,8 @@ void arm7tdmi::tick() noexcept
             process_interrupts();
         }
 
-        u32& pc = r(15_u8);
-
 #if WITH_DEBUGGER
-        if(on_instruction_execute(pc - (cpsr_.t ? 4_u32 : 8_u32))) {
+        if(on_instruction_execute(pc() - (cpsr_.t ? 4_u32 : 8_u32))) {
             return;
         }
 #endif // WITH_DEBUGGER
@@ -59,14 +62,14 @@ void arm7tdmi::tick() noexcept
         pipeline_.executing = pipeline_.decoding;
 
         if(cpsr().t) {
-            pc = bit::clear(pc, 0_u8); // halfword align
-            pipeline_.decoding = read_16(pc, pipeline_.fetch_type);
+            pc() = bit::clear(pc(), 0_u8); // halfword align
+            pipeline_.decoding = read_16(pc(), pipeline_.fetch_type);
             auto func = thumb_table_[instruction >> 6_u32];
             ASSERT(func.is_valid());
             func(this, narrow<u16>(instruction));
         } else {
-            pc = mask::clear(pc, 0b11_u32); // word align
-            pipeline_.decoding = read_32(pc, pipeline_.fetch_type);
+            pc() = mask::clear(pc(), 0b11_u32); // word align
+            pipeline_.decoding = read_32(pc(), pipeline_.fetch_type);
 
             if(condition_met(instruction >> 28_u32)) {
                 auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
@@ -74,7 +77,7 @@ void arm7tdmi::tick() noexcept
                 func(this, instruction);
             } else {
                 pipeline_.fetch_type = mem_access::seq;
-                pc += 4_u32;
+                pc() += 4_u32;
             }
         }
      } else {
@@ -103,18 +106,18 @@ void arm7tdmi::process_interrupts() noexcept
         return;
     }
 
-    irq_.spsr = cpsr();
-    cpsr().mode = privilege_mode::irq;
+    spsr_banks_[register_bank::irq] = cpsr();
+    switch_mode(privilege_mode::irq);
     cpsr().i = true;
 
     if(cpsr().t) {
         cpsr().t = false;
-        r(14_u8) = r15_;
+        lr() = pc();
     } else {
-        r(14_u8) = r15_ - 4_u32;
+        lr() = pc() - 4_u32;
     }
 
-    r15_ = 0x0000'0018_u32;
+    pc() = 0x0000'0018_u32;
     pipeline_flush<instruction_mode::arm>();
 }
 
@@ -131,54 +134,27 @@ void arm7tdmi::tick_components(const u64 cycles) noexcept
     core_->schdlr.add_cycles(cycles);
 }
 
-u32& arm7tdmi::r(const u8 index) noexcept
+void arm7tdmi::switch_mode(const privilege_mode mode) noexcept
 {
-    switch(index.get()) {
-        case  0: return r0_;
-        case  1: return r1_;
-        case  2: return r2_;
-        case  3: return r3_;
-        case  4: return r4_;
-        case  5: return r5_;
-        case  6: return r6_;
-        case  7: return r7_;
-        case  8: return cpsr_.mode == privilege_mode::fiq ? fiq_.r8 : r8_;
-        case  9: return cpsr_.mode == privilege_mode::fiq ? fiq_.r9 : r9_;
-        case 10: return cpsr_.mode == privilege_mode::fiq ? fiq_.r10 : r10_;
-        case 11: return cpsr_.mode == privilege_mode::fiq ? fiq_.r11 : r11_;
-        case 12: return cpsr_.mode == privilege_mode::fiq ? fiq_.r12 : r12_;
-        case 13: switch(cpsr_.mode) {
-            case privilege_mode::fiq: return fiq_.r13;
-            case privilege_mode::irq: return irq_.r13;
-            case privilege_mode::svc: return svc_.r13;
-            case privilege_mode::abt: return abt_.r13;
-            case privilege_mode::und: return und_.r13;
-            default: return r13_;
-        }
-        case 14: switch(cpsr_.mode) {
-            case privilege_mode::fiq: return fiq_.r14;
-            case privilege_mode::irq: return irq_.r14;
-            case privilege_mode::svc: return svc_.r14;
-            case privilege_mode::abt: return abt_.r14;
-            case privilege_mode::und: return und_.r14;
-            default: return r14_;
-        }
-        case 15: return r15_;
+    const register_bank old_bank = bank_from_privilege_mode(cpsr().mode);
+    const register_bank new_bank = bank_from_privilege_mode(mode);
+
+    cpsr().mode = mode;
+
+    if (old_bank == new_bank) {
+        return;
     }
 
-    UNREACHABLE();
-}
-
-psr& arm7tdmi::spsr() noexcept
-{
-    switch(cpsr_.mode) {
-        case privilege_mode::fiq: return fiq_.spsr;
-        case privilege_mode::irq: return irq_.spsr;
-        case privilege_mode::svc: return svc_.spsr;
-        case privilege_mode::abt: return abt_.spsr;
-        case privilege_mode::und: return und_.spsr;
-        default:
-            UNREACHABLE();
+    banked_regs& old_regs = reg_banks_[old_bank];
+    banked_regs& new_regs = reg_banks_[new_bank];
+    if(old_bank == register_bank::fiq || new_bank == register_bank::fiq) {
+        std::copy(r_.begin() + 8_i32, r_.begin() + 15_i32, old_regs.r.begin());
+        std::copy(new_regs.r.begin(), new_regs.r.end(), r_.begin() + 8_i32);
+    } else {
+        old_regs.named.r13 = sp();
+        old_regs.named.r14 = lr();
+        sp() = new_regs.named.r13;
+        lr() = new_regs.named.r14;
     }
 }
 

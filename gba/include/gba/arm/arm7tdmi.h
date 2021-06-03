@@ -27,6 +27,10 @@ namespace gba::arm {
 enum class debugger_access_width : u32::type { byte, hword, word, any };
 #endif // WITH_DEBUGGER
 
+enum class register_bank : u32::type {
+    none, irq, svc, fiq, abt, und
+};
+
 enum class privilege_mode : u8::type {
     usr = 0x10,  // user
     fiq = 0x11,  // fast interrupt
@@ -37,6 +41,20 @@ enum class privilege_mode : u8::type {
     sys = 0x1f,  // system
 };
 
+[[nodiscard]] FORCEINLINE constexpr register_bank bank_from_privilege_mode(const privilege_mode mode) noexcept
+{
+    switch(mode) {
+        case privilege_mode::sys:
+        case privilege_mode::usr: return register_bank::none;
+        case privilege_mode::fiq: return register_bank::fiq;
+        case privilege_mode::irq: return register_bank::irq;
+        case privilege_mode::svc: return register_bank::svc;
+        case privilege_mode::abt: return register_bank::abt;
+        case privilege_mode::und: return register_bank::und;
+        default: UNREACHABLE();  // don't handle invalid modes
+    }
+}
+
 struct psr {
     bool n = false;  // signed flag
     bool z = false;  // zero flag
@@ -45,7 +63,7 @@ struct psr {
     bool i = false;  // irq disabled flag
     bool f = false;  // fiq disabled flag
     bool t = false;  // thumb mode flag
-    privilege_mode mode{privilege_mode::sys};
+    privilege_mode mode{privilege_mode::svc};
 
     explicit operator u32() const noexcept
     {
@@ -63,6 +81,24 @@ struct psr {
     psr& operator=(const u32 data) noexcept
     {
         mode = to_enum<privilege_mode>(data & 0x1F_u32);
+        copy_without_mode(data);
+        return *this;
+    }
+
+    void copy_without_mode(const psr& other) noexcept
+    {
+        t = other.t;
+        f = other.f;
+        i = other.i;
+
+        v = other.v;
+        c = other.c;
+        z = other.z;
+        n = other.n;
+    }
+
+    void copy_without_mode(const u32 data) noexcept
+    {
         t = bit::test(data, 5_u8);
         f = bit::test(data, 6_u8);
         i = bit::test(data, 7_u8);
@@ -71,27 +107,36 @@ struct psr {
         c = bit::test(data, 29_u8);
         z = bit::test(data, 30_u8);
         n = bit::test(data, 31_u8);
-        return *this;
     }
 };
 
-struct banked_mode_regs {
-    u32 r13;
-    u32 r14;
-
-    psr spsr;
+union banked_regs {
+    struct regs {
+        u32 r8; u32 r9; u32 r10; u32 r11; u32 r12; u32 r13; u32 r14;
+    } named;
+    array<u32, 7> r{};
 };
 
-struct banked_fiq_regs {
-    u32 r8;
-    u32 r9;
-    u32 r10;
-    u32 r11;
-    u32 r12;
-    u32 r13;
-    u32 r14;
+struct reg_banks {
+    array<banked_regs, 6> reg_banks;
 
-    psr spsr;
+    FORCEINLINE banked_regs& operator[](const register_bank bank) noexcept { return reg_banks[from_enum<u32>(bank)]; }
+    FORCEINLINE const banked_regs& operator[](const register_bank bank) const noexcept { return reg_banks[from_enum<u32>(bank)]; }
+};
+
+struct spsr_banks {
+    array<psr, 5> banks;
+
+    FORCEINLINE psr& operator[](const register_bank bank) noexcept
+    {
+        ASSERT(bank != register_bank::none);
+        return banks[from_enum<u32>(bank) - 1_u32];
+    }
+    FORCEINLINE const psr& operator[](const register_bank bank) const noexcept
+    {
+        ASSERT(bank != register_bank::none);
+        return banks[from_enum<u32>(bank) - 1_u32];
+    }
 };
 
 struct waitstate_control {
@@ -145,22 +190,11 @@ class arm7tdmi {
      */
     u32 bios_last_read_;
 
-    u32 r0_; u32 r1_;
-    u32 r2_; u32 r3_;
-    u32 r4_; u32 r5_;
-    u32 r6_; u32 r7_;
-    u32 r8_; u32 r9_;
-    u32 r10_; u32 r11_;
-    u32 r12_; u32 r13_;
-    u32 r14_; u32 r15_;
+    array<u32, 16> r_{};
+    reg_banks reg_banks_{};
 
     psr cpsr_;
-
-    banked_fiq_regs fiq_;
-    banked_mode_regs svc_;
-    banked_mode_regs abt_;
-    banked_mode_regs irq_;
-    banked_mode_regs und_;
+    spsr_banks spsr_banks_{};
 
     u8 post_boot_;
     halt_control haltcnt_{halt_control::running};
@@ -195,17 +229,13 @@ public:
 
     void tick() noexcept;
 
-    void request_interrupt(const interrupt_source irq) noexcept
+    FORCEINLINE void request_interrupt(const interrupt_source irq) noexcept
     {
         if_ |= from_enum<u16>(irq);
         schedule_update_irq_signal();
     }
 
     irq_controller_handle get_interrupt_handle() noexcept { return irq_controller_handle{this}; }
-
-    u32& r(u8 index) noexcept;
-    psr& cpsr() noexcept { return cpsr_; }
-    psr& spsr() noexcept;
 
 private:
     [[nodiscard]] u32 read_32_aligned(u32 addr, mem_access access) noexcept;
@@ -229,7 +259,7 @@ private:
 
     void update_waitstate_table() noexcept;
 
-    [[nodiscard]] bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
+    [[nodiscard]] FORCEINLINE bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
     void schedule_update_irq_signal() noexcept;
     void update_irq_signal(u64 /*late_cycles*/) noexcept;
     void process_interrupts() noexcept;
@@ -281,35 +311,46 @@ private:
     // decoder helpers
     [[nodiscard]] bool condition_met(u32 cond) const noexcept;
 
-    [[nodiscard]] bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
-    [[nodiscard]] bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
+    [[nodiscard]] FORCEINLINE bool in_privileged_mode() const noexcept { return cpsr_.mode != privilege_mode::usr; }
+    [[nodiscard]] FORCEINLINE bool in_exception_mode() const noexcept { return in_privileged_mode() && cpsr_.mode != privilege_mode::sys; }
 
-    template<usize::type Count>
+    template<u8::type Count>
     static_vector<u8, Count> generate_register_list(const u32 instr) noexcept
     {
         static_vector<u8, Count> regs;
-        for(u8 i = 0_u8; i < Count; ++i) {
-            if(bit::test(instr, i)) {
-                regs.push_back(i);
+        for(u8 r : range(Count)) {
+            if(bit::test(instr, r)) {
+                regs.push_back(r);
             }
         }
         return regs;
     }
 
+    [[nodiscard]] FORCEINLINE psr& cpsr() noexcept { return cpsr_; }
+    [[nodiscard]] FORCEINLINE psr& spsr() noexcept { return spsr_banks_[bank_from_privilege_mode(cpsr().mode)]; }
+
+    [[nodiscard]] FORCEINLINE u32& sp() noexcept { return r_[13_u32]; }
+    [[nodiscard]] FORCEINLINE u32 sp() const noexcept { return r_[13_u32]; }
+    [[nodiscard]] FORCEINLINE u32& lr() noexcept { return r_[14_u32]; }
+    [[nodiscard]] FORCEINLINE u32 lr() const noexcept { return r_[14_u32]; }
+    [[nodiscard]] FORCEINLINE u32& pc() noexcept { return r_[15_u32]; }
+    [[nodiscard]] FORCEINLINE u32 pc() const noexcept { return r_[15_u32]; }
+
+    void switch_mode(privilege_mode mode) noexcept;
+
     template<instruction_mode Mode>
     void pipeline_flush() noexcept
     {
-        u32& pc = r(15_u8);
         if constexpr(Mode == instruction_mode::arm) {
-            pipeline_.executing = read_32(pc, mem_access::non_seq);
-            pipeline_.decoding = read_32(pc + 4_u32, mem_access::seq);
+            pipeline_.executing = read_32(pc(), mem_access::non_seq);
+            pipeline_.decoding = read_32(pc() + 4_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
-            pc += 8_u32;
+            pc() += 8_u32;
         } else {
-            pipeline_.executing = read_16(pc, mem_access::non_seq);
-            pipeline_.decoding = read_16(pc + 2_u32, mem_access::seq);
+            pipeline_.executing = read_16(pc(), mem_access::non_seq);
+            pipeline_.decoding = read_16(pc() + 2_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
-            pc += 4_u32;
+            pc() += 4_u32;
         }
     }
 

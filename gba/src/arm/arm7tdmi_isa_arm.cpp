@@ -9,7 +9,7 @@
 
 namespace gba::arm {
 
-namespace  {
+namespace {
 
 FORCEINLINE u32 addresing_offset(const bool add_to_base, const u32 rn, const u32 offset) noexcept
 {
@@ -23,31 +23,31 @@ FORCEINLINE u32 addresing_offset(const bool add_to_base, const u32 rn, const u32
 
 void arm7tdmi::data_processing_imm_shifted_reg(const u32 instr) noexcept
 {
-    u32 reg_op = r(narrow<u8>(instr & 0xF_u32));
+    u32 reg_op = r_[instr & 0xF_u32];
     const u32 shift_type = (instr >> 5_u32) & 0b11_u32;
     const u8 shift_amount = narrow<u8>((instr >> 7_u32) & 0x1F_u32);
     bool carry = cpsr().c;
 
     alu_barrel_shift(static_cast<barrel_shift_type>(shift_type.get()), reg_op, shift_amount, carry, true);
-    data_processing(instr, r(narrow<u8>((instr >> 16_u8) & 0xF_u8)), reg_op, carry);
+    data_processing(instr, r_[(instr >> 16_u8) & 0xF_u8], reg_op, carry);
 }
 
 void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
 {
-    const u8 rm = narrow<u8>(instr & 0xF_u32);
-    u32 reg_op = r(rm);
-    if(rm == 15_u8) {
-        reg_op += 4_u8;
+    const u32 rm = instr & 0xF_u32;
+    u32 reg_op = r_[rm];
+    if(rm == 15_u32) {
+        reg_op += 4_u32;
     }
 
-    const u8 rn = narrow<u8>((instr >> 16_u8) & 0xF_u8);
-    u32 first_op = r(rn);
-    if(rn == 15_u8) {
-        first_op += 4_u8;
+    const u32 rn =(instr >> 16_u32) & 0xF_u32;
+    u32 first_op = r_[rn];
+    if(rn == 15_u32) {
+        first_op += 4_u32;
     }
 
     const u32 shift_type = (instr >> 5_u32) & 0b11_u32;
-    const u8 shift_amount = narrow<u8>(r(narrow<u8>((instr >> 8_u32) & 0xF_u32)));
+    const u8 shift_amount = narrow<u8>(r_[(instr >> 8_u32) & 0xF_u32]);
     bool carry = cpsr().c;
 
     tick_internal();
@@ -67,7 +67,7 @@ void arm7tdmi::data_processing_imm(const u32 instr) noexcept
         carry = static_cast<bool>(ror.carry.get());
     }
 
-    data_processing(instr, r(narrow<u8>((instr >> 16_u8) & 0xF_u8)), imm_op, carry);
+    data_processing(instr, r_[(instr >> 16_u8) & 0xF_u8], imm_op, carry);
 }
 
 void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 second_op, const bool carry) noexcept
@@ -75,8 +75,8 @@ void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 se
     const bool set_flags = bit::test(instr, 20_u8);
     const u32 opcode = (instr >> 21_u8) & 0xF_u8;
 
-    const u8 dest = narrow<u8>((instr >> 12_u8) & 0xF_u8);
-    u32& rd = r(dest);
+    const u32 dest = (instr >> 12_u8) & 0xF_u8;
+    u32& rd = r_[dest];
 
     const auto do_set_flags = [&](const u32 expression) {
         cpsr().n = bit::test(expression, 31_u8);
@@ -149,9 +149,10 @@ void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 se
     }
 
     pipeline_.fetch_type = mem_access::seq;
-    if(dest == 15_u8) {
+    if(dest == 15_u32) {
         if(set_flags && in_exception_mode()) {
-            cpsr() = spsr();
+            cpsr().copy_without_mode(spsr());
+            switch_mode(spsr().mode);
         }
 
         if((opcode < 0x8_u32 /*TST*/ || 0xB_u32 /*CMN*/ < opcode)) {
@@ -162,28 +163,28 @@ void arm7tdmi::data_processing(const u32 instr, const u32 first_op, const u32 se
             }
         }
     } else {
-        r(15_u8) += 4_u32;
+        pc() += 4_u32;
     }
 }
 
 void arm7tdmi::branch_exchange(const u32 instr) noexcept
 {
-    const u32 addr = r(narrow<u8>(instr & 0xF_u32));
+    const u32 addr = r_[instr & 0xF_u32];
     if(bit::test(addr, 0_u8)) {
-        r(15_u8) = bit::clear(addr, 0_u8);
+        pc() = bit::clear(addr, 0_u8);
         cpsr().t = true;
         pipeline_flush<instruction_mode::thumb>();
     } else {
-        r(15_u8) = mask::clear(addr, 0b11_u32);
+        pc() = mask::clear(addr, 0b11_u32);
         pipeline_flush<instruction_mode::arm>();
     }
 }
 
 void arm7tdmi::halfword_data_transfer_reg(const u32 instr) noexcept
 {
-    const u8 rm = narrow<u8>(instr & 0xF_u32);
-    ASSERT(rm != 15_u8);
-    halfword_data_transfer(instr, r(rm));
+    const u32 rm = instr & 0xF_u32;
+    ASSERT(rm != 15_u32);
+    halfword_data_transfer(instr, r_[rm]);
 }
 
 void arm7tdmi::halfword_data_transfer_imm(const u32 instr) noexcept
@@ -197,10 +198,10 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
     const bool add_to_base = bit::test(instr, 23_u8);
     const bool write_back = bit::test(instr, 21_u8);
     const bool is_ldr = bit::test(instr, 20_u8);
-    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
-    const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
+    const u32 rn = (instr >> 16_u32) & 0xF_u32;
+    const u32 rd = (instr >> 12_u32) & 0xF_u32;
 
-    u32 rn_addr = r(rn);
+    u32 rn_addr = r_[rn];
 
     if(pre_indexing) {
         rn_addr = addresing_offset(add_to_base, rn_addr, offset);
@@ -209,15 +210,15 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
     if(is_ldr) {
         switch(((instr >> 5_u32) & 0b11_u32).get()) {
             case 1: { // LDRH
-                r(rd) = read_16_aligned(rn_addr, mem_access::non_seq);
+                r_[rd] = read_16_aligned(rn_addr, mem_access::non_seq);
                 break;
             }
             case 2: { // LDRSB
-                r(rd) = read_8_signed(rn_addr, mem_access::non_seq);
+                r_[rd] = read_8_signed(rn_addr, mem_access::non_seq);
                 break;
             }
             case 3: { // LDRSH
-                r(rd) = read_16_signed(rn_addr, mem_access::non_seq);
+                r_[rd] = read_16_signed(rn_addr, mem_access::non_seq);
                 break;
             }
             default:
@@ -229,7 +230,7 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
         // STRH
         ASSERT(((instr >> 5_u32) & 0b11_u32) == 1_u32);
 
-        u32 src = r(rd);
+        u32 src = r_[rd];
         if(rd == 15_u8) {
             src += 4_u32;
         }
@@ -240,17 +241,17 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
     if(!is_ldr || rn != rd) {
         if(!pre_indexing) {
             rn_addr = addresing_offset(add_to_base, rn_addr, offset);
-            r(rn) = rn_addr;
+            r_[rn] = rn_addr;
         } else if(write_back) {
-            r(rn) = rn_addr;
+            r_[rn] = rn_addr;
         }
     }
 
-    if(is_ldr && rd == 15_u8) {
+    if(is_ldr && rd == 15_u32) {
         pipeline_flush<instruction_mode::arm>();
     } else {
         pipeline_.fetch_type = mem_access::non_seq;
-        r(15_u8) += 4_u32;
+        pc() += 4_u32;
     }
 }
 
@@ -259,20 +260,20 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
     const bool use_spsr = bit::test(instr, 22_u8);
     switch(bit::extract(instr, 21_u8).get()) {
         case 0: { // MRS
-            const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
-            ASSERT(rd != 15_u8);
+            const u32 rd = (instr >> 12_u32) & 0xF_u32;
+            ASSERT(rd != 15_u32);
 
             if(use_spsr && in_exception_mode()) {
-                r(rd) = static_cast<u32>(spsr());
+                r_[rd] = static_cast<u32>(spsr());
             } else {
-                r(rd) = static_cast<u32>(cpsr());
+                r_[rd] = static_cast<u32>(cpsr());
             }
             break;
         }
         case 1: { // MSR
-            const u8 rm = narrow<u8>(instr & 0xF_u32);
-            ASSERT(rm != 15_u8);
-            psr_transfer_msr(instr, r(rm), use_spsr);
+            const u32 rm = instr & 0xF_u32;
+            ASSERT(rm != 15_u32);
+            psr_transfer_msr(instr, r_[rm], use_spsr);
             break;
         }
         default:
@@ -280,7 +281,7 @@ void arm7tdmi::psr_transfer_reg(const u32 instr) noexcept
     }
 
     pipeline_.fetch_type = mem_access::seq;
-    r(15_u8) += 4_u32;
+    pc() += 4_u32;
 }
 
 void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
@@ -290,7 +291,7 @@ void arm7tdmi::psr_transfer_imm(const u32 instr) noexcept
     psr_transfer_msr(instr, imm, use_spsr);
 
     pipeline_.fetch_type = mem_access::seq;
-    r(15_u8) += 4_u32;
+    pc() += 4_u32;
 }
 
 void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool use_spsr) noexcept
@@ -301,24 +302,25 @@ void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool u
 
     if(use_spsr) {
         if(in_exception_mode()) {
-            auto& reg = spsr();
+            psr& reg = spsr();
             reg = mask::clear(static_cast<u32>(reg), mask) | (operand & mask);
         }
     } else {
-        auto& reg = cpsr();
-        reg = mask::clear(static_cast<u32>(reg), mask) | (operand & mask);
+        const u32 new_cpsr = mask::clear(static_cast<u32>(cpsr()), mask) | (operand & mask);
+        cpsr().copy_without_mode(new_cpsr);
+        switch_mode(to_enum<privilege_mode>(operand & 0x1F_u32));
     }
 }
 
 void arm7tdmi::multiply(const u32 instr) noexcept
 {
-    u32& rd = r(narrow<u8>((instr >> 16_u32) & 0xF_u32));
-    const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
-    const u32 rm = r(narrow<u8>(instr & 0xF_u32));
+    u32& rd = r_[(instr >> 16_u32) & 0xF_u32];
+    const u32 rs = r_[(instr >> 8_u32) & 0xF_u32];
+    const u32 rm = r_[instr & 0xF_u32];
 
-    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != 15_u8);
-    ASSERT(narrow<u8>((instr >> 8_u32) & 0xF_u32) != 15_u8);
-    ASSERT(narrow<u8>(instr & 0xF_u32) != 15_u8);
+    ASSERT(((instr >> 16_u32) & 0xF_u32) != 15_u32);
+    ASSERT(((instr >> 8_u32) & 0xF_u32) != 15_u32);
+    ASSERT((instr & 0xF_u32) != 15_u32);
 
     alu_multiply_internal(rs, [](const u32 r, const u32 mask) {
         return r == 0_u32 || r == mask;
@@ -327,8 +329,8 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     u32 result = rm * rs;
 
     if(bit::test(instr, 21_u8)) {
-        ASSERT(narrow<u8>((instr >> 12_u32) & 0xF_u32) != 15_u8);
-        result += r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
+        ASSERT(((instr >> 12_u32) & 0xF_u32) != 15_u32);
+        result += r_[(instr >> 12_u32) & 0xF_u32];
         tick_internal();
     }
 
@@ -339,24 +341,24 @@ void arm7tdmi::multiply(const u32 instr) noexcept
 
     rd = result;
     pipeline_.fetch_type = mem_access::non_seq;
-    r(15_u8) += 4_u32;
+    pc() += 4_u32;
 }
 
 void arm7tdmi::multiply_long(const u32 instr) noexcept
 {
-    u32& rdhi = r(narrow<u8>((instr >> 16_u32) & 0xF_u32));
-    u32& rdlo = r(narrow<u8>((instr >> 12_u32) & 0xF_u32));
-    const u32 rs = r(narrow<u8>((instr >> 8_u32) & 0xF_u32));
-    const u32 rm = r(narrow<u8>(instr & 0xF_u32));
+    u32& rdhi = r_[(instr >> 16_u32) & 0xF_u32];
+    u32& rdlo = r_[(instr >> 12_u32) & 0xF_u32];
+    const u32 rs = r_[(instr >> 8_u32) & 0xF_u32];
+    const u32 rm = r_[instr & 0xF_u32];
 
     ASSERT(
-      narrow<u8>((instr >> 16_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32) &&
-      narrow<u8>((instr >> 12_u32) & 0xF_u32) != narrow<u8>(instr & 0xF_u32) &&
-      narrow<u8>((instr >> 12_u32) & 0xF_u32) != narrow<u8>((instr >> 16_u32) & 0xF_u32));
-    ASSERT(narrow<u8>((instr >> 16_u32) & 0xF_u32) != 15_u8);
-    ASSERT(narrow<u8>((instr >> 12_u32) & 0xF_u32) != 15_u8);
-    ASSERT(narrow<u8>((instr >> 8_u32) & 0xF_u32) != 15_u8);
-    ASSERT(narrow<u8>(instr & 0xF_u32) != 15_u8);
+      ((instr >> 16_u32) & 0xF_u32) != (instr & 0xF_u32) &&
+      ((instr >> 12_u32) & 0xF_u32) != (instr & 0xF_u32) &&
+      ((instr >> 12_u32) & 0xF_u32) != ((instr >> 16_u32) & 0xF_u32));
+    ASSERT(((instr >> 16_u32) & 0xF_u32) != 15_u32);
+    ASSERT(((instr >> 12_u32) & 0xF_u32) != 15_u32);
+    ASSERT(((instr >> 8_u32) & 0xF_u32) != 15_u32);
+    ASSERT((instr & 0xF_u32) != 15_u32);
 
     tick_internal();
 
@@ -388,34 +390,34 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
     rdhi = narrow<u32>(make_unsigned(result) >> 32_u64);
     rdlo = narrow<u32>(make_unsigned(result));
     pipeline_.fetch_type = mem_access::non_seq;
-    r(15_u8) += 4_u32;
+    pc() += 4_u32;
 }
 
 void arm7tdmi::single_data_swap(const u32 instr) noexcept
 {
-    const u8 rm = narrow<u8>(instr & 0xF_u8);
-    const u8 rd = narrow<u8>((instr >> 12_u8) & 0xF_u8);
-    const u8 rn = narrow<u8>((instr >> 16_u8) & 0xF_u8);
-    const u32 rn_addr = r(rn);
+    const u32 rm = instr & 0xF_u32;
+    const u32 rd = (instr >> 12_u32) & 0xF_u32;
+    const u32 rn = (instr >> 16_u32) & 0xF_u32;
+    const u32 rn_addr = r_[rn];
 
-    ASSERT(rm != 15_u8);
-    ASSERT(rd != 15_u8);
-    ASSERT(rn != 15_u8);
+    ASSERT(rm != 15_u32);
+    ASSERT(rd != 15_u32);
+    ASSERT(rn != 15_u32);
 
     u32 data;
     if(bit::test(instr, 22_u8)) {  // byte
         data = read_8(rn_addr, mem_access::non_seq);
-        write_8(rn_addr, narrow<u8>(r(rm)), mem_access::non_seq);
+        write_8(rn_addr, narrow<u8>(r_[rm]), mem_access::non_seq);
     } else {  // word
         data = read_32_aligned(rn_addr, mem_access::non_seq);
-        write_32(rn_addr, r(rm), mem_access::non_seq);
+        write_32(rn_addr, r_[rm], mem_access::non_seq);
     }
 
-    r(rd) = data;
+    r_[rd] = data;
     tick_internal();
 
     pipeline_.fetch_type = mem_access::non_seq;
-    r(15_u8) += 4_u8;
+    pc() += 4_u8;
 }
 
 void arm7tdmi::single_data_transfer(const u32 instr) noexcept
@@ -425,17 +427,17 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
     const bool transfer_byte = bit::test(instr, 22_u8);
     const bool write_back = bit::test(instr, 21_u8);
     const bool is_ldr = bit::test(instr, 20_u8);
-    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
-    const u8 rd = narrow<u8>((instr >> 12_u32) & 0xF_u32);
+    const u32 rn = (instr >> 16_u32) & 0xF_u32;
+    const u32 rd = (instr >> 12_u32) & 0xF_u32;
 
-    u32 rn_addr = r(rn);
+    u32 rn_addr = r_[rn];
 
     const u32 offset = [=]() {
         // reg
         if(bit::test(instr, 25_u8)) {
             const auto shift_type = static_cast<barrel_shift_type>(((instr >> 5_u32) & 0b11_u32).get());
             const u8 shift_amount = narrow<u8>((instr >> 7_u32) & 0x1F_u32);
-            u32 rm = r(narrow<u8>(instr & 0xF_u32));
+            u32 rm = r_[instr & 0xF_u32];
             bool dummy = cpsr().c;
             alu_barrel_shift(shift_type, rm, shift_amount, dummy, true);
             return rm;
@@ -450,14 +452,14 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
 
     if(is_ldr) {
         if(transfer_byte) {
-            r(rd) = read_8(rn_addr, mem_access::non_seq);
+            r_[rd] = read_8(rn_addr, mem_access::non_seq);
         } else {
-            r(rd) = read_32_aligned(rn_addr, mem_access::non_seq);
+            r_[rd] = read_32_aligned(rn_addr, mem_access::non_seq);
         }
 
         tick_internal();
     } else {
-        u32 src = r(rd);
+        u32 src = r_[rd];
         if(rd == 15_u8) {
             src += 4_u32;
         }
@@ -472,9 +474,9 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
     // write back
     if(!is_ldr || rn != rd) {
         if(!pre_indexing) {
-            r(rn) = addresing_offset(add_to_base, rn_addr, offset);
+            r_[rn] = addresing_offset(add_to_base, rn_addr, offset);
         } else if(write_back) {
-            r(rn) = rn_addr;
+            r_[rn] = rn_addr;
         }
     }
 
@@ -482,17 +484,17 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
         pipeline_flush<instruction_mode::arm>();
     } else {
         pipeline_.fetch_type = mem_access::non_seq;
-        r(15_u8) += 4_u32;
+        pc() += 4_u32;
     }
 }
 
 void arm7tdmi::undefined(const u32 /*instr*/) noexcept
 {
-    und_.r14 = r15_ - 4_u32;
-    und_.spsr = cpsr();
-    cpsr().mode = privilege_mode::und;
+    spsr_banks_[register_bank::und] = cpsr();
+    switch_mode(privilege_mode::und);
     cpsr().i = true;
-    r15_ = 0x0000'0004_u32;
+    lr() = pc() - 4_u32;
+    pc() = 0x0000'0004_u32;
     pipeline_flush<instruction_mode::arm>();
 }
 
@@ -503,14 +505,14 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     const bool load_psr = bit::test(instr, 22_u8);
     const bool write_back = bit::test(instr, 21_u8);
     const bool is_ldm = bit::test(instr, 20_u8);
-    const u8 rn = narrow<u8>((instr >> 16_u32) & 0xF_u32);
-    ASSERT(rn != 15_u8);
+    const u32 rn = (instr >> 16_u32) & 0xF_u32;
+    ASSERT(rn != 15_u32);
 
     bool transfer_pc = bit::test(instr, 15_u8);
     auto rlist = generate_register_list<16>(instr);
     u32 offset = narrow<u32>(rlist.size()) * 4_u32;
 
-    const bool switch_mode = load_psr && (!is_ldm || !transfer_pc);
+    const bool should_switch_mode = load_psr && (!is_ldm || !transfer_pc);
 
     // Empty Rlist: R15 loaded/stored, and Rb=Rb+/-40h.
     if(rlist.empty()) {
@@ -519,14 +521,14 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
         transfer_pc = true;
     }
 
-    u32 rn_addr = r(rn);
+    u32 rn_addr = r_[rn];
     u32 rn_addr_old = rn_addr;
     u32 rn_addr_new = rn_addr;
 
     privilege_mode old_mode;
-    if(switch_mode) {
+    if(should_switch_mode) {
         old_mode = cpsr().mode;
-        cpsr().mode = privilege_mode::usr;
+        switch_mode(privilege_mode::usr);
     }
 
     // for DECREASING addressing modes, the CPU does first calculate the lowest address,
@@ -540,22 +542,23 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     }
 
     auto access_type = mem_access::non_seq;
-    for(const u8 reg : rlist) {
+    for(const u32 reg : rlist) {
         if(pre_indexing) {
             rn_addr += 4_u32;
         }
 
         if(is_ldm) {
-            r(reg) = read_32(rn_addr, access_type);
-            if(reg == 15_u8 && load_psr && in_exception_mode()) {
-                cpsr() = spsr();
+            r_[reg] = read_32(rn_addr, access_type);
+            if(reg == 15_u32 && load_psr && in_exception_mode()) {
+                cpsr().copy_without_mode(spsr());
+                switch_mode(spsr().mode);
             }
         } else if(reg == rn) {
             write_32(rn_addr, rlist[0_usize] == rn ? rn_addr_old : rn_addr_new, access_type);
-        } else if(reg == 15_u8) {
-            write_32(rn_addr, r(15_u8) + 4_u32, access_type);
+        } else if(reg == 15_u32) {
+            write_32(rn_addr, pc() + 4_u32, access_type);
         } else {
-            write_32(rn_addr, r(reg), access_type);
+            write_32(rn_addr, r_[reg], access_type);
         }
 
         if(!pre_indexing) {
@@ -565,12 +568,12 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
         access_type = mem_access::seq;
     }
 
-    if(switch_mode) {
-        cpsr().mode = old_mode;
+    if(should_switch_mode) {
+        switch_mode(old_mode);
     }
 
-    if(write_back && (!is_ldm || !bit::test(instr, rn))) {
-        r(rn) = rn_addr_new;
+    if(write_back && (!is_ldm || !bit::test(instr, narrow<u8>(rn)))) {
+        r_[rn] = rn_addr_new;
     }
 
     if(is_ldm) {
@@ -585,30 +588,28 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
         }
     } else {
         pipeline_.fetch_type = mem_access::non_seq;
-        r(15_u8) += 4_u32;
+        pc() += 4_u32;
     }
 }
 
 void arm7tdmi::branch_with_link(const u32 instr) noexcept
 {
-    u32& pc = r(15_u8);
-
     // link
     if(bit::test(instr, 24_u8)) {
-        r(14_u8) = pc - 4_u32;
+        lr() = pc() - 4_u32;
     }
 
-    pc += math::sign_extend<26>((instr & 0x00FF'FFFF_u32) << 2_u32);
+    pc() += math::sign_extend<26>((instr & 0x00FF'FFFF_u32) << 2_u32);
     pipeline_flush<instruction_mode::arm>();
 }
 
 void arm7tdmi::swi_arm(const u32 /*instr*/) noexcept
 {
-    svc_.r14 = r15_ - 4_u32;
-    svc_.spsr = cpsr();
-    cpsr().mode = privilege_mode::svc;
+    spsr_banks_[register_bank::svc] = cpsr();
+    switch_mode(privilege_mode::svc);
     cpsr().i = true;
-    r15_ = 0x0000'0008_u32;
+    lr() = pc() - 4_u32;
+    pc() = 0x0000'0008_u32;
     pipeline_flush<instruction_mode::arm>();
 }
 

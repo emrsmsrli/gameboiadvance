@@ -473,7 +473,7 @@ u32 arm7tdmi::read_bios(u32 addr) noexcept
         return read_unused(addr, mem_access::none); // dma can't access bios
     }
 
-    if(r15_ < 0x0000'4000_u32) {
+    if(pc() < 0x0000'4000_u32) {
         bios_last_read_ = memcpy<u32>(bios_, addr);
     }
     return bios_last_read_ >> shift;
@@ -487,7 +487,7 @@ u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
 
     u32 data;
     if(cpsr().t) {
-        const auto current_page = to_enum<memory_page>(r15_ >> 24_u32);
+        const auto current_page = to_enum<memory_page>(pc() >> 24_u32);
         switch(current_page) {
             case memory_page::ewram:
             case memory_page::palette_ram: case memory_page::vram:
@@ -502,7 +502,7 @@ u32 arm7tdmi::read_unused(const u32 addr, const mem_access access) noexcept
                     data = pipeline_.executing | (pipeline_.decoding << 16_u32);
                 } else {
                     // LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
-                    data = (widen<u32>(read_16(r15_ + 2_u32, mem_access::dry_run)) << 16_u32) | pipeline_.decoding;
+                    data = (widen<u32>(read_16(pc() + 2_u32, mem_access::dry_run)) << 16_u32) | pipeline_.decoding;
                 }
                 break;
             case memory_page::iwram:

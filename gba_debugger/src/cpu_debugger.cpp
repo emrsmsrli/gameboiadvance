@@ -20,28 +20,12 @@
 #include <gba_debugger/disassembler.h>
 #include <gba_debugger/disassembly_entry.h>
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r0_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r1_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r2_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r3_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r4_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r5_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r6_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r7_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r8_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r9_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r10_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r11_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r12_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r13_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r14_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
+using regs_t = gba::array<gba::u32, 16>;
+
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, regs_t, r_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::reg_banks, reg_banks_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_fiq_regs, fiq_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, svc_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, abt_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, irq_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::banked_mode_regs, und_)
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::spsr_banks, spsr_banks_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::pipeline, pipeline_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_)
@@ -79,52 +63,111 @@ namespace gba::debugger {
 
 namespace {
 
+void draw_reg(const u32 reg) noexcept
+{
+    ImGui::TableNextColumn();
+    if(reg == 0_u32) {
+        ImGui::TextColored(ImColor(ImGui::GetColorU32(ImGuiCol_TextDisabled)), "%08X", reg.get());
+    } else {
+        ImGui::Text("{:08X}", reg);
+    }
+};
+
+void draw_psr_tooltip(const arm::psr& p) noexcept
+{
+    if(ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("n: {}", p.n);  // signed flag
+        ImGui::Text("z: {}", p.z);  // zero flag
+        ImGui::Text("c: {}", p.c);  // carry flag
+        ImGui::Text("v: {}", p.v);  // overflow flag
+        ImGui::Text("i: {}", p.i);  // irq disabled flag
+        ImGui::Text("f: {}", p.f);  // fiq disabled flag
+        ImGui::Text("t: {}", p.t);  // thumb mode flag
+        ImGui::Text("mode: {}", [&]() {
+            switch(p.mode) {
+                case arm::privilege_mode::usr: return "usr";
+                case arm::privilege_mode::fiq: return "fiq";
+                case arm::privilege_mode::irq: return "irq";
+                case arm::privilege_mode::svc: return "svc";
+                case arm::privilege_mode::abt: return "abt";
+                case arm::privilege_mode::und: return "und";
+                case arm::privilege_mode::sys: return "sys";
+                default: return "???";
+            }
+        }());
+        ImGui::EndTooltip();
+    }
+}
+
+void draw_psr(const arm::psr& spsr) noexcept
+{
+    draw_reg(static_cast<u32>(spsr));
+    draw_psr_tooltip(spsr);
+};
+
 void draw_regs(arm::arm7tdmi* arm) noexcept
 {
     ImGui::TextUnformatted("Registers");
     ImGui::Separator();
 
-    const auto print_reg = [](const u32 reg) {
+    ImGui::BeginGroup();
+    ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
+    if(ImGui::BeginTable("#arm_registers_new", 2,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
+      ImVec2(0.f, 0.f))) {
+
+        const regs_t& regs = access_private::r_(arm);
+        const arm::spsr_banks& spsr = access_private::spsr_banks_(arm);
+
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+        ImGui::TableSetColumnIndex(1);
+        ImGui::TextUnformatted([&]() {
+            switch(access_private::cpsr_(arm).mode) {
+                case arm::privilege_mode::sys: return "SYS";
+                case arm::privilege_mode::usr: return "USR";
+                case arm::privilege_mode::fiq: return "FIQ";
+                case arm::privilege_mode::irq: return "IRQ";
+                case arm::privilege_mode::svc: return "SVC";
+                case arm::privilege_mode::abt: return "ABT";
+                case arm::privilege_mode::und: return "UND";
+                default: return "???";
+            }
+        }());
+
+        enumerate(regs, [&](usize idx, u32 r) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::Text("R{}", idx);
+            draw_reg(r);
+        });
+
+        ImGui::TableNextRow();
         ImGui::TableNextColumn();
-        if(reg == 0_u32) {
-            ImGui::TextColored(ImColor(ImGui::GetColorU32(ImGuiCol_TextDisabled)), "%08X", reg.get());
-        } else {
-            ImGui::Text("{:08X}", reg);
-        }
-    };
+        ImGui::TextUnformatted("CPSR");
+        draw_psr(access_private::cpsr_(arm));
 
-    const auto print_reg_n = [&](const u32 reg, const u32 n) {
-        for(u32 i = 0_u32; i < n; ++i) {
-            print_reg(reg);
+        ImGui::TableNextRow();
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted("SPSR");
+        switch(access_private::cpsr_(arm).mode) {
+            case arm::privilege_mode::sys:
+            case arm::privilege_mode::usr: break;
+            case arm::privilege_mode::fiq: draw_psr(spsr[arm::register_bank::fiq]); break;
+            case arm::privilege_mode::irq: draw_psr(spsr[arm::register_bank::irq]); break;
+            case arm::privilege_mode::svc: draw_psr(spsr[arm::register_bank::svc]); break;
+            case arm::privilege_mode::abt: draw_psr(spsr[arm::register_bank::abt]); break;
+            case arm::privilege_mode::und: draw_psr(spsr[arm::register_bank::und]); break;
+            default: UNREACHABLE();
         }
-    };
+        ImGui::EndTable();
+    }
+    ImGui::PopStyleVar();
+    ImGui::EndGroup();
+}
 
-    const auto psr_tooltip = [](arm::psr p) {
-        if(ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::Text("n: {}", p.n);  // signed flag
-            ImGui::Text("z: {}", p.z);  // zero flag
-            ImGui::Text("c: {}", p.c);  // carry flag
-            ImGui::Text("v: {}", p.v);  // overflow flag
-            ImGui::Text("i: {}", p.i);  // irq disabled flag
-            ImGui::Text("f: {}", p.f);  // fiq disabled flag
-            ImGui::Text("t: {}", p.t);  // thumb mode flag
-            ImGui::Text("mode: {}", [&]() {
-                switch(p.mode) {
-                    case arm::privilege_mode::usr: return "usr";
-                    case arm::privilege_mode::fiq: return "fiq";
-                    case arm::privilege_mode::irq: return "irq";
-                    case arm::privilege_mode::svc: return "svc";
-                    case arm::privilege_mode::abt: return "abt";
-                    case arm::privilege_mode::und: return "und";
-                    case arm::privilege_mode::sys: return "sys";
-                    default: UNREACHABLE();
-                }
-            }());
-            ImGui::EndTooltip();
-        }
-    };
-
+void draw_banked_regs(arm::arm7tdmi* arm) noexcept
+{
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
     if(ImGui::BeginTable("#arm_registers", 7,
       ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
@@ -140,109 +183,51 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         ImGui::TextUnformatted("UND");
         ImGui::TableNextRow();
 
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R0");
-        print_reg_n(access_private::r0_(arm), 6_u32);
-        ImGui::TableNextRow();
+        const regs_t& r = access_private::r_(arm);
+        const arm::reg_banks& banks = access_private::reg_banks_(arm);
 
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R1");
-        print_reg_n(access_private::r1_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R2");
-        print_reg_n(access_private::r2_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R3");
-        print_reg_n(access_private::r3_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R4");
-        print_reg_n(access_private::r4_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R5");
-        print_reg_n(access_private::r5_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R6");
-        print_reg_n(access_private::r6_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R7");
-        print_reg_n(access_private::r7_(arm), 6_u32);
-        ImGui::TableNextRow();
+        const auto draw_banked_reg = [&](auto&& reg_selector) {
+            for(u32 b : range(from_enum<u32>(arm::register_bank::und) + 1)) {
+                draw_reg(reg_selector(banks[to_enum<arm::register_bank>(b)].named));
+            }
+        };
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R8");
-        print_reg(access_private::r8_(arm));
-        print_reg(access_private::fiq_(arm).r8);
-        print_reg_n(access_private::r8_(arm), 4_u32);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r8; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R9");
-        print_reg(access_private::r9_(arm));
-        print_reg(access_private::fiq_(arm).r9);
-        print_reg_n(access_private::r9_(arm), 4_u32);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r9; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R10");
-        print_reg(access_private::r10_(arm));
-        print_reg(access_private::fiq_(arm).r10);
-        print_reg_n(access_private::r10_(arm), 4_u32);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r10; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R11");
-        print_reg(access_private::r11_(arm));
-        print_reg(access_private::fiq_(arm).r11);
-        print_reg_n(access_private::r11_(arm), 4_u32);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r11; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R12");
-        print_reg(access_private::r12_(arm));
-        print_reg(access_private::fiq_(arm).r12);
-        print_reg_n(access_private::r12_(arm), 4_u32);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r12; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R13");
-        print_reg(access_private::r13_(arm));
-        print_reg(access_private::fiq_(arm).r13);
-        print_reg(access_private::svc_(arm).r13);
-        print_reg(access_private::abt_(arm).r13);
-        print_reg(access_private::irq_(arm).r13);
-        print_reg(access_private::und_(arm).r13);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r13; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R14");
-        print_reg(access_private::r14_(arm));
-        print_reg(access_private::fiq_(arm).r14);
-        print_reg(access_private::svc_(arm).r14);
-        print_reg(access_private::abt_(arm).r14);
-        print_reg(access_private::irq_(arm).r14);
-        print_reg(access_private::und_(arm).r14);
+        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r14; });
         ImGui::TableNextRow();
 
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("R15");
-        print_reg_n(access_private::r15_(arm), 6_u32);
-        ImGui::TableNextRow();
-
-        ImGui::TableNextColumn(); ImGui::TextUnformatted("CPSR");
-        for(u32 i = 0_u32; i < 6_u32; ++i) {
-            print_reg(static_cast<u32>(access_private::cpsr_(arm)));
-            psr_tooltip(access_private::cpsr_(arm));
-        }
-        ImGui::TableNextRow();
-
+        const arm::spsr_banks& spsr = access_private::spsr_banks_(arm);
         ImGui::TableNextColumn(); ImGui::TextUnformatted("SPSR");
         /* no spsr in usr/sys */ ImGui::TableNextColumn();
-        print_reg(static_cast<u32>(access_private::fiq_(arm).spsr));
-        psr_tooltip(access_private::fiq_(arm).spsr);
-        print_reg(static_cast<u32>(access_private::svc_(arm).spsr));
-        psr_tooltip(access_private::svc_(arm).spsr);
-        print_reg(static_cast<u32>(access_private::abt_(arm).spsr));
-        psr_tooltip(access_private::abt_(arm).spsr);
-        print_reg(static_cast<u32>(access_private::irq_(arm).spsr));
-        psr_tooltip(access_private::irq_(arm).spsr);
-        print_reg(static_cast<u32>(access_private::und_(arm).spsr));
-        psr_tooltip(access_private::und_(arm).spsr);
+        draw_psr(spsr[arm::register_bank::fiq]);
+        draw_psr(spsr[arm::register_bank::svc]);
+        draw_psr(spsr[arm::register_bank::abt]);
+        draw_psr(spsr[arm::register_bank::irq]);
+        draw_psr(spsr[arm::register_bank::und]);
 
         ImGui::EndTable();
     }
@@ -333,25 +318,24 @@ void cpu_debugger::draw() noexcept
     if(ImGui::Begin("CPU")) {
         if(ImGui::BeginTabBar("#arm_tab")) {
             if(ImGui::BeginTabItem("ARM")) {
-                draw_regs(arm_);
+                draw_regs(arm_); ImGui::SameLine();
 
-                ImGui::Spacing();
-                ImGui::Spacing();
-                ImGui::Spacing();
-
+                ImGui::BeginGroup();
                 ImGui::TextUnformatted("Pipeline");
                 ImGui::Separator();
+
+                regs_t& r = access_private::r_(arm_);
                 const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
                     ImGui::Text(access_private::cpsr_(arm_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
                     if(ImGui::IsItemHovered()) {
                         ImGui::BeginTooltip();
                         if(access_private::cpsr_(arm_).t) {
                             ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                              access_private::r15_(arm_) - offset * 4_u32,
+                              r[15_u32] - offset * 4_u32,
                               narrow<u16>(instr)).c_str());
                         } else {
                             ImGui::TextUnformatted(disassembler::disassemble_arm(
-                              access_private::r15_(arm_) - offset * 2_u32,
+                              r[15_u32] - offset * 2_u32,
                               instr).c_str());
                         }
                         ImGui::EndTooltip();
@@ -406,7 +390,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::EndGroup();
                 }
 
-                ImGui::SameLine(0.f, 75.f);
+                ImGui::SameLine(160.f, 0.f);
 
                 ImGui::BeginGroup(); {
                     static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
@@ -426,6 +410,13 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("phi {}", access_private::waitcnt_(arm_).phi);
                     ImGui::Text("prefetch {}", access_private::waitcnt_(arm_).prefetch_buffer_enable);
                     ImGui::EndGroup();
+                }
+                ImGui::EndGroup();
+
+                static bool show_banked_registers = false;
+                ImGui::Checkbox("Show banked registers", &show_banked_registers);
+                if(show_banked_registers) {
+                    draw_banked_regs(arm_);
                 }
 
                 auto& w16 = access_private::wait_16(arm_);
@@ -792,7 +783,7 @@ void cpu_debugger::draw_disassembly() noexcept
 {
     if(ImGui::BeginChild("#armdisassemblychild")) {
         vector<u8>* memory;
-        const u32 pc = access_private::r15_(arm_);
+        const u32 pc = access_private::r_(arm_)[15_u32];
         u32 offset;
         if(pc < 0x0000'3FFF_u32) {
             memory = &access_private::bios_(arm_);
