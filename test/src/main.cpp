@@ -13,7 +13,8 @@
 
 #include <gba/core.h>
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u32, r15_)
+using regs_t = gba::array<gba::u32, 16>;
+ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, regs_t, r_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
 
 TEST_CASE("test roms")
@@ -26,8 +27,10 @@ TEST_CASE("test roms")
 
              REQUIRE(g.pak.loaded());
 
+             using namespace gba::integer_literals;
+
              auto& wram = access_private::wram_(g.arm);
-             gba::u32& pc = access_private::r15_(g.arm);
+             gba::u32& pc = access_private::r_(g.arm)[15_u32];
              gba::u32 last_pc;
 
              while(true) {
