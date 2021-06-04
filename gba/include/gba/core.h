@@ -32,7 +32,7 @@ struct core {
       : pak{},
         arm{this, std::move(bios)},
         timer_controller{&schdlr},
-        dma_controller{&arm},
+        dma_controller{&arm, &schdlr},
         ppu{&schdlr},
         apu{&timer_controller[0_u32], &timer_controller[1_u32], &schdlr}
     {

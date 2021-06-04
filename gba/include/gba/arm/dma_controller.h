@@ -73,6 +73,7 @@ struct channel : data {
 // todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
     arm::arm7tdmi* arm_;
+    scheduler* scheduler_;
 
     static_vector<channel*, channel_count_> running_channels_;
     static_vector<channel*, channel_count_> scheduled_channels_;
@@ -89,7 +90,8 @@ public:
       channel{3_u32},
     };
 
-    explicit controller(arm::arm7tdmi* arm) noexcept : arm_{arm} {}
+    controller(arm::arm7tdmi* arm, scheduler* scheduler) noexcept
+      : arm_{arm}, scheduler_{scheduler} {}
 
     void write_cnt_l(usize idx, u8 data) noexcept;
     void write_cnt_h(usize idx, u8 data) noexcept;

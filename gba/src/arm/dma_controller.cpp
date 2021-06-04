@@ -5,11 +5,11 @@
  * Refer to the included LICENSE file.
  */
 
+#include <gba/arm/dma_controller.h>
+
 #include <algorithm>
 
-#include <gba/arm/dma_controller.h>
-#include <gba/core.h>
-#include <gba/helper/range.h>
+#include <gba/arm/arm7tdmi.h>
 
 namespace gba::dma {
 
@@ -108,7 +108,7 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
           std::remove(running_channels_.begin(), running_channels_.end(), &channel),
           running_channels_.end());
 
-        arm_->core_->schdlr.remove_event(channel.last_event_handle);
+        scheduler_->remove_event(channel.last_event_handle);
         return;
     }
 
@@ -192,7 +192,7 @@ void controller::run_channels() noexcept
         channel->next_access_type = arm::mem_access::seq | arm::mem_access::dma;
 
         if(channel->internal.count == 0_u32) {
-            running_channels_.pop_back();
+            running_channels_.erase(std::find(running_channels_.begin(), running_channels_.end(), channel));
 
             if(channel->cnt.irq) {
                 arm_->request_interrupt(to_enum<arm::interrupt_source>(
@@ -276,21 +276,20 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
 
 void controller::on_channel_start(const u64 /*late_cycles*/) noexcept
 {
-    channel* ch = scheduled_channels_.back();
-    scheduled_channels_.pop_back();
+    channel* ch = scheduled_channels_.front();
+    scheduled_channels_.erase(scheduled_channels_.begin());
     running_channels_.push_back(ch);
     sort_by_priority(running_channels_);
 }
 
 void controller::schedule(channel& channel, const channel::control::timing timing) noexcept
 {
-    if(channel.cnt.enabled
-      && channel.cnt.when == timing
-      && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
-        channel.last_event_handle = arm_->core_->schdlr.ADD_HW_EVENT_NAMED(2_usize, controller::on_channel_start,
-          fmt::format("dma::controller::on_channel_start ({})", channel.id));
-        scheduled_channels_.push_back(&channel);
-        sort_by_priority(scheduled_channels_);
+    if(channel.cnt.enabled && channel.cnt.when == timing && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
+        if(std::find(running_channels_.begin(), running_channels_.end(), &channel) == running_channels_.end()) {
+            channel.last_event_handle = scheduler_->ADD_HW_EVENT_NAMED(2_usize, controller::on_channel_start,
+              fmt::format("dma::controller::on_channel_start ({})", channel.id));
+            scheduled_channels_.push_back(&channel);
+        }
     }
 }
 
