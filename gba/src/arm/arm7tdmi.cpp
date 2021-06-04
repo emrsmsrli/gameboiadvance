@@ -160,6 +160,10 @@ void arm7tdmi::switch_mode(const privilege_mode mode) noexcept
 
 bool arm7tdmi::condition_met(const u32 cond) const noexcept
 {
+    if(LIKELY(cond == /* AL */ 0xE_u32)) {
+        return true;
+    }
+
     switch(cond.get()) {
         /* EQ */ case 0x0: return cpsr_.z;
         /* NE */ case 0x1: return !cpsr_.z;
@@ -175,7 +179,6 @@ bool arm7tdmi::condition_met(const u32 cond) const noexcept
         /* LT */ case 0xB: return cpsr_.n != cpsr_.v;
         /* GT */ case 0xC: return !cpsr_.z && cpsr_.n == cpsr_.v;
         /* LE */ case 0xD: return cpsr_.z || cpsr_.n != cpsr_.v;
-        /* AL */ case 0xE: return true;
     }
 
     // NV
