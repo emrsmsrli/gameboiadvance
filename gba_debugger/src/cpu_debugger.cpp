@@ -743,8 +743,7 @@ void cpu_debugger::draw_access_breakpoints() noexcept
     ImGui::PopItemWidth();
 
     if(ok_pressed) {
-        if(std::strlen(address_lo_buf.data()) != 0 &&
-          std::strlen(address_hi_buf.data()) != 0) {
+        if(std::strlen(address_lo_buf.data()) != 0) {
             static constexpr array access_types{
               access_breakpoint::type::read,
               access_breakpoint::type::write,
@@ -755,7 +754,9 @@ void cpu_debugger::draw_access_breakpoints() noexcept
             breakpoint.access_type = access_types[static_cast<u32::type>(access_type)];
 
             const u32 addr_min = static_cast<u32::type>(std::strtoul(address_lo_buf.data(), nullptr, 16));
-            const u32 addr_max = static_cast<u32::type>(std::strtoul(address_hi_buf.data(), nullptr, 16));
+            const u32 addr_max = std::strlen(address_hi_buf.data()) != 0
+              ? static_cast<u32::type>(std::strtoul(address_hi_buf.data(), nullptr, 16))
+              : addr_min + 1_u32;
             if(addr_min < addr_max) {
                 breakpoint.address_range = range<u32>(addr_min, addr_max);
 
@@ -773,9 +774,15 @@ void cpu_debugger::draw_access_breakpoints() noexcept
     ImGui::Spacing();
     ImGui::Spacing();
     draw_bps(bp_db_->get_access_breakpoints(), [](const access_breakpoint& bp) {
-        ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X}",
-          bp.address_range.min(), bp.address_range.max(),
-          to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+        if(bp.address_range.size() == 1_u32) {
+            ImGui::Text("    {:08X}      | {:^5} | {:^10} | {:0X}",
+              bp.address_range.min(),
+              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+        } else {
+            ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X}",
+              bp.address_range.min(), bp.address_range.max(),
+              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+        }
     });
 }
 
