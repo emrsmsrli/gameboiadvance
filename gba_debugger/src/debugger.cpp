@@ -24,6 +24,7 @@ ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
 ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::vector<gba::u8>, pak_data_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u32, mirror_mask_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::unique_ptr<gba::cartridge::backup>, backup_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
@@ -53,7 +54,7 @@ window::window(core* core) noexcept
     core_{core},
     disassembly_view_{&breakpoint_database_},
     gamepak_debugger_{&core->pak},
-    arm_debugger_{&core_->timer_controller, &core_->dma_controller, &core->arm, &breakpoint_database_},
+    cpu_debugger_{&core_->timer_controller, &core_->dma_controller, &core->arm, &breakpoint_database_, access_private::mirror_mask_(core_->pak)},
     ppu_debugger_{&core->ppu},
     apu_debugger_{&core->apu},
     keypad_debugger_{&core->keypad}
@@ -116,7 +117,7 @@ window::window(core* core) noexcept
     core_->arm.on_io_read.connect<&window::on_io_read>(this);
     core_->arm.on_io_write.connect<&window::on_io_write>(this);
 
-    arm_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
+    cpu_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
     core_->ppu.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
     core_->ppu.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
     core_->apu.get_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
@@ -184,7 +185,7 @@ bool window::draw() noexcept
     disassembly_view_.draw_with_mode(access_private::cpsr_(core_->arm).t);
     memory_view_.draw();
     gamepak_debugger_.draw();
-    arm_debugger_.draw();
+    cpu_debugger_.draw();
     ppu_debugger_.draw();
     apu_debugger_.draw();
     keypad_debugger_.draw();

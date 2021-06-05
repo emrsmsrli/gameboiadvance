@@ -43,7 +43,7 @@ class window {
     disassembly_view disassembly_view_;
     memory_view memory_view_;
     gamepak_debugger gamepak_debugger_;
-    cpu_debugger arm_debugger_;
+    cpu_debugger cpu_debugger_;
     ppu_debugger ppu_debugger_;
     apu_debugger apu_debugger_;
     keypad_debugger keypad_debugger_;

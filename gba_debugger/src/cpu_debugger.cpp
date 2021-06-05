@@ -785,21 +785,25 @@ void cpu_debugger::draw_disassembly() noexcept
         vector<u8>* memory;
         const u32 pc = access_private::r_(arm_)[15_u32];
         u32 offset;
+        u32 mask = rom_mirror_mask_;
         if(pc < 0x0000'3FFF_u32) {
             memory = &access_private::bios_(arm_);
-        } else if(pc < 0x0203'FFFF_u32) {
+            mask = 0x0000'3FFF_u32;
+        } else if(pc < 0x0300'0000_u32) {
             memory = &access_private::wram_(arm_);
             offset = 0x0200'0000_u32;
-        } else if(pc < 0x0300'7FFF_u32) {
+            mask = 0x0003'FFFF_u32;
+        } else if(pc < 0x0400'0000_u32) {
             memory = &access_private::iwram_(arm_);
             offset = 0x0300'0000_u32;
-        } else if(pc < 0x09FF'FFFF_u32) {
+            mask = 0x0000'7FFF_u32;
+        } else if(pc < 0x0A00'0000_u32) {
             memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
             offset = 0x0800'0000_u32;
-        } else if(pc < 0x0BFF'FFFF_u32) {
+        } else if(pc < 0x0C00'0000_u32) {
             memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
-            offset = 0xA800'0000_u32;
-        } else if(pc < 0x0DFF'FFFF_u32) {
+            offset = 0x0A00'0000_u32;
+        } else if(pc < 0x0E00'0000_u32) {
             memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
             offset = 0x0C00'0000_u32;
         } else {
@@ -810,7 +814,7 @@ void cpu_debugger::draw_disassembly() noexcept
             return;
         }
 
-        const u32 pc_physical_address = pc - offset;
+        const u32 pc_physical_address = pc & mask;
 
         const u32 instr_width = access_private::cpsr_(arm_).t ? 2_u32 : 4_u32;
         usize instr_idx = pc_physical_address / instr_width;
@@ -826,8 +830,10 @@ void cpu_debugger::draw_disassembly() noexcept
             const u32 virtual_address = physical_address + offset;
 
             const bool is_thumb = access_private::cpsr_(arm_).t;
-            const u32 instr = is_thumb ? memcpy<u16>(*memory, physical_address) : memcpy<u32>(*memory, physical_address);
-            const bool is_pc = is_thumb ? virtual_address == pc - 4_u32 : virtual_address == pc - 8_u32;
+            const bool is_pc = virtual_address == pc_physical_address + offset - (2_u32 * instr_width);
+            const u32 instr = is_thumb
+              ? memcpy<u16>(*memory, physical_address)
+              : memcpy<u32>(*memory, physical_address);
 
             disassembly_entry entry{bp_db_, virtual_address, instr, is_thumb, is_pc};
             entry.draw();
