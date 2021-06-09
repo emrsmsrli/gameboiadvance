@@ -10,6 +10,7 @@
 #include <test_prelude.h>
 #include <gba/cartridge/backup.h>
 #include <gba/core/math.h>
+#include <gba/core/scheduler.h>
 
 using namespace gba;
 using namespace gba::cartridge;
@@ -157,12 +158,14 @@ TEST_CASE("backup_eeprom cmds")
     };
 
     backup_eeprom eeprom{"test", 512_usize};  // 8_kb will perform the same.
+    scheduler dummy_scheduler;
+    eeprom.set_scheduler(&dummy_scheduler);
 
     SUBCASE("read") {
         // manually modify the internal representation so we can verify it at the end
         memcpy(eeprom.data(), 8_usize, eeprom_data);
 
-        CHECK(eeprom.read(0x0_u32) == 0x0_u8);  // always reads 0 when read not requested
+        CHECK(eeprom.read(0x0_u32) == 0x1_u8);  // always reads 1 when read not requested and in the settled state
 
         // send read request (0b11)
         eeprom.write(0x0_u32, 0x1_u8);
@@ -180,7 +183,7 @@ TEST_CASE("backup_eeprom cmds")
         }
 
         // eeprom should disable read mode after 68 reads
-        CHECK(eeprom.read(0x0_u32) == 0x0_u8);
+        CHECK(eeprom.read(0x0_u32) == 0x1_u8);
     }
 
     SUBCASE("write") {
@@ -196,6 +199,12 @@ TEST_CASE("backup_eeprom cmds")
         }
         // end write transmission
         eeprom.write(0x0_u32, 0x0_u8);
+
+        // should return 0 while settling
+        CHECK(eeprom.read(0x0_u32) == 0x0_u8);
+        dummy_scheduler.add_cycles(120'000_u64); // approximate value
+        // should return 1 after settling
+        CHECK(eeprom.read(0x0_u32) == 0x1_u8);
 
         CHECK(std::all_of(eeprom.data().begin(), eeprom.data().begin() + 8_usize, [](u8 data) { return data == 0xFF_u8; }));
         CHECK(memcpy<u64>(eeprom.data(), 8_usize) == eeprom_data);

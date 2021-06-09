@@ -7,12 +7,20 @@
 
 #include <gba/cartridge/backup.h>
 
+#include <gba/core/scheduler.h>
 #include <gba/core/math.h>
 #include <gba/helper/bitflags.h>
 
 ENABLE_BITFLAG_OPS(gba::cartridge::backup_flash::cmd);
 
 namespace gba::cartridge {
+
+namespace {
+
+// from mgba
+constexpr u64 eeprom_settle_cycles = 115'000_u64;
+
+} // namespace
 
 void backup::set_size(const usize size) noexcept
 {
@@ -33,11 +41,11 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
         case state::accepting_commands: {
             if(transmission_count_ == 2_u8) {
                 if(buffer_ == write_request_pattern) {
-                    read_mode_ = false;
                     state_ = state::transmitting_addr;
+                    cmd_ = cmd::write;
                 } else if(buffer_ == read_request_pattern) {
-                    read_mode_ = true;
                     state_ = state::transmitting_addr;
+                    cmd_ = cmd::read;
                 }
 
                 LOG_TRACE(eeprom, "new state: transmitting_addr, read mode: {}", read_mode_);
@@ -50,8 +58,10 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                 address_ = narrow<u32>(buffer_ * 8_u32) & 0x3FF_u32;  // addressing works in 64bit units
                 reset_buffer();
 
+                ASSERT(cmd_ != cmd::none);
+
                 // write request automatically erases 64 bits of data
-                if(!read_mode_) {
+                if(cmd_ == cmd::write) {
                     memcpy(data(), address_, 0_u64);
                     state_ = state::transmitting_data;
                     LOG_TRACE(eeprom, "new state: transmitting_data in write mode, erasing {:08X}", address_);
@@ -63,17 +73,21 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
             break;
         }
         case state::transmitting_data: {
-            if(!read_mode_ && transmission_count_ == 64_u8) {
+            if(cmd_ == cmd::write && transmission_count_ == 64_u8) {
                 memcpy(data(), address_, buffer_);
                 reset_buffer();
                 state_ = state::waiting_finish_bit;
                 LOG_TRACE(eeprom, "new state: waiting_finish_bit after transmitting");
+
+                settled_response_ = 0_u8;
+                scheduler_->ADD_HW_EVENT(eeprom_settle_cycles, backup_eeprom::on_settle);
             }
             break;
         }
         case state::waiting_finish_bit: {
-            if(!read_mode_) {
+            if(cmd_ == cmd::write) {
                 state_ = state::accepting_commands;
+                cmd_ = cmd::none;
                 LOG_TRACE(eeprom, "new state: accepting_commands");
             } else {
                 state_ = state::transmitting_ignored_bits;
@@ -90,7 +104,7 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
 
 u8 backup_eeprom::read(const u32 /*address*/) const noexcept
 {
-    if(read_mode_) {
+    if(cmd_ == cmd::read) {
         if(state_ == state::transmitting_ignored_bits) {
             ++transmission_count_;
             if(transmission_count_ == 4) {
@@ -109,6 +123,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
 
             if(transmission_count_ == 64_u8) {
                 state_ = state::accepting_commands;
+                cmd_ = cmd::none;
                 LOG_TRACE(eeprom, "new state: accepting_commands");
                 reset_buffer();
             }
@@ -117,7 +132,7 @@ u8 backup_eeprom::read(const u32 /*address*/) const noexcept
         }
     }
 
-    return 0_u8;
+    return settled_response_;
 }
 
 void backup_eeprom::set_size(const usize size) noexcept

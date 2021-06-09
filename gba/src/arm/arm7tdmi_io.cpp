@@ -54,12 +54,14 @@ FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
     return 0xC4_u32 <= addr && addr < 0xCA_u32;
 }
 
+// gets called in 0xD-0xE addr range only
 FORCEINLINE constexpr bool is_eeprom(const usize pak_size, const cartridge::backup::type type, const u32 addr) noexcept
 {
+    constexpr usize mb_16 = 16_kb * 1024_usize;
     return (type == cartridge::backup::type::eeprom_undetected
       || type == cartridge::backup::type::eeprom_64
       || type == cartridge::backup::type::eeprom_4)
-      && (pak_size < 32_kb * 1024u || addr >= 0x0DFF'FF00_u32);
+      && (pak_size <= mb_16 || addr >= 0x0DFF'FF00_u32);
 }
 
 FORCEINLINE constexpr bool is_sram_flash(const cartridge::backup::type type) noexcept
@@ -265,11 +267,7 @@ u16 arm7tdmi::read_16(u32 addr, const mem_access access) noexcept
             return memcpy<u16>(core_->ppu.oam_, addr & 0x0000'03FF_u32);
         case memory_page::pak_ws2_upper:
             if(is_eeprom(core_->pak.pak_data_.size(), core_->pak.backup_type(), addr)) {
-                if(bitflags::is_set(access, mem_access::dma)) {
-                    return core_->pak.backup_->read(addr);
-                }
-
-                return 1_u16;
+                return core_->pak.backup_->read(addr);
             }
             [[fallthrough]];
         case memory_page::pak_ws0_lower: case memory_page::pak_ws0_upper:

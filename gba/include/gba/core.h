@@ -64,7 +64,11 @@ struct core {
         }
     }
 
-    void load_pak(const fs::path& path) { pak.load(path); }
+    void load_pak(const fs::path& path)
+    {
+        pak.load(path);
+        pak.set_scheduler(&schdlr);
+    }
 
 private:
     // todo = now - start - cycles_per_frame

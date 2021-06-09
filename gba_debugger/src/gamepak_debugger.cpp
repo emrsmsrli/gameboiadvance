@@ -32,7 +32,7 @@ ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, bool, has_mirroring_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, gba::u64, buffer_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, gba::u8, bus_width_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, gba::u8, transmission_count_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, bool, read_mode_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, gba::cartridge::backup_eeprom::cmd_debugger, cmd_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_eeprom, gba::cartridge::backup_eeprom::state_debugger, state_)
 
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_flash, gba::u64, current_bank_)
@@ -111,7 +111,15 @@ void gamepak_debugger::draw() const noexcept
                             }
                             ImGui::Text(enable_buffer_bit_view ? "buffer: {:064B}" : "buffer: {:016X}", access_private::buffer_(eeprom));
                             ImGui::Text("transmission count: {}", access_private::transmission_count_(eeprom));
-                            ImGui::Text("in read mode: {}", access_private::read_mode_(eeprom));
+                            ImGui::Text("cmd: {}", [&]() {
+                                switch(access_private::cmd_(eeprom)) {
+                                    case cartridge::backup_eeprom::cmd_debugger::none: return "none";
+                                    case cartridge::backup_eeprom::cmd_debugger::read: return "read";
+                                    case cartridge::backup_eeprom::cmd_debugger::write: return "write";
+                                    default:
+                                        UNREACHABLE();
+                                }
+                            }());
                             ImGui::Text("state: {}", [&]() {
                                 switch(access_private::state_(eeprom)) {
                                     case cartridge::backup_eeprom::state_debugger::accepting_commands: return "accepting_commands";

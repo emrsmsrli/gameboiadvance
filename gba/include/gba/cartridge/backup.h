@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include <gba/core/fwd.h>
 #include <gba/helper/filesystem.h>
 
 namespace gba::cartridge {
@@ -18,6 +19,9 @@ class backup {
     fs::path path_;
     vector<u8> data_;
     usize size_;
+
+protected:
+    scheduler* scheduler_ = nullptr;
 
 public:
     enum class type { none, detect, eeprom_undetected, eeprom_4, eeprom_64, sram, flash_64, flash_128 };
@@ -51,6 +55,7 @@ public:
     [[nodiscard]] virtual u8 read(u32 address) const noexcept = 0;
 
     virtual void set_size(usize size) noexcept;
+    void set_scheduler(scheduler* s) noexcept { scheduler_ = s; }
 };
 
 class backup_eeprom : public backup {
@@ -61,17 +66,22 @@ class backup_eeprom : public backup {
         transmitting_ignored_bits,
         waiting_finish_bit
     };
+    enum class cmd : u8::type {
+        read, write, none
+    };
 
     mutable u64 buffer_;
     u32 address_;
     u8 bus_width_;
+    u8 settled_response_ = 1_u8;
     mutable u8 transmission_count_;
-    bool read_mode_ = false;
     mutable state state_{state::accepting_commands};
+    mutable cmd cmd_{cmd::none};
 
 public:
 #if WITH_DEBUGGER
     using state_debugger = state;
+    using cmd_debugger = cmd;
 #endif // WITH_DEBUGGER
 
     // intentionally not initialize the size
@@ -91,6 +101,7 @@ public:
 
 private:
     void reset_buffer() const noexcept { buffer_ = 0_u64; transmission_count_ = 0_u8; }
+    void on_settle(u64 /*late_cycles*/) noexcept { settled_response_ = 1_u8; }
 };
 
 class backup_sram : public backup {

@@ -51,6 +51,7 @@ public:
     void write_backup() const noexcept { return backup_->write_to_file(); }
 
     void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
+    void set_scheduler(scheduler* s) noexcept { backup_->set_scheduler(s); }
 
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }
     [[nodiscard]] backup::type backup_type() const noexcept { return backup_type_; }
