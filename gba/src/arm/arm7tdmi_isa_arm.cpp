@@ -306,9 +306,11 @@ void arm7tdmi::psr_transfer_msr(const u32 instr, const u32 operand, const bool u
             reg = mask::clear(static_cast<u32>(reg), mask) | (operand & mask);
         }
     } else {
+        if((operand & 0xFF_u32) != 0x00_u32) {
+            switch_mode(to_enum<privilege_mode>(operand & 0x1F_u32));
+        }
         const u32 new_cpsr = mask::clear(static_cast<u32>(cpsr()), mask) | (operand & mask);
-        cpsr().copy_without_mode(new_cpsr);
-        switch_mode(to_enum<privilege_mode>(operand & 0x1F_u32));
+        cpsr() = new_cpsr;
     }
 }
 
