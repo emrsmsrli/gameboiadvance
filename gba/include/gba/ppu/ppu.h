@@ -125,7 +125,7 @@ private:
 
     [[nodiscard]] FORCEINLINE color palette_color_opaque(const u8 color_idx, const u8 palette_idx = 0_u8) const noexcept
     {
-        return color{memcpy<u16>(palette_ram_, (palette_idx * 16_u32 + color_idx) * 2_u16)};
+        return color{memcpy<u16>(palette_ram_, (palette_idx * 16_u32 + color_idx) * 2_u16) & 0x7FFF_u16};
     }
 
     void tile_line_8bpp(tile_line& out_line, u32 y, usize base_addr, bg_map_entry entry) const noexcept;
