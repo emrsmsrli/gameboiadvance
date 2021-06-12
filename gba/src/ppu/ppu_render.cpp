@@ -199,7 +199,7 @@ void engine::compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept
         }
     };
 
-    const auto is_blend_enabled = [&](bldcnt::target& target, const layer::type layer) {
+    const auto is_blend_enabled = [&](const bldcnt::target& target, const layer::type layer) {
         switch(layer) {
             case layer::type::bg0: case layer::type::bg1:
             case layer::type::bg2: case layer::type::bg3:
@@ -303,7 +303,7 @@ color engine::tile_dot_4bpp(const u32 x, const u32 y, const usize tile_addr, con
       palette_idx);
 }
 
-color engine::blend(const color first, const color second, const bldcnt::effect type) noexcept
+color engine::blend(const color first, const color second, const bldcnt::effect type) const noexcept
 {
     constexpr u8 max_ev = 0x10_u8;
     constexpr u8 max_intensity = 0x1F_u8;

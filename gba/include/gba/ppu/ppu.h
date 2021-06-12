@@ -105,7 +105,7 @@ private:
     void generate_window_buffer() noexcept;
     void generate_window_buffer(window& win, win_enable_bits* enable_bits) noexcept;
     void compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept;
-    color blend(color first, color second, bldcnt::effect type) noexcept;
+    color blend(color first, color second, bldcnt::effect type) const noexcept;
 
     template<typename BG>
     [[nodiscard]] static FORCEINLINE u32 map_entry_index(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept
