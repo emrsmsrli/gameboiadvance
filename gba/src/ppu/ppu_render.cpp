@@ -56,7 +56,7 @@ void engine::render_obj() noexcept
         const bool is_affine = render_mode == obj_attr0::rendering_mode::affine
           || render_mode == obj_attr0::rendering_mode::affine_double;
 
-        const dimension<u8> dimensions = obj.dimensions[shape_idx][obj.attr1.size_idx()];
+        const dimension<u8> dimensions = obj::dimensions[shape_idx][obj.attr1.size_idx()];
         dimension<u8> half_dimensions{dimensions.h / 2_u8, dimensions.v / 2_u8};
 
         i32 y = obj.attr0.y();
@@ -168,7 +168,7 @@ void engine::render_obj() noexcept
             const bool is_transparent = dot == color::transparent();
             obj_buffer_entry& obj_entry = obj_buffer_[make_unsigned(global_x)];
             if(blend_mode == obj_attr0::blend_mode::obj_window) {
-                if(dispcnt_.win_obj_enabled && !is_transparent){
+                if(dispcnt_.win_obj_enabled && !is_transparent) {
                     win_buffer_[make_unsigned(global_x)] = &win_out_.obj;
                 }
             } else if(const u32 priority = obj.attr2.priority(); priority < obj_entry.priority || obj_entry.dot == color::transparent()) {

@@ -994,7 +994,7 @@ void ppu_debugger::draw_obj() noexcept
             const u32 shape_idx = obj.attr0.shape_idx();
             auto dimension = shape_idx == 3_u32
               ? ppu::dimension<u8>{}
-              : obj.dimensions[shape_idx][obj.attr1.size_idx()];
+              : ppu::obj::dimensions[shape_idx][obj.attr1.size_idx()];
             const ppu::obj_attr0::blend_mode blend_mode = obj.attr0.blending();
             const ppu::obj_attr0::rendering_mode rendering_mode = obj.attr0.render_mode();
             const bool color_depth_8_bit = obj.attr0.color_depth_8bit();
