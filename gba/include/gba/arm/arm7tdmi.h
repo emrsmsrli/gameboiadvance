@@ -65,7 +65,7 @@ struct psr {
     bool t = false;  // thumb mode flag
     privilege_mode mode{privilege_mode::svc};
 
-    explicit operator u32() const noexcept
+    constexpr explicit operator u32() const noexcept
     {
         return from_enum<u32>(mode)
           | bit::from_bool(t) << 5_u32
@@ -77,15 +77,15 @@ struct psr {
           | bit::from_bool(n) << 31_u32;
     }
 
-    psr& operator=(const psr&) = default;
-    psr& operator=(const u32 data) noexcept
+    constexpr psr& operator=(const psr&) = default;
+    constexpr psr& operator=(const u32 data) noexcept
     {
         mode = to_enum<privilege_mode>(data & 0x1F_u32);
         copy_without_mode(data);
         return *this;
     }
 
-    void copy_without_mode(const psr& other) noexcept
+    constexpr void copy_without_mode(const psr& other) noexcept
     {
         t = other.t;
         f = other.f;
@@ -97,7 +97,7 @@ struct psr {
         n = other.n;
     }
 
-    void copy_without_mode(const u32 data) noexcept
+    constexpr void copy_without_mode(const u32 data) noexcept
     {
         t = bit::test(data, 5_u8);
         f = bit::test(data, 6_u8);
@@ -120,19 +120,19 @@ union banked_regs {
 struct reg_banks {
     array<banked_regs, 6> reg_banks;
 
-    FORCEINLINE banked_regs& operator[](const register_bank bank) noexcept { return reg_banks[from_enum<u32>(bank)]; }
-    FORCEINLINE const banked_regs& operator[](const register_bank bank) const noexcept { return reg_banks[from_enum<u32>(bank)]; }
+    FORCEINLINE constexpr banked_regs& operator[](const register_bank bank) noexcept { return reg_banks[from_enum<u32>(bank)]; }
+    FORCEINLINE constexpr const banked_regs& operator[](const register_bank bank) const noexcept { return reg_banks[from_enum<u32>(bank)]; }
 };
 
 struct spsr_banks {
     array<psr, 5> banks;
 
-    FORCEINLINE psr& operator[](const register_bank bank) noexcept
+    FORCEINLINE constexpr psr& operator[](const register_bank bank) noexcept
     {
         ASSERT(bank != register_bank::none);
         return banks[from_enum<u32>(bank) - 1_u32];
     }
-    FORCEINLINE const psr& operator[](const register_bank bank) const noexcept
+    FORCEINLINE constexpr const psr& operator[](const register_bank bank) const noexcept
     {
         ASSERT(bank != register_bank::none);
         return banks[from_enum<u32>(bank) - 1_u32];
