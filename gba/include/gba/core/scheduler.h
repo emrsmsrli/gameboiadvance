@@ -12,17 +12,17 @@
 #include <functional> // std::greater
 #include <type_traits> // std::forward
 
-#ifdef WITH_DEBUGGER
+#if WITH_DEBUGGER
   #include <string>
 #endif // WITH_DEBUGGER
 
 #include <gba/core/container.h>
 #include <gba/core/event/delegate.h>
 
-#ifdef WITH_DEBUGGER
+#if WITH_DEBUGGER
   #define ADD_HW_EVENT_NAMED(delay, callback, name) add_hw_event(delay, {connect_arg<&callback>, this}, name)
 #else
-  #define ADD_EVENT_NAMED(delay, callback, name) add_event(delay, {connect_arg<&callback>, this})
+  #define ADD_HW_EVENT_NAMED(delay, callback, name) add_hw_event(delay, {connect_arg<&callback>, this})
 #endif // WITH_DEBUGGER
 
 #define ADD_HW_EVENT(delay, callback) ADD_HW_EVENT_NAMED(delay, callback, #callback)
@@ -39,7 +39,7 @@ public:
         u64 timestamp;
         handle h;
 
-#ifdef WITH_DEBUGGER
+#if WITH_DEBUGGER
         std::string name;
 #endif // WITH_DEBUGGER
 
@@ -59,7 +59,7 @@ public:
         heap_.reserve(64_usize);
     }
 
-#ifdef WITH_DEBUGGER
+#if WITH_DEBUGGER
     hw_event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback, std::string name)
     {
         heap_.push_back(hw_event{callback, now_ + delay, ++next_event_handle, std::move(name)});
@@ -101,7 +101,7 @@ public:
         now_ += cycles;
         if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
             while(!heap_.empty() && timestamp_of_next_event() <= now_) {
-#ifdef WITH_DEBUGGER
+#if WITH_DEBUGGER
                 const auto [callback, timestamp, handle, name] = heap_[0_usize];
                 LOG_TRACE(scheduler, "executing event {}:{}", handle, name);
 #else
