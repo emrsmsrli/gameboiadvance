@@ -391,7 +391,7 @@ void arm7tdmi::ld_str_sp_relative(const u16 instr) noexcept
     u32& rd = r_[(instr >> 8_u16) & 0x7_u16];
     const u16 imm_offset = (instr & 0xFF_u16) << 2_u16;
 
-    const u32 address = r_[13_u32] + imm_offset;
+    const u32 address = sp() + imm_offset;
     if(is_ldr) {
         rd = read_32_aligned(address, mem_access::non_seq);
         tick_internal();
