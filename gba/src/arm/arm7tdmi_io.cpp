@@ -51,7 +51,7 @@ FORCEINLINE constexpr u32 adjust_vram_addr(u32 addr) noexcept
 
 FORCEINLINE constexpr bool is_gpio(const u32 addr) noexcept
 {
-    return 0xC4_u32 <= addr && addr < 0xCA_u32;
+    return cartridge::rtc::port_data <= addr && addr <= cartridge::rtc::port_control;
 }
 
 // gets called in 0xD-0xE addr range only
@@ -348,7 +348,6 @@ void arm7tdmi::write_16(u32 addr, const u16 data, const mem_access access) noexc
             addr &= cartridge::gamepak::default_mirror_mask;
             if(core_->pak.has_rtc_ && is_gpio(addr)) {
                 core_->pak.rtc_.write(addr, narrow<u8>(data));
-                core_->pak.rtc_.write(addr + 1_u32, narrow<u8>(data >> 8_u16));
             }
             break;
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:
@@ -401,9 +400,6 @@ u8 arm7tdmi::read_8(u32 addr, const mem_access access) noexcept
             addr &= core_->pak.mirror_mask_;
             if (addr >= core_->pak.pak_data_.size()) {
                 return narrow<u8>((addr / 2_u32) >> (bit::extract(addr, 1_u8) * 8_u32));
-            }
-            if(is_gpio(addr) && core_->pak.rtc_.read_allowed()) {
-                return core_->pak.rtc_.read(addr);
             }
             return memcpy<u8>(core_->pak.pak_data_, addr);
         case memory_page::pak_sram_1: case memory_page::pak_sram_2:

@@ -40,16 +40,19 @@ ACCESS_PRIVATE_FIELD(gba::cartridge::backup_flash, gba::cartridge::backup_flash:
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_flash, gba::cartridge::backup_flash::state_debugger, state_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::backup_flash, gba::cartridge::backup_flash::cmd_debugger, current_cmds_)
 
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, pin_states_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, directions_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, remaining_bytes_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, bits_read_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, bit_buffer_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, bool, read_allowed_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc::transfer_state_debugger, transfer_state_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc::time_regs_debugger, time_regs_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc_command, current_cmd_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gpio, gba::u8, pin_states_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gpio, gba::u8, directions_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gpio, bool, read_allowed_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, control_) // 24h mode bit 6
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc::state_debugger, state_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc_command, current_cmd_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, current_byte_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, current_bit_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::u8, bit_buffer_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, gba::cartridge::rtc_ports, ports_)
+
+using internal_regs_debugger = gba::array<gba::u8, 7>;
+ACCESS_PRIVATE_FIELD(gba::cartridge::rtc, internal_regs_debugger, internal_regs_)
 
 namespace gba::debugger {
 
@@ -221,51 +224,49 @@ void gamepak_debugger::draw() const noexcept
                         ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 2_u8), bit::test(pin_directions, 2_u8) ? "out" : "in");
                         ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 1_u8), bit::test(pin_directions, 1_u8) ? "out" : "in");
                         ImGui::TableNextColumn(); ImGui::Text("{} ({})", bit::extract(pin_directions, 0_u8), bit::test(pin_directions, 0_u8) ? "out" : "in");
+                        ImGui::TableNextRow();
+
+                        const cartridge::rtc_ports rtc_ports = access_private::ports_(rtc);
+                        ImGui::TableNextColumn(); ImGui::TextUnformatted("RTC");
+                        ImGui::TableNextColumn();
+                        ImGui::TableNextColumn(); ImGui::Text("{}", rtc_ports.cs);
+                        ImGui::TableNextColumn(); ImGui::Text("{}", rtc_ports.sio);
+                        ImGui::TableNextColumn(); ImGui::Text("{}", rtc_ports.sck);
                         ImGui::EndTable();
                     }
-                    ImGui::Text("remaining bytes: {}", access_private::remaining_bytes_(rtc));
-                    ImGui::Text("read bits: {}", access_private::bits_read_(rtc));
+                    ImGui::Text("current byte: {}", access_private::current_byte_(rtc));
+                    ImGui::Text("current bit: {}", access_private::current_bit_(rtc));
                     ImGui::Text("bit buffer: {:08B}", access_private::bit_buffer_(rtc));
                     ImGui::Text("read allowed: {}", access_private::read_allowed_(rtc));
 
                     ImGui::TextUnformatted("RTC data"); ImGui::Separator();
                     ImGui::Text("24h mode: {}", bit::test(access_private::control_(rtc), 6_u8));
                     ImGui::Text("transfer state: {}", [&]() {
-                        switch(access_private::transfer_state_(rtc)) {
-                            case cartridge::rtc::transfer_state_debugger::waiting_hi_sck: return "waiting_hi_sck";
-                            case cartridge::rtc::transfer_state_debugger::waiting_hi_cs: return "waiting_hi_cs";
-                            case cartridge::rtc::transfer_state_debugger::transferring_cmd: return "transferring_cmd";
+                        switch(access_private::state_(rtc)) {
+                            case cartridge::rtc::state_debugger::command: return "command";
+                            case cartridge::rtc::state_debugger::sending: return "sending";
+                            case cartridge::rtc::state_debugger::receiving: return "receiving";
                             default:
                                 UNREACHABLE();
                         }
                     }());
 
                     auto& rtc_cmd = access_private::current_cmd_(rtc);
-                    ImGui::Text("rtc command: {}, is read access read: {}", [&]() {
-                        switch(rtc_cmd.cmd_type) {
-                            case cartridge::rtc_command::type::none: return "none";
-                            case cartridge::rtc_command::type::reset: return "reset";
-                            case cartridge::rtc_command::type::date_time: return "date_time";
-                            case cartridge::rtc_command::type::force_irq: return "force_irq";
-                            case cartridge::rtc_command::type::control: return "control";
-                            case cartridge::rtc_command::type::time: return "time";
-                            default:
-                                UNREACHABLE();
-                        }
-                    }(), rtc_cmd.is_access_read);
-                    ImGui::TextUnformatted("Time"); ImGui::Separator();
+                    ImGui::Text("rtc command: {}, is read access read: {}",
+                      to_string_view(rtc_cmd.cmd_type), rtc_cmd.is_access_read);
+                    ImGui::TextUnformatted("Internal regs"); ImGui::Separator();
 
-                    auto& time = access_private::time_regs_(rtc);
+                    auto& regs = access_private::internal_regs_(rtc);
                     ImGui::BeginGroup();
-                    ImGui::Text("year:  {:X} ({})", time[0_usize], time[0_usize]);
-                    ImGui::Text("month: {:X} ({})", time[1_usize], time[1_usize]);
-                    ImGui::Text("mday:  {:X} ({})", time[2_usize], time[2_usize]);
-                    ImGui::Text("wday:  {:X} ({})", time[3_usize], time[3_usize]);
+                    ImGui::Text("{:X} ({})", regs[0_usize], regs[0_usize]);
+                    ImGui::Text("{:X} ({})", regs[1_usize], regs[1_usize]);
+                    ImGui::Text("{:X} ({})", regs[2_usize], regs[2_usize]);
+                    ImGui::Text("{:X} ({})", regs[3_usize], regs[3_usize]);
                     ImGui::EndGroup(); ImGui::SameLine(0.f, 100.f);
                     ImGui::BeginGroup();
-                    ImGui::Text("hour:  {:X} ({})", time[4_usize], time[4_usize]);
-                    ImGui::Text("min:   {:X} ({})", time[5_usize], time[5_usize]);
-                    ImGui::Text("sec:   {:X} ({})", time[6_usize], time[6_usize]);
+                    ImGui::Text("{:X} ({})", regs[4_usize], regs[4_usize]);
+                    ImGui::Text("{:X} ({})", regs[5_usize], regs[5_usize]);
+                    ImGui::Text("{:X} ({})", regs[6_usize], regs[6_usize]);
                     ImGui::EndGroup();
 
                     ImGui::EndTabItem();

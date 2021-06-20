@@ -14,6 +14,28 @@
 
 namespace gba::cartridge {
 
+class gpio {
+    u8 pin_states_;
+    u8 directions_ = 0xF_u8; // first 4 bits are used, 0 -> in(to gba), 1 -> out(to device)
+    bool read_allowed_ = false;
+
+public:
+    static inline constexpr auto port_data = 0xC4_u32;
+    static inline constexpr auto port_direction = 0xC6_u32;
+    static inline constexpr auto port_control = 0xC8_u32;
+
+    [[nodiscard]] u8 read(u32 address) noexcept;
+    void write(u32 address, u8 value) noexcept;
+
+    [[nodiscard]] bool read_allowed() const noexcept { return read_allowed_; }
+
+protected:
+    [[nodiscard]] u8 directions() const noexcept { return directions_; }
+
+    [[nodiscard]] virtual u8 read_pin_states() const noexcept = 0;
+    virtual void write_pin_states(u8 new_states) noexcept = 0;
+};
+
 struct rtc_command  {
     enum class type : u8::type {
         none = 0b0001'0000_u16,
@@ -22,6 +44,7 @@ struct rtc_command  {
         force_irq = 0b0011_u16,
         control = 0b0100_u16,
         time = 0b0110_u16,
+        free = 0b0111_u16,
     };
 
     type cmd_type{type::none};
@@ -35,46 +58,65 @@ struct rtc_command  {
     }
 };
 
-class rtc {
-    // gpio data
-    u8 pin_states_;
-    u8 directions_; // first 4 bits are used, 0 -> in(to gba), 1 -> out(to device)
-    u8 remaining_bytes_;
-    u8 bits_read_;
-    u8 bit_buffer_;
-    bool read_allowed_ = false;
+constexpr std::string_view to_string_view(const rtc_command::type type) {
+    switch(type) {
+        case rtc_command::type::none: return "none";
+        case rtc_command::type::reset: return "reset";
+        case rtc_command::type::date_time: return "set_date_time";
+        case rtc_command::type::force_irq: return "force_irq";
+        case rtc_command::type::control: return "set_control";
+        case rtc_command::type::time: return "set_time";
+        case rtc_command::type::free: return "free";
+        default:
+            UNREACHABLE();
+    }
+}
 
-    enum class transfer_state : u8::type { waiting_hi_sck, waiting_hi_cs, transferring_cmd };
-    transfer_state transfer_state_{transfer_state::waiting_hi_sck};
+struct rtc_ports {
+    u8 sck;
+    u8 sio;
+    u8 cs;
+};
 
-    rtc_command current_cmd_;
-    array<u8, 7> time_regs_;
-    u8 control_ = 0x40_u8;
+class rtc : public gpio {
+    enum class state : u8::type {
+        command,
+        sending,
+        receiving
+    };
 
     arm::irq_controller_handle irq_;
 
+    array<u8, 7> internal_regs_;
+    u8 control_;
+
+    state state_{state::command};
+    rtc_command current_cmd_;
+    u8 current_byte_;
+    u8 current_bit_;
+    u8 bit_buffer_;
+
+    rtc_ports ports_;
+
 public:
 #if WITH_DEBUGGER
-    using transfer_state_debugger = transfer_state;
-    using time_regs_debugger = array<u8, 7>;
-  #endif // WITH_DEBUGGER
-
-    static inline constexpr auto port_data = 0xC4_u32;
-    static inline constexpr auto port_direction = 0xC6_u32;
-    static inline constexpr auto port_control = 0xC8_u32;
-
-    [[nodiscard]] u8 read(u32 address) const noexcept;
-    void write(u32 address, u8 value) noexcept;
-
-    [[nodiscard]] bool read_allowed() const noexcept { return read_allowed_; }
+    using state_debugger = state;
+#endif // WITH_DEBUGGER
 
     void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
 
+protected:
+    [[nodiscard]] u8 read_pin_states() const noexcept final;
+    void write_pin_states(u8 new_states) noexcept final;
+
 private:
-    void read_pins() noexcept;
-    void write_pins(u8 new_states) noexcept;
-    void process_byte() noexcept;
-    [[nodiscard]] u8 get_output_byte() noexcept;
+    void sio_receive_cmd() noexcept;
+    void sio_receive_buffer() noexcept;
+    void sio_send_buffer() noexcept;
+
+    bool read_sio() noexcept;
+    void read_register() noexcept;
+    void write_register() noexcept;
 };
 
 } // namespace gba::cartridge
