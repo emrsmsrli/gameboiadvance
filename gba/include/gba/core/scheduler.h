@@ -67,9 +67,9 @@ public:
         return next_event_handle;
     }
 #else
-    event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback)
+    hw_event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback)
     {
-        heap_.push_back(event{callback, now_ + delay, ++next_event_handle});
+        heap_.push_back(hw_event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
         return next_event_handle;
     }
