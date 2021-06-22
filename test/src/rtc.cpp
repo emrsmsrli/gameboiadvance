@@ -7,6 +7,7 @@
 
 #include <test_prelude.h>
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <chrono>
 #include <ctime>
 
@@ -27,7 +28,7 @@ constexpr array<u8, 8> make_bitstream(const u8 data)
     return stream;
 }
 
-}
+} // namespace
 
 TEST_CASE("rtc cmds")
 {
@@ -35,8 +36,8 @@ TEST_CASE("rtc cmds")
         r.write(rtc::port_data, 0b0001_u8);
         r.write(rtc::port_data, 0b0101_u8);
         for(u8 bit : make_bitstream(byte)) {
-            r.write(rtc::port_data, 0b0100_u8 | (bit << 1_u8));
-            r.write(rtc::port_data, 0b0101_u8);
+            r.write(rtc::port_data, 0b0100_u8);
+            r.write(rtc::port_data, 0b0101_u8 | (bit << 1_u8));
         }
     };
 
@@ -62,6 +63,7 @@ TEST_CASE("rtc cmds")
         array<u8, 7> received_bytes;
         for(usize i = 0_usize; i < 7_usize; ++i) {
             for(usize b = 0_usize; b < 8_usize; ++b) {
+                r.write(rtc::port_data, 0b0100_u8);
                 r.write(rtc::port_data, 0b0101_u8);
                 received_bytes[i] |= bit::extract(r.read(rtc::port_data), 1_u8) << narrow<u8>(b);
             }
@@ -71,19 +73,15 @@ TEST_CASE("rtc cmds")
         const std::time_t t = system_clock::to_time_t(system_clock::now());
         const std::tm* date = std::localtime(&t);
 
-        const auto to_bcd = [](auto data) {
-            u8 d = static_cast<u8::type>(data);
-            const u8 counter = d % 10_u8;
-            d /= 10_u8;
-            return counter + ((d % 10_u8) << 4_u8);
-        };
+        const auto bcd2dec = [](const u8 data) { return (data >> 4_u8) * 10_u8 + (data & 0x0F_u8); };
+        std::transform(received_bytes.begin(), received_bytes.end(), received_bytes.begin(), bcd2dec);
 
-        CHECK(to_bcd(date->tm_year - 100) == received_bytes[0_usize]);
-        CHECK(to_bcd(date->tm_mon + 1) == received_bytes[1_usize]);
-        CHECK(to_bcd(date->tm_mday) == received_bytes[2_usize]);
-        CHECK(to_bcd(date->tm_wday) == received_bytes[3_usize]);
-        CHECK(to_bcd(date->tm_hour) == received_bytes[4_usize]);
-        CHECK(to_bcd(date->tm_min) == received_bytes[5_usize]);
-        CHECK(to_bcd(date->tm_sec) == received_bytes[6_usize]);
+        CHECK(date->tm_year - 100 == received_bytes[0_usize]);
+        CHECK(date->tm_mon + 1 == received_bytes[1_usize]);
+        CHECK(date->tm_mday == received_bytes[2_usize]);
+        CHECK(date->tm_wday == received_bytes[3_usize]);
+        CHECK((date->tm_hour % 12) == received_bytes[4_usize]);
+        CHECK(date->tm_min == received_bytes[5_usize]);
+        CHECK(date->tm_sec == received_bytes[6_usize]);
     }
 }
