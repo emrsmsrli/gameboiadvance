@@ -27,13 +27,13 @@ arm7tdmi::arm7tdmi(core* core, vector<u8> bios) noexcept
     cpsr().f = true;
 
     if(bios_.empty()) {
-        r_[0_u8] = 0x0000'0CA5_u32;
+        reg_banks_[register_bank::none].named.r13 = 0x0300'7F00_u32;
+        reg_banks_[register_bank::irq].named.r13 = 0x0300'7FA0_u32;
+        reg_banks_[register_bank::svc].named.r13 = 0x0300'7FE0_u32;
         sp() = 0x0300'7F00_u32;
         lr() = 0x0800'0000_u32;
         pc() = 0x0800'0000_u32;
-        reg_banks_[register_bank::irq].named.r13 = 0x0300'7FA0_u32;
-        reg_banks_[register_bank::svc].named.r13 = 0x0300'7FE0_u32;
-        switch_mode(privilege_mode::sys);
+        cpsr().mode = privilege_mode::sys;
     } else {
         ASSERT(bios_.size() == 16_kb);
     }
@@ -141,7 +141,7 @@ void arm7tdmi::switch_mode(const privilege_mode mode) noexcept
 
     cpsr().mode = mode;
 
-    if (old_bank == new_bank) {
+    if(old_bank == new_bank) {
         return;
     }
 
