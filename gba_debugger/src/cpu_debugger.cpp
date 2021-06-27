@@ -689,6 +689,7 @@ void cpu_debugger::draw_execution_breakpoints() noexcept
             breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
             if(hit_count_target_buf != 0) {
                 breakpoint.hit_count_target = static_cast<u32::type>(hit_count_target_buf);
+                breakpoint.hit_type |= breakpoint_hit_type::suspend;
             }
 
             if(bp_db_->add_execution_breakpoint(breakpoint)) {
