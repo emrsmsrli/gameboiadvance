@@ -63,6 +63,8 @@ namespace gba::debugger {
 
 namespace {
 
+constexpr array bp_hit_types{"log", "suspend", "log&suspend"};
+
 void draw_reg(const u32 reg) noexcept
 {
     ImGui::TableNextColumn();
@@ -647,7 +649,10 @@ void cpu_debugger::draw_breakpoints() noexcept
         static constexpr array breakpoint_types{"Execution breakpoint", "Access breakpoint"};
         static int breakpoint_type = 0;
         ImGui::TextUnformatted("Breakpoints:");
+        ImGui::SetNextItemWidth(250.f);
         ImGui::Combo("", &breakpoint_type, breakpoint_types.data(), breakpoint_types.size().get());
+
+        ImGui::SameLine();
 
         if(breakpoint_type == 0) {
             draw_execution_breakpoints();
@@ -663,6 +668,10 @@ void cpu_debugger::draw_execution_breakpoints() noexcept
     static array<char, 9> address_buf{};
     static int hit_count_target_buf;
 
+    static int hit_type = 1;
+    ImGui::SetNextItemWidth(120.f);
+    ImGui::Combo("type", &hit_type, bp_hit_types.data(), bp_hit_types.size().get());
+
     const bool ok_pressed = ImGui::Button("OK"); ImGui::SameLine();
     ImGui::SetNextItemWidth(120);
     ImGui::InputText("address", address_buf.data(), address_buf.size().get(),
@@ -676,6 +685,7 @@ void cpu_debugger::draw_execution_breakpoints() noexcept
     if(ok_pressed) {
         if(std::strlen(address_buf.data()) != 0) {
             execution_breakpoint breakpoint;
+            breakpoint.hit_type = static_cast<breakpoint_hit_type>(hit_type + 1);
             breakpoint.address = static_cast<u32::type>(std::strtoul(address_buf.data(), nullptr, 16));
             if(hit_count_target_buf != 0) {
                 breakpoint.hit_count_target = static_cast<u32::type>(hit_count_target_buf);
@@ -690,7 +700,8 @@ void cpu_debugger::draw_execution_breakpoints() noexcept
     ImGui::Spacing();
     ImGui::Spacing();
     draw_bps(bp_db_->get_execution_breakpoints(), [](const execution_breakpoint& bp) {
-        ImGui::Text("{:08X} | hit count: {} | hit target: {}", bp.address, bp.hit_count, bp.hit_count_target);
+        ImGui::Text("{:08X} | hit {}/{} | {}", bp.address,
+          bp.hit_count, bp.hit_count_target, bp_hit_types[from_enum<u32>(bp.hit_type) - 1_u32]);
     });
 }
 
@@ -704,6 +715,10 @@ void cpu_debugger::draw_access_breakpoints() noexcept
     static array<char, 9> address_lo_buf{};
     static array<char, 9> address_hi_buf{};
     static array<char, 9> data_buf{};
+
+    static int hit_type = 1;
+    ImGui::SetNextItemWidth(120.f);
+    ImGui::Combo("type", &hit_type, bp_hit_types.data(), bp_hit_types.size().get());
 
     ImGui::PushItemWidth(120);
     ImGui::Combo("access type", &access_type, access_type_strs.data(), access_type_strs.size().get());
@@ -751,6 +766,7 @@ void cpu_debugger::draw_access_breakpoints() noexcept
               access_breakpoint::type::read_write
             };
             access_breakpoint breakpoint;
+            breakpoint.hit_type = static_cast<breakpoint_hit_type>(hit_type + 1);
             breakpoint.access_width = static_cast<arm::debugger_access_width>(access_width);
             breakpoint.access_type = access_types[static_cast<u32::type>(access_type)];
 
@@ -776,13 +792,15 @@ void cpu_debugger::draw_access_breakpoints() noexcept
     ImGui::Spacing();
     draw_bps(bp_db_->get_access_breakpoints(), [](const access_breakpoint& bp) {
         if(bp.address_range.size() == 1_u32) {
-            ImGui::Text("    {:08X}      | {:^5} | {:^10} | {:0X}",
+            ImGui::Text("    {:08X}      | {:^5} | {:^10} | {:0X} | {}",
               bp.address_range.min(),
-              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data,
+              bp_hit_types[from_enum<u32>(bp.hit_type) - 1_u32]);
         } else {
-            ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X}",
+            ImGui::Text("{:08X}-{:08X} | {:^5} | {:^10} | {:0X} | {}",
               bp.address_range.min(), bp.address_range.max(),
-              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data);
+              to_string_view(bp.access_width), to_string_view(bp.access_type), bp.data,
+              bp_hit_types[from_enum<u32>(bp.hit_type) - 1_u32]);
         }
     });
 }

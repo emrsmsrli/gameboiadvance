@@ -40,29 +40,31 @@ execution_breakpoint* breakpoint_database::get_execution_breakpoint(const u32 ad
     return nullptr;
 }
 
-bool breakpoint_database::has_enabled_read_breakpoint(const u32 address,
+access_breakpoint* breakpoint_database::get_enabled_read_breakpoint(const u32 address,
   const arm::debugger_access_width access_width) noexcept
 {
-    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
+    auto it = std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
       [&](const access_breakpoint& bp) {
           return bp.enabled
             && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
             && bp.address_range.contains(address)
             && bitflags::is_set(bp.access_type, access_breakpoint::type::read);
-      }) != access_breakpoints_.end();
+      });
+    return it != access_breakpoints_.end() ? &*it : nullptr;
 }
 
-bool breakpoint_database::has_enabled_write_breakpoint(const u32 address, const u32 data,
+access_breakpoint* breakpoint_database::get_enabled_write_breakpoint(const u32 address, const u32 data,
   const arm::debugger_access_width access_width) noexcept
 {
-    return std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
+    auto it = std::find_if(access_breakpoints_.begin(), access_breakpoints_.end(),
       [&](const access_breakpoint& bp) {
           return bp.enabled
             && (bp.access_width == arm::debugger_access_width::any || bp.access_width == access_width)
             && bp.address_range.contains(address)
             && bitflags::is_set(bp.access_type, access_breakpoint::type::write)
             && (!bp.data.has_value() || *bp.data == data);
-      }) != access_breakpoints_.end();
+      });
+    return it != access_breakpoints_.end() ? &*it : nullptr;
 }
 
 void breakpoint_database::modify_execution_breakpoint(const u32 address, const bool toggle)
@@ -76,7 +78,8 @@ void breakpoint_database::modify_execution_breakpoint(const u32 address, const b
             execution_breakpoints_.erase(it);
         }
     } else {
-        execution_breakpoints_.push_back(execution_breakpoint{address, 0_u32, std::nullopt, true});
+        execution_breakpoints_.push_back(
+          execution_breakpoint{address, 0_u32, std::nullopt, breakpoint_hit_type::log_and_suspend, true});
     }
 }
 
