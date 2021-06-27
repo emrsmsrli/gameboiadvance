@@ -427,68 +427,69 @@ void cpu_debugger::draw() noexcept
                 if(show_wait_table && ImGui::BeginTable("waittable", 17,
                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
                     ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
-                    ImGui::TableSetColumnIndex(1);
+                    ImGui::TableSetColumnIndex(0);
 
                     for(u32::type page : range(0x10)) {
-                        ImGui::TextUnformatted([=]() {
-                            switch(page) {
-                                case 0x00: return "bios";
-                                case 0x01: return "N/A";
-                                case 0x02: return "ewram";
-                                case 0x03: return "iwram";
-                                case 0x04: return "io";
-                                case 0x05: return "palram";
-                                case 0x06: return "vram";
-                                case 0x07: return "oam";
-                                case 0x08: return "pak0_l";
-                                case 0x09: return "pak0_u";
-                                case 0x0A: return "pak1_l";
-                                case 0x0B: return "pak1_u";
-                                case 0x0C: return "pak2_l";
-                                case 0x0D: return "pak2_u";
-                                case 0x0E: return "sram_1";
-                                case 0x0F: return "sram_2";
-                                default:
-                                    UNREACHABLE();
-                            }
-                        }());
                         ImGui::TableNextColumn();
+                        ImGui::Text("{:02X}", page);
+                        if(ImGui::IsItemHovered()) {
+                            ImGui::BeginTooltip();
+                            ImGui::TextUnformatted([=]() {
+                                switch(page) {
+                                    case 0x00: return "bios";
+                                    case 0x01: return "N/A";
+                                    case 0x02: return "ewram";
+                                    case 0x03: return "iwram";
+                                    case 0x04: return "io";
+                                    case 0x05: return "palram";
+                                    case 0x06: return "vram";
+                                    case 0x07: return "oam";
+                                    case 0x08: return "pak0_l";
+                                    case 0x09: return "pak0_u";
+                                    case 0x0A: return "pak1_l";
+                                    case 0x0B: return "pak1_u";
+                                    case 0x0C: return "pak2_l";
+                                    case 0x0D: return "pak2_u";
+                                    case 0x0E: return "sram_1";
+                                    case 0x0F: return "sram_2";
+                                    default:
+                                        UNREACHABLE();
+                                }
+                            }());
+                            ImGui::EndTooltip();
+                        }
                     }
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text("16 ns");
-                    ImGui::TableNextColumn();
+                    ImGui::Text("16n");
                     for(u32::type page : range(0x10)) {
+                        ImGui::TableNextColumn();
                         ImGui::Text("{}", w16[page]);
-                        ImGui::TableNextColumn();
                     }
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text("16  s");
-                    ImGui::TableNextColumn();
+                    ImGui::Text("16s");
                     for(u32::type page : range(0x10)) {
+                        ImGui::TableNextColumn();
                         ImGui::Text("{}", w16[page + 16]);
-                        ImGui::TableNextColumn();
                     }
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text("32 ns");
-                    ImGui::TableNextColumn();
+                    ImGui::Text("32n");
                     for(u32::type page : range(0x10)) {
+                        ImGui::TableNextColumn();
                         ImGui::Text("{}", w32[page]);
-                        ImGui::TableNextColumn();
                     }
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text("32  s");
-                    ImGui::TableNextColumn();
+                    ImGui::Text("32s");
                     for(u32::type page : range(0x10)) {
-                        ImGui::Text("{}", w32[page + 16]);
                         ImGui::TableNextColumn();
+                        ImGui::Text("{}", w32[page + 16]);
                     }
 
                     ImGui::EndTable();
