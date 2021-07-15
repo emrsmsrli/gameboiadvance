@@ -16,6 +16,7 @@
 #include <SFML/Window/Touch.hpp>
 #include <SFML/Window/Window.hpp>
 
+#include <array>
 #include <vector>
 #include <cassert>
 #include <cmath> // abs
