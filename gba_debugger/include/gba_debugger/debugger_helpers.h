@@ -52,7 +52,7 @@ struct fmt::formatter<std::optional<T>> : formatter<T> {
         if(o.has_value()) {
             return formatter<T>::format(o.value(), ctx);
         }
-        return format_to(ctx.out(), "{}", "<nullopt>");
+        return format_to(ctx.out(), "{}", "<none>");
     }
 };
 
