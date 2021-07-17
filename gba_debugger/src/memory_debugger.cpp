@@ -12,6 +12,7 @@
 
 #include <gba_debugger/disassembler.h>
 #include <gba_debugger/disassembly_entry.h>
+#include <gba/helper/filesystem.h>
 #include <gba/helper/variant_visit.h>
 
 namespace gba::debugger {
@@ -108,8 +109,22 @@ void memory_view::draw() noexcept
 
     if(ImGui::Begin("Memory")) {
         if(ImGui::BeginTabBar("#memory_tab")) {
+            const bool dump = ImGui::TabItemButton("Dump", ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoTooltip);
+            if(ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Dumps the current tab");
+            }
             for(const memory_view_entry& entry : entries_) {
                 if(ImGui::BeginTabItem(entry.name.data())) {
+                    if(dump) {
+                        static const fs::path dump_path = fs::current_path() / "dumps";
+                        if(fs::exists(dump_path) || fs::create_directories(dump_path)) {
+                            fs::write_file(dump_path / fmt::format("{}.bin", entry.name), *entry.data);
+                            LOG_TRACE(debugger, "dumping {} to {}", entry.name, dump_path.string());
+                        } else {
+                            LOG_ERROR(debugger, "could not create dump path {}", dump_path.string());
+                        }
+                    }
+
                     memory_editor.DrawContents(entry.data->data(), entry.data->size().get(), entry.base_addr.get());
                     ImGui::EndTabItem();
                 }
