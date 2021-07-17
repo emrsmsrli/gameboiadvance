@@ -11,6 +11,7 @@
 #include <SFML/Graphics/RenderWindow.hpp>
 #include <SFML/System/Clock.hpp>
 #include <SFML/Window/Event.hpp>
+#include <sdl2cpp/sdl_audio.h>
 
 #include <gba/core/fwd.h>
 #include <gba/apu/apu_types.h>
@@ -21,7 +22,6 @@
 #include <gba_debugger/ppu_debugger.h>
 #include <gba_debugger/apu_debugger.h>
 #include <gba_debugger/keypad_debugger.h>
-#include <sdl2cpp/sdl_audio.h>
 
 namespace gba::debugger {
 
