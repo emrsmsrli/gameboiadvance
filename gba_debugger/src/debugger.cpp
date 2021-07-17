@@ -367,7 +367,7 @@ void window::on_vblank() noexcept
 void window::on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept
 {
     const usize buffer_size_in_bytes = sizeof(apu::stereo_sample<float>) * buffer.size();
-    audio_device_.enqueue(reinterpret_cast<const void*>(buffer.data()), buffer_size_in_bytes.get());
+    audio_device_.enqueue(reinterpret_cast<const void*>(buffer.data()), buffer_size_in_bytes.get()); // NOLINT
     while(audio_device_.queue_size() > buffer_size_in_bytes) {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(1ms);
