@@ -86,12 +86,12 @@ public:
 
     void remove_event(const hw_event::handle handle)
     {
-        const auto it = std::find_if(heap_.begin(), heap_.end(), [handle](const hw_event& e) {
+        const auto it = std::remove_if(heap_.begin(), heap_.end(), [handle](const hw_event& e) {
             return e.h == handle;
         });
 
         if(it != heap_.end()) {
-            heap_.erase(it);
+            heap_.erase(it, heap_.end());
             std::make_heap(heap_.begin(), heap_.end(), predicate{});
         }
     }
