@@ -274,6 +274,9 @@ bool window::on_instruction_execute(const u32 address) noexcept
     }
 
     ++exec_bp->hit_count;
+    if(bitflags::is_set(exec_bp->hit_type, breakpoint_hit_type::log)) {
+        LOG_INFO(debugger, "execution breakpoint hit: {:08X}", address);
+    }
 
     if(!tick_allowed_) {
         return false;
@@ -281,11 +284,13 @@ bool window::on_instruction_execute(const u32 address) noexcept
 
     if(exec_bp->hit_count_target.has_value()) {
         should_break = *exec_bp->hit_count_target == exec_bp->hit_count;
+    } else {
+        should_break = false;
     }
 
+    should_break |= bitflags::is_set(exec_bp->hit_type, breakpoint_hit_type::suspend);
     if(should_break) {
         tick_allowed_ = false;
-        LOG_DEBUG(debugger, "execution breakpoint hit: {:08X}", address);
     }
 
     return should_break;
@@ -293,18 +298,38 @@ bool window::on_instruction_execute(const u32 address) noexcept
 
 void window::on_io_read(const u32 address, const arm::debugger_access_width access_type) noexcept
 {
-    if(tick_allowed_ && breakpoint_database_.has_enabled_read_breakpoint(address, access_type)) {
-        tick_allowed_ = false;
-        LOG_DEBUG(debugger, "read breakpoint hit: {:08X}, {} access", address, to_string_view(access_type));
+    if(tick_allowed_) {
+        const access_breakpoint* access_bp = breakpoint_database_.get_enabled_read_breakpoint(address, access_type);
+        if(!access_bp) {
+            return;
+        }
+
+        if(bitflags::is_set(access_bp->hit_type, breakpoint_hit_type::log)) {
+            LOG_INFO(debugger, "read breakpoint hit: {:08X}, {} access", address, to_string_view(access_type));
+        }
+
+        if(bitflags::is_set(access_bp->hit_type, breakpoint_hit_type::suspend)) {
+            tick_allowed_ = false;
+        }
     }
 }
 
 void window::on_io_write(const u32 address, const u32 data, const arm::debugger_access_width access_type) noexcept
 {
-    if(tick_allowed_ && breakpoint_database_.has_enabled_write_breakpoint(address, data, access_type)) {
-        tick_allowed_ = false;
-        LOG_DEBUG(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
-          address, data, to_string_view(access_type));
+    if(tick_allowed_) {
+        const access_breakpoint* access_bp = breakpoint_database_.get_enabled_write_breakpoint(address, data, access_type);
+        if(!access_bp) {
+            return;
+        }
+
+        if(bitflags::is_set(access_bp->hit_type, breakpoint_hit_type::log)) {
+            LOG_INFO(debugger, "write breakpoint hit: {:08X} <- {:0X}, {} access",
+              address, data, to_string_view(access_type));
+        }
+
+        if(bitflags::is_set(access_bp->hit_type, breakpoint_hit_type::suspend)) {
+            tick_allowed_ = false;
+        }
     }
 }
 
