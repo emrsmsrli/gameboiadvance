@@ -44,6 +44,7 @@ public:
         sound_buffer_fifo_b_.resize(capacity);
     }
 
+private:
     void on_sample_written(usize idx) noexcept;
 };
 

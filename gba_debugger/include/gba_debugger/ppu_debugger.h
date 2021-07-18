@@ -43,6 +43,7 @@ public:
     ppu_debugger(ppu::engine* engine, preferences* prefs);
     void draw() noexcept;
 
+private:
     void on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept;
     void on_update_texture() noexcept;
 

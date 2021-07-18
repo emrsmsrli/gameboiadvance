@@ -63,7 +63,7 @@ public:
     void add_access_breakpoint(access_breakpoint breakpoint);
 };
 
-std::string_view to_string_view(const access_breakpoint::type type) noexcept;
+std::string_view to_string_view(access_breakpoint::type type) noexcept;
 
 } // namespace gba::debugger
 
