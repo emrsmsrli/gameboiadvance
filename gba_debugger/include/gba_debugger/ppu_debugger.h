@@ -15,10 +15,13 @@
 
 namespace gba::debugger {
 
+struct preferences;
+
 enum class win_type { w0, w1, obj, out };
 
-struct ppu_debugger {
-    ppu::engine* ppu_engine;
+class ppu_debugger {
+    preferences* prefs_;
+    ppu::engine* ppu_engine_;
 
     sf::Image screen_buffer_;
     sf::Texture screen_texture_;
@@ -36,7 +39,8 @@ struct ppu_debugger {
     sf::Image win_buffer_;
     sf::Texture win_texture_;
 
-    explicit ppu_debugger(ppu::engine* engine);
+public:
+    ppu_debugger(ppu::engine* engine, preferences* prefs);
     void draw() noexcept;
 
     void on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept;

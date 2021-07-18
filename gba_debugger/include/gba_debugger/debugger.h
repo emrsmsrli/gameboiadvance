@@ -15,6 +15,7 @@
 
 #include <gba/core/fwd.h>
 #include <gba/apu/apu_types.h>
+#include <gba_debugger/preferences.h>
 #include <gba_debugger/breakpoint_database.h>
 #include <gba_debugger/memory_debugger.h>
 #include <gba_debugger/gamepak_debugger.h>
@@ -26,6 +27,8 @@
 namespace gba::debugger {
 
 class window {
+    preferences prefs_;
+
     sf::RenderWindow window_;
     sf::Event window_event_;
     sf::Clock dt_;

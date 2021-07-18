@@ -12,6 +12,7 @@
 #include <access_private.h>
 
 #include <gba/apu/apu.h>
+#include <gba_debugger/preferences.h>
 #include <gba_debugger/debugger_helpers.h>
 
 ACCESS_PRIVATE_FIELD(gba::apu::engine, bool, power_on_)
@@ -145,8 +146,9 @@ void draw_pulse(const apu::pulse_channel& ch, const bool no_sweep) noexcept
 
 } // namespace
 
-apu_debugger::apu_debugger(apu::engine* apu_engine) noexcept
-  : apu_engine_{apu_engine}
+apu_debugger::apu_debugger(apu::engine* apu_engine, preferences* prefs) noexcept
+  : prefs_{prefs},
+    apu_engine_{apu_engine}
 {
     ram_viewer_.Cols = 8;
     ram_viewer_.OptMidColsCount = 4;
@@ -208,11 +210,10 @@ void apu_debugger::draw() noexcept
             struct channel_draw_opts {
                 const char* name;
                 const vector<apu::stereo_sample<float>>& buffer;
-                bool should_draw = false;
             };
 
             static array channel_draw_options{
-              channel_draw_opts{"Buffer", access_private::buffer_(sound_buffer), true},
+              channel_draw_opts{"Buffer", access_private::buffer_(sound_buffer)},
               channel_draw_opts{"Channel1", sound_buffer_1_},
               channel_draw_opts{"Channel2", sound_buffer_2_},
               channel_draw_opts{"Channel3", sound_buffer_3_},
@@ -223,15 +224,15 @@ void apu_debugger::draw() noexcept
 
             ImGui::Spacing();
             if(ImGui::Button("Select all")) {
-                for(channel_draw_opts& opt : channel_draw_options) {
-                    opt.should_draw = true;
-                }
+                prefs_->apu_enabled_channel_graphs = 0b1111111;
             }
+
             ImGui::SameLine();
-            for(channel_draw_opts& opt : channel_draw_options) {
-                ImGui::Checkbox("", &opt.should_draw);
+            enumerate(channel_draw_options, [&](usize idx, channel_draw_opts& opt) {
+                bool enabled = bit::test(u32(prefs_->apu_enabled_channel_graphs), narrow<u8>(idx));
+                ImGui::Checkbox("", &enabled);
                 if(ImGui::IsItemClicked()) { // hack
-                    opt.should_draw = !opt.should_draw;
+                    prefs_->apu_enabled_channel_graphs ^= 1 << idx.get();
                 }
                 if(ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
@@ -239,7 +240,7 @@ void apu_debugger::draw() noexcept
                     ImGui::EndTooltip();
                 }
                 ImGui::SameLine();
-            }
+            });
             ImGui::NewLine();
 
             const float draw_width = ImGui::GetWindowContentRegionWidth() / 2.f - 2.f;
@@ -250,11 +251,12 @@ void apu_debugger::draw() noexcept
                     if(ImPlot::BeginPlot(terminal == apu::terminal::right ? "Right" : "Left",
                       nullptr, nullptr, ImVec2{draw_width, 250.f},
                       ImPlotFlags_NoMenus, ImPlotAxisFlags_RangeFit, ImPlotAxisFlags_Lock)) {
-                        for(channel_draw_opts& opt : channel_draw_options) {
-                            if(opt.should_draw) {
+                        enumerate(channel_draw_options, [&](usize idx, channel_draw_opts& opt) {
+                            const bool enabled = bit::test(u32(prefs_->apu_enabled_channel_graphs), narrow<u8>(idx));
+                            if(enabled) {
                                 draw_channel_buffer(opt.name, opt.buffer, sound_buffer_capacity, sound_buffer_write_idx, terminal);
                             }
-                        }
+                        });
                         ImPlot::EndPlot();
                     }
 
