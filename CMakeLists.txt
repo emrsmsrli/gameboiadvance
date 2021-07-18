@@ -13,6 +13,7 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+option(ENABLE_GZIP_SUPPORT "Enable gzip compressed file read-write support" ON)
 option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
@@ -62,6 +63,9 @@ endif()
 
 find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
+if(ENABLE_GZIP_SUPPORT)
+    find_package(ZLIB REQUIRED)
+endif()
 
 add_subdirectory(external)
 add_subdirectory(gba)
