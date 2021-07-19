@@ -7,8 +7,8 @@
 
 #include <gba/cartridge/backup.h>
 
-#include <gba/core/scheduler.h>
 #include <gba/core/math.h>
+#include <gba/core/scheduler.h>
 #include <gba/helper/bitflags.h>
 
 ENABLE_BITFLAG_OPS(gba::cartridge::backup_flash::cmd);

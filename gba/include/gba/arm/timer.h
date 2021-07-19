@@ -8,11 +8,11 @@
 #ifndef GAMEBOIADVANCE_TIMER_H
 #define GAMEBOIADVANCE_TIMER_H
 
+#include <gba/arm/irq_controller_handle.h>
+#include <gba/core/event/event.h>
 #include <gba/core/fwd.h>
 #include <gba/core/math.h>
-#include <gba/core/event/event.h>
 #include <gba/core/scheduler.h>
-#include <gba/arm/irq_controller_handle.h>
 #include <gba/helper/range.h>
 
 namespace gba::timer {

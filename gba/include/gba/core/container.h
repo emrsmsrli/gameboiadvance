@@ -8,10 +8,10 @@
 #ifndef GAMEBOIADVANCE_CONTAINER_H
 #define GAMEBOIADVANCE_CONTAINER_H
 
-#include <vector>
 #include <cstring>  // std::memcpy
-#include <utility>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <gba/core/integer.h>
 

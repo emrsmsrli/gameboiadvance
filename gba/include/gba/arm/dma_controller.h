@@ -8,8 +8,8 @@
 #ifndef GAMEBOIADVANCE_DMA_CONTROLLER_H
 #define GAMEBOIADVANCE_DMA_CONTROLLER_H
 
-#include <gba/core/fwd.h>
 #include <gba/core/container.h>
+#include <gba/core/fwd.h>
 #include <gba/core/math.h>
 #include <gba/core/scheduler.h>
 

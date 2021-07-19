@@ -11,15 +11,15 @@
 #include <algorithm>
 
 #include <gba/arm/dma_controller.h>
-#include <gba/arm/timer.h>
 #include <gba/arm/irq_controller_handle.h>
-#include <gba/core/scheduler.h>
+#include <gba/arm/timer.h>
 #include <gba/core/container.h>
-#include <gba/core/math.h>
 #include <gba/core/fwd.h>
-#include <gba/helper/lookup_table.h>
-#include <gba/helper/function_ptr.h>
+#include <gba/core/math.h>
+#include <gba/core/scheduler.h>
 #include <gba/helper/bitflags.h>
+#include <gba/helper/function_ptr.h>
+#include <gba/helper/lookup_table.h>
 
 namespace gba::arm {
 

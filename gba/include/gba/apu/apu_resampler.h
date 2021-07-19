@@ -9,8 +9,8 @@
 #define GAMEBOIADVANCE_APU_RESAMPLER_H
 
 #include <gba/apu/apu_sound_buffer.h>
-#include <gba/core/integer.h>
 #include <gba/core/event/event.h>
+#include <gba/core/integer.h>
 
 namespace gba::apu {
 

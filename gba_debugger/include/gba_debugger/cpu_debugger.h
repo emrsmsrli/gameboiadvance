@@ -8,8 +8,8 @@
 #ifndef GAMEBOIADVANCE_CPU_DEBUGGER_H
 #define GAMEBOIADVANCE_CPU_DEBUGGER_H
 
-#include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
+#include <gba/core/fwd.h>
 
 namespace gba::debugger {
 

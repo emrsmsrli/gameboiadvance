@@ -10,10 +10,10 @@
 #include <imgui.h>
 #include <imgui_memory_editor/imgui_memory_editor.h>
 
-#include <gba_debugger/disassembler.h>
-#include <gba_debugger/disassembly_entry.h>
 #include <gba/helper/filesystem.h>
 #include <gba/helper/variant_visit.h>
+#include <gba_debugger/disassembler.h>
+#include <gba_debugger/disassembly_entry.h>
 
 namespace gba::debugger {
 

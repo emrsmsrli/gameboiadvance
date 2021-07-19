@@ -8,10 +8,10 @@
 #ifndef GAMEBOIADVANCE_APU_H
 #define GAMEBOIADVANCE_APU_H
 
-#include <gba/apu/apu_types.h>
 #include <gba/apu/apu_resampler.h>
-#include <gba/core/fwd.h>
+#include <gba/apu/apu_types.h>
 #include <gba/arm/dma_controller.h>
+#include <gba/core/fwd.h>
 
 namespace gba::apu {
 

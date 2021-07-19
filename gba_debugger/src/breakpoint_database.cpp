@@ -5,9 +5,9 @@
  * Refer to the included LICENSE file.
  */
 
-#include <algorithm>
-
 #include <gba_debugger/breakpoint_database.h>
+
+#include <algorithm>
 
 #include <gba/arm/arm7tdmi.h>
 

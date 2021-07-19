@@ -9,8 +9,8 @@
 
 #include <sstream>
 
-#include <imgui.h>
 #include <access_private.h>
+#include <imgui.h>
 
 #include <gba/cartridge/gamepak.h>
 #include <gba_debugger/debugger_helpers.h>

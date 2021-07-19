@@ -8,8 +8,8 @@
 #ifndef GAMEBOIADVANCE_MEMORY_DEBUGGER_H
 #define GAMEBOIADVANCE_MEMORY_DEBUGGER_H
 
-#include <variant>
 #include <string_view>
+#include <variant>
 
 #include <gba/core/container.h>
 

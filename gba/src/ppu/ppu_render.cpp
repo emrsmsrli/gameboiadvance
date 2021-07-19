@@ -5,9 +5,10 @@
  * Refer to the included LICENSE file.
  */
 
+#include <gba/ppu/ppu.h>
+
 #include <algorithm>
 
-#include <gba/ppu/ppu.h>
 #include <gba/helper/sort.h>
 
 namespace gba::ppu {

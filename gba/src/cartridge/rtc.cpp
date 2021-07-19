@@ -8,9 +8,9 @@
 #include <gba/cartridge/rtc.h>
 
 #define _CRT_SECURE_NO_WARNINGS
-#include <string_view>
 #include <chrono>
 #include <ctime>
+#include <string_view>
 
 namespace gba::cartridge {
 

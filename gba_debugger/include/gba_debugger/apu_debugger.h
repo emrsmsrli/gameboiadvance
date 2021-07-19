@@ -10,9 +10,9 @@
 
 #include <imgui_memory_editor/imgui_memory_editor.h>
 
-#include <gba/core/fwd.h>
-#include <gba/core/container.h>
 #include <gba/apu/apu_types.h>
+#include <gba/core/container.h>
+#include <gba/core/fwd.h>
 
 namespace gba::debugger {
 

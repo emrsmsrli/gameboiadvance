@@ -6,6 +6,7 @@
  */
 
 #include <gba/arm/irq_controller_handle.h>
+
 #include <gba/arm/arm7tdmi.h>
 
 namespace gba::arm {

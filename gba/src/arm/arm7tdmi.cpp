@@ -5,9 +5,10 @@
  * Refer to the included LICENSE file.
  */
 
+#include <gba/arm/arm7tdmi.h>
+
 #include <algorithm>
 
-#include <gba/arm/arm7tdmi.h>
 #include <gba/core.h>
 
 namespace gba::arm {

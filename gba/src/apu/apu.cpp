@@ -7,8 +7,8 @@
 
 #include <gba/apu/apu.h>
 
-#include <gba/core/scheduler.h>
 #include <gba/arm/timer.h>
+#include <gba/core/scheduler.h>
 
 namespace gba::apu {
 

@@ -7,13 +7,13 @@
 
 #include <gba_debugger/apu_debugger.h>
 
+#include <access_private.h>
 #include <imgui.h>
 #include <implot.h>
-#include <access_private.h>
 
 #include <gba/apu/apu.h>
-#include <gba_debugger/preferences.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/preferences.h>
 
 ACCESS_PRIVATE_FIELD(gba::apu::engine, bool, power_on_)
 ACCESS_PRIVATE_FIELD(gba::apu::engine, gba::apu::pulse_channel, channel_1_)

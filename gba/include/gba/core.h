@@ -8,12 +8,12 @@
 #ifndef GAMEBOIADVANCE_CORE_H
 #define GAMEBOIADVANCE_CORE_H
 
-#include <gba/core/scheduler.h>
+#include <gba/apu/apu.h>
 #include <gba/arm/arm7tdmi.h>
 #include <gba/cartridge/gamepak.h>
-#include <gba/ppu/ppu.h>
-#include <gba/apu/apu.h>
+#include <gba/core/scheduler.h>
 #include <gba/keypad.h>
+#include <gba/ppu/ppu.h>
 
 namespace gba {
 

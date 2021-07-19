@@ -9,8 +9,8 @@
 #define GAMEBOIADVANCE_SCHEDULER_H
 
 #include <algorithm>
-#include <functional> // std::greater
-#include <type_traits> // std::forward
+#include <functional>   // std::greater
+#include <type_traits>  // std::forward
 
 #if WITH_DEBUGGER
   #include <string>

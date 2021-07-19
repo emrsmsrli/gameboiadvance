@@ -7,9 +7,9 @@
 
 #include <gba_debugger/debugger.h>
 
+#include <chrono>
 #include <string_view>
 #include <thread>
-#include <chrono>
 
 #include <access_private.h>
 #include <imgui-SFML.h>

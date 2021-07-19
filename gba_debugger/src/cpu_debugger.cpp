@@ -11,12 +11,12 @@
 #include <sstream>
 #include <string_view>
 
-#include <imgui.h>
 #include <access_private.h>
+#include <imgui.h>
 
 #include <gba/core.h>
-#include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/breakpoint_database.h>
+#include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/disassembler.h>
 #include <gba_debugger/disassembly_entry.h>
 

@@ -10,8 +10,8 @@
 #include <imgui.h>
 
 #include <gba_debugger/breakpoint_database.h>
-#include <gba_debugger/disassembler.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/disassembler.h>
 
 namespace gba::debugger {
 

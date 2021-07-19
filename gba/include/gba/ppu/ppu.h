@@ -8,13 +8,13 @@
 #ifndef GAMEBOIADVANCE_PPU_H
 #define GAMEBOIADVANCE_PPU_H
 
-#include <gba/arm/irq_controller_handle.h>
 #include <gba/arm/dma_controller.h>
+#include <gba/arm/irq_controller_handle.h>
+#include <gba/arm/mmio_addr.h>
 #include <gba/core/container.h>
 #include <gba/core/event/event.h>
 #include <gba/core/fwd.h>
 #include <gba/ppu/ppu_types.h>
-#include <gba/arm/mmio_addr.h>
 
 namespace gba::ppu {
 

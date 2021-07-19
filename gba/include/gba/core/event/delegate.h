@@ -1,11 +1,11 @@
 #ifndef GAMEBOIADVANCE_DELEGATE_H
 #define GAMEBOIADVANCE_DELEGATE_H
 
-#include <tuple>
 #include <cstddef>
-#include <utility>
 #include <functional>
+#include <tuple>
 #include <type_traits>
+#include <utility>
 
 namespace gba {
 

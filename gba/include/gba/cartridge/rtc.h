@@ -8,9 +8,9 @@
 #ifndef GAMEBOIADVANCE_RTC_H
 #define GAMEBOIADVANCE_RTC_H
 
+#include <gba/arm/irq_controller_handle.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
-#include <gba/arm/irq_controller_handle.h>
 
 namespace gba::cartridge {
 

@@ -13,8 +13,8 @@
 
 #include <gba/cartridge/backup.h>
 #include <gba/cartridge/rtc.h>
-#include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
+#include <gba/core/fwd.h>
 #include <gba/helper/filesystem.h>
 
 namespace gba::cartridge {

@@ -7,9 +7,9 @@
 
 #include <gba/arm/arm7tdmi.h>
 
-#include <gba/core.h>
 #include <gba/arm/mmio_addr.h>
 #include <gba/arm/timer.h>
+#include <gba/core.h>
 
 namespace gba::arm {
 

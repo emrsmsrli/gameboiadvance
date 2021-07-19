@@ -8,10 +8,10 @@
 #ifndef GAMEBOIADVANCE_APU_TYPES_H
 #define GAMEBOIADVANCE_APU_TYPES_H
 
-#include <gba/core/container.h>
-#include <gba/core/scheduler.h>
-#include <gba/core/math.h>
 #include <gba/arm/dma_controller.h>
+#include <gba/core/container.h>
+#include <gba/core/math.h>
+#include <gba/core/scheduler.h>
 #include <gba/helper/range.h>
 
 namespace gba::apu {

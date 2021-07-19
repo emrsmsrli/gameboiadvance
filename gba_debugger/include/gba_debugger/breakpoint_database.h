@@ -12,8 +12,8 @@
 
 #include <gba/core/container.h>
 #include <gba/core/fwd.h>
-#include <gba/helper/range.h>
 #include <gba/helper/bitflags.h>
+#include <gba/helper/range.h>
 
 namespace gba::debugger {
 

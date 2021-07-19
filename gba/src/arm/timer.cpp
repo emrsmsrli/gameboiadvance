@@ -6,6 +6,7 @@
  */
 
 #include <gba/arm/timer.h>
+
 #include <gba/arm/arm7tdmi.h>
 
 namespace gba::timer {

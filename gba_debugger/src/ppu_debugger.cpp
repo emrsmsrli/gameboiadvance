@@ -8,13 +8,13 @@
 #include <gba_debugger/ppu_debugger.h>
 
 #include <access_private.h>
-#include <SFML/Graphics/Sprite.hpp>
 #include <imgui.h>
 #include <imgui-SFML.h>
+#include <SFML/Graphics/Sprite.hpp>
 
 #include <gba/helper/range.h>
-#include <gba_debugger/preferences.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/preferences.h>
 
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
