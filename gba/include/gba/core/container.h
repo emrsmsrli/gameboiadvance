@@ -87,6 +87,8 @@ public:
     vector() = default;
     explicit vector(const usize size)
       : data_(size.get()) {}
+    vector(const usize size, const T& init)
+      : data_(size.get(), init) {}
 
     [[nodiscard]] T& operator[](const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] const T& operator[](const usize idx) const noexcept { return data_[idx.get()]; }
