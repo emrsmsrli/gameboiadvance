@@ -248,7 +248,7 @@ public:
     using const_iterator = const_pointer;
 
     template<typename Container>
-    constexpr view(const Container& container) noexcept
+    constexpr explicit view(const Container& container) noexcept
       : entries_{reinterpret_cast<const T*>(container.data())},
         size_{container.size() / sizeof(T)}
     {
@@ -256,6 +256,10 @@ public:
           "source container element type must be u8");
         ASSERT((container.size() % sizeof(T)) == 0_usize); // alignment check
     }
+
+    constexpr view(const T* data, const usize size)
+      : entries_{data},
+        size_{size} {}
 
     [[nodiscard]] constexpr const T& operator[](const usize idx) const noexcept { return *ptr(idx); }
     [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return entries_ + idx.get(); }
