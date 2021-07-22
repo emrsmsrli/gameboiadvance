@@ -55,7 +55,7 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
         }
         case state::transmitting_addr: {
             if(transmission_count_ == bus_width_) {
-                address_ = narrow<u32>(buffer_ * 8_u32) & 0x3FF_u32;  // addressing works in 64bit units
+                address_ = narrow<u32>(buffer_ * 8_u32) & 0x1FFF_u32;  // addressing works in 64bit units
                 reset_buffer();
 
                 ASSERT(cmd_ != cmd::none);
