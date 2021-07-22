@@ -20,6 +20,7 @@ using namespace std::filesystem;
 
 vector<u8> read_file(const path& path);
 void write_file(const path& path, const vector<u8>& data);
+void write_file(const path& path, view<u8> data);
 
 class mmap {
     fs::path path_;

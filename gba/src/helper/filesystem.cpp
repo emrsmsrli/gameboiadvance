@@ -36,6 +36,11 @@ vector<u8> read_file(const path& path)
 
 void write_file(const path& path, const vector<u8>& data)
 {
+    write_file(path, view<u8>{data.data(), data.size()});
+}
+
+void write_file(const path& path, const view<u8> data)
+{
     std::ofstream stream{path, std::ios::binary};
     if(!stream.is_open()) {
         LOG_CRITICAL(fs, "output file stream could not be opened: {}", path.string());
