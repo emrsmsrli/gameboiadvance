@@ -36,11 +36,11 @@ void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
 
                             ImGui::BeginChild("#disassembly_child");
                             const u32::type instr_size = thumb_mode ? 2_u32 : 4_u32;
-                            ImGuiListClipper clipper(static_cast<int>(entry.data->size().get() / instr_size));
+                            ImGuiListClipper clipper(static_cast<int>(entry.data.size().get() / instr_size));
                             while(clipper.Step()) {
                                 for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
                                     const u32 address = static_cast<u32::type>(instr_size * i);
-                                    const u32 instr = thumb_mode ? memcpy<u16>(*entry.data, address) : memcpy<u32>(*entry.data, address);
+                                    const u32 instr = thumb_mode ? memcpy<u16>(entry.data, address) : memcpy<u32>(entry.data, address);
 
                                     disassembly_entry disassembly_entry{bp_db_, entry.base_addr + address, instr, thumb_mode, false};
                                     disassembly_entry.draw();
@@ -118,14 +118,15 @@ void memory_view::draw() noexcept
                     if(dump) {
                         static const fs::path dump_path = fs::current_path() / "dumps";
                         if(fs::exists(dump_path) || fs::create_directories(dump_path)) {
-                            fs::write_file(dump_path / fmt::format("{}.bin", entry.name), *entry.data);
+                            fs::write_file(dump_path / fmt::format("{}.bin", entry.name), entry.data);
                             LOG_TRACE(debugger, "dumping {} to {}", entry.name, dump_path.string());
                         } else {
                             LOG_ERROR(debugger, "could not create dump path {}", dump_path.string());
                         }
                     }
 
-                    memory_editor.DrawContents(entry.data->data(), entry.data->size().get(), entry.base_addr.get());
+                    memory_editor.DrawContents(
+                      const_cast<u8*>(entry.data.data()), entry.data.size().get(), entry.base_addr.get()); // NOLINT
                     ImGui::EndTabItem();
                 }
             }

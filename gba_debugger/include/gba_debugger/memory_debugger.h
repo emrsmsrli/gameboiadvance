@@ -21,7 +21,7 @@ struct custom_disassembly_entry {};
 
 struct memory_view_entry {
     std::string_view name;
-    vector<u8>* data;
+    view<u8> data;
     u32 base_addr;
 };
 
