@@ -38,10 +38,9 @@ void engine::render_obj() noexcept
     const bool in_bitmap_mode = bitmap_modes.contains(dispcnt_.bg_mode);
 
     const view<obj_affine> affine_view{oam_};
-    const u32 render_cycles_max = dispcnt_.hblank_interval_free
-      ? 954_u32
-      : 1210_u32;
-    u32 render_cycles_spent = 0_u32;
+    i32 render_cycles_remaining = dispcnt_.hblank_interval_free
+      ? 954_i32
+      : 1210_i32;
 
     std::fill(obj_buffer_.begin(), obj_buffer_.end(), obj_buffer_entry{});
 
@@ -68,11 +67,9 @@ void engine::render_obj() noexcept
 
         dimension<u32> flip_offsets{0_u32, 0_u32};
         obj_affine affine_matrix;
-        u32 cycles_per_dot = 1_u32;
 
         if(is_affine) {
             affine_matrix = affine_view[obj.attr1.affine_idx()];
-            cycles_per_dot = 2_u32;
 
             if(render_mode == obj_attr0::rendering_mode::affine_double) {
                 half_dimensions = dimensions;
@@ -97,10 +94,6 @@ void engine::render_obj() noexcept
             continue;
         }
 
-        if(is_affine) {
-            render_cycles_spent += 10_u32;
-        }
-
         i32 local_y = make_signed(widen<u32>(vcount_)) - y;
         mosaic_obj_.internal.h = 0_u8;
 
@@ -111,14 +104,8 @@ void engine::render_obj() noexcept
         }
 
         for(i32 obj_local_x : range(-make_signed(half_dimensions.h), make_signed(half_dimensions.h))) {
-            if(render_cycles_spent > render_cycles_max) {
-                return;
-            }
-
             const i32 local_x = obj_local_x - mosaic_obj_.internal.h;
             const i32 global_x = obj_local_x + x;
-
-            render_cycles_spent += cycles_per_dot;
 
             if(!range(make_signed(screen_width)).contains(global_x)) {
                 continue;
@@ -177,6 +164,16 @@ void engine::render_obj() noexcept
                     obj_entry.is_alpha_blending = blend_mode == obj_attr0::blend_mode::alpha_blending;
                 }
             }
+        }
+
+        if(is_affine) {
+            render_cycles_remaining -= 10_i32 + make_signed(half_dimensions.h) * 2_i32;
+        } else {
+            render_cycles_remaining -= make_signed(half_dimensions.h);
+        }
+
+        if(render_cycles_remaining <= 0_i32) {
+            break;
         }
     }
 }
