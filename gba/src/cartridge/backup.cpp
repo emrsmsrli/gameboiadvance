@@ -43,7 +43,7 @@ void backup::set_size(const usize size) noexcept
         if(err) {
             LOG_ERROR(backup, "could not create a remap to file after resize: {}", err.message());
             // we shouldn't continue at this point
-            std::terminate();
+            PANIC();
         }
     }
 }

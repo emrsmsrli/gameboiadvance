@@ -27,7 +27,7 @@ vector<u8> read_file(const path& path)
     std::ifstream stream{path, std::ios::binary | std::ios::ate};
     if(!stream.is_open()) {
         LOG_CRITICAL(fs, "input file stream could not be opened: {}", path.string());
-        std::terminate();
+        PANIC();
     }
 
     const std::ifstream::pos_type file_size = stream.tellg();
@@ -50,7 +50,7 @@ void write_file(const path& path, const view<u8> data)
     std::ofstream stream{path, std::ios::binary};
     if(!stream.is_open()) {
         LOG_CRITICAL(fs, "output file stream could not be opened: {}", path.string());
-        std::terminate();
+        PANIC();
     }
 
     stream.write(reinterpret_cast<const char*>(data.data()), data.size().get()); // NOLINT

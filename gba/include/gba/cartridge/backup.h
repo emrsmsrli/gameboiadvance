@@ -53,7 +53,7 @@ public:
         if(err) {
             LOG_ERROR(backup, "could not create an mmap: {}", err.message());
             // we shouldn't continue at this point
-            std::terminate();
+            PANIC();
         }
     }
 
