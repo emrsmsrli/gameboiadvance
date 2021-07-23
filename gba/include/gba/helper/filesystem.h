@@ -49,10 +49,10 @@ public:
 
     // move only
     mmap(const mmap&) = delete;
-    mmap(mmap&&) noexcept;
+    mmap(mmap&& other) noexcept;
 
     mmap& operator=(const mmap&) = delete;
-    mmap& operator=(mmap&&) noexcept;
+    mmap& operator=(mmap&& other) noexcept;
 
     [[nodiscard]] u8& operator[](const usize idx) noexcept { return *ptr(idx); }
     [[nodiscard]] u8 operator[](const usize idx) const noexcept { return *ptr(idx); }
