@@ -24,8 +24,28 @@ constexpr u64 eeprom_settle_cycles = 115'000_u64;
 
 void backup::set_size(const usize size) noexcept
 {
-    size_ = size;
-    data_.resize(size);
+    if(size_ != size) {
+        std::error_code err;
+        mmap_.unmap(err);
+        if(err) {
+            LOG_ERROR(backup, "could not unmap file for resizing: {}", err.message());
+            return; // will crash on next line anyway
+        }
+
+        fs::resize_file(path_, size.get(), err);
+        if(err) {
+            LOG_ERROR(backup, "could not resize from {} bytes to {} bytes: {}", size_, size, err.message());
+        } else {
+            size_ = size;
+        }
+
+        mmap_.map(size, err);
+        if(err) {
+            LOG_ERROR(backup, "could not create a remap to file after resize: {}", err.message());
+            // we shouldn't continue at this point
+            std::terminate();
+        }
+    }
 }
 
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
@@ -48,7 +68,13 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                     cmd_ = cmd::read;
                 }
 
-                LOG_TRACE(eeprom, "new state: transmitting_addr, read mode: {}", read_mode_);
+                LOG_TRACE(eeprom, "new state: transmitting_addr, mode: {}", [&]() {
+                    switch(cmd_) {
+                        case cmd::read: return "read";
+                        case cmd::write: return "write";
+                        case cmd::none: return "none";
+                    }
+                }());
                 reset_buffer();
             }
             break;
