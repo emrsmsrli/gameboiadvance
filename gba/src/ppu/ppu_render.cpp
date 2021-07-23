@@ -66,9 +66,6 @@ void engine::render_obj() noexcept
         if(y >= make_signed(screen_height)) { y -= 256_i32; }
         if(x >= make_signed(screen_width)) { x -= 512_i32; }
 
-        y += half_dimensions.v;
-        x += half_dimensions.h;
-
         dimension<u32> flip_offsets{0_u32, 0_u32};
         obj_affine affine_matrix;
         u32 cycles_per_dot = 1_u32;
@@ -78,8 +75,6 @@ void engine::render_obj() noexcept
             cycles_per_dot = 2_u32;
 
             if(render_mode == obj_attr0::rendering_mode::affine_double) {
-                y += half_dimensions.v;
-                x += half_dimensions.h;
                 half_dimensions = dimensions;
             }
         } else {
@@ -94,6 +89,9 @@ void engine::render_obj() noexcept
                 affine_matrix.pd = p_flip;
             }
         }
+
+        y += half_dimensions.v;
+        x += half_dimensions.h;
 
         if(!range(y - half_dimensions.v, y + half_dimensions.v).contains(vcount_)) {
             continue;
