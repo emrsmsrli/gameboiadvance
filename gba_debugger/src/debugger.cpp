@@ -75,6 +75,8 @@ void debugger_settings_hander_read_line(ImGuiContext*, ImGuiSettingsHandler* han
     else if(sscanf(line, "ppu_winobj_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs->ppu_winobj_color = dummy4; }
 
     else if(sscanf(line, "apu_enabled_channel_graphs=%i", &dummy1) == 1) { prefs->apu_enabled_channel_graphs = dummy1; }
+
+    else if(sscanf(line, "debugger_background_emulate=%i", &dummy1) == 1) { prefs->debugger_background_emulate = dummy1 == 1; }
 }
 
 void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
@@ -107,6 +109,8 @@ void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* han
     out_buf->appendf("ppu_winobj_color=%f,%f,%f\n", prefs->ppu_winobj_color[0_u32], prefs->ppu_winobj_color[1_u32], prefs->ppu_winobj_color[2_u32]);
 
     out_buf->appendf("apu_enabled_channel_graphs=%i\n", prefs->apu_enabled_channel_graphs);
+
+    out_buf->appendf("debugger_background_emulate=%i\n", prefs->debugger_background_emulate);
 }
 
 } // namespace
@@ -194,7 +198,7 @@ window::window(core* core) noexcept
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
     LOG_INFO(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
-    LOG_INFO(debugger, "{} {}", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+    LOG_INFO(debugger, "{} {} {}", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
 
     core_->arm.on_instruction_execute.connect<&window::on_instruction_execute>(this);
     core_->arm.on_io_read.connect<&window::on_io_read>(this);
@@ -255,7 +259,7 @@ bool window::draw() noexcept
         }
     }
 
-    if(!window_.hasFocus()) {
+    if(!prefs_.debugger_background_emulate && !window_.hasFocus()) {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(10ms);
         return true;
@@ -296,7 +300,12 @@ bool window::draw() noexcept
 
     ImGui::End();
 
-    if(ImGui::Begin("Stats")) {
+    if(ImGui::Begin("Debugger")) {
+        ImGui::Checkbox("Allow emulation when unfocused", &prefs_.debugger_background_emulate);
+        ImGui::Text("audio device id: {}", audio_device_.id());
+        ImGui::Text("sample rate: {}", audio_device_.frequency());
+        ImGui::Text("{}\n {}\n {}", glGetString(GL_RENDERER), glGetString(GL_VENDOR), glGetString(GL_VERSION));
+
         static array framerates{0, 30, 60, 120, 144, 0};
         static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
         static int framerate_idx = 2;

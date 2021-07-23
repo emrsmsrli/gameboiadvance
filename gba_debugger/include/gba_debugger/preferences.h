@@ -31,6 +31,8 @@ struct preferences {
     array<float, 4> ppu_winobj_color{0.f, 0.f, 0.f, 1.f};
 
     unsigned int apu_enabled_channel_graphs = 0b1;
+
+    bool debugger_background_emulate = false;
 };
 
 } // namespace gba::debugger
