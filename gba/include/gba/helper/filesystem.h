@@ -72,8 +72,8 @@ public:
 
     void map(std::error_code& err) noexcept;
     void map(usize map_size, std::error_code& err) noexcept;
-    void unmap() noexcept;
-    void flush() const noexcept;
+    void unmap(std::error_code& err) noexcept;
+    void flush(std::error_code& err) const noexcept;
     [[nodiscard]] bool is_mapped() const noexcept;
 
     [[nodiscard]] iterator begin() noexcept { return data(); }
