@@ -119,7 +119,7 @@ void memory_view::draw() noexcept
                         static const fs::path dump_path = fs::current_path() / "dumps";
                         if(fs::exists(dump_path) || fs::create_directories(dump_path)) {
                             fs::write_file(dump_path / fmt::format("{}.bin", entry.name), entry.data);
-                            LOG_TRACE(debugger, "dumping {} to {}", entry.name, dump_path.string());
+                            LOG_INFO(debugger, "dumping {} to {}", entry.name, dump_path.string());
                         } else {
                             LOG_ERROR(debugger, "could not create dump path {}", dump_path.string());
                         }

@@ -193,8 +193,8 @@ window::window(core* core) noexcept
     audio_device_.resume();
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
-    LOG_TRACE(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
-    LOG_TRACE(debugger, "{} {}", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+    LOG_INFO(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
+    LOG_INFO(debugger, "{} {}", glGetString(GL_VENDOR), glGetString(GL_RENDERER));
 
     core_->arm.on_instruction_execute.connect<&window::on_instruction_execute>(this);
     core_->arm.on_io_read.connect<&window::on_io_read>(this);
