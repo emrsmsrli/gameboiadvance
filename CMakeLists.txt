@@ -17,6 +17,7 @@ option(ENABLE_GZIP_SUPPORT "Enable gzip compressed file read-write support" ON)
 option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(ENABLE_ASSERTIONS "Enable assertions" OFF)
 option(WITH_WARNINGS "Enable compiler warnings" ON)
 option(LOG_LEVEL "Log level" "OFF")
 
@@ -34,6 +35,7 @@ target_compile_features(project_options INTERFACE cxx_std_17)
 target_compile_definitions(project_options INTERFACE
         DEBUG=$<CONFIG:Debug>
         WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>
+        $<$<BOOL:${ENABLE_ASSERTIONS}>:ENABLE_ASSERTIONS>
         SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL_IDX})
 
 if(NOT MSVC)

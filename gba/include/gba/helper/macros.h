@@ -22,7 +22,7 @@
       std::terminate();                   \
   } while(0)
 
-#if DEBUG
+#if DEBUG || defined(ENABLE_ASSERTIONS)
   #define ASSERT(x) do { if(!(x)) { LOG_ERROR(assert, "assertion failure: " # x); PANIC(); } } while(0)
 #else
   #define ASSERT(x) (void)0
