@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-#include <gba/helper/sort.h>
+#include <gba/helper/algorithm.h>
 
 namespace gba::ppu {
 
@@ -209,7 +209,7 @@ void engine::compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept
     };
 
     // stable sort bg ids to render them in least importance order
-    insertion_sort(ids);
+    algo::insertion_sort(ids);
     std::reverse(ids.begin(), ids.end());
 
     const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;

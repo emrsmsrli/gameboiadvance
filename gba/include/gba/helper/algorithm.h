@@ -5,12 +5,13 @@
  * Refer to the included LICENSE file.
  */
 
-#ifndef GAMEBOIADVANCE_SORT_H
-#define GAMEBOIADVANCE_SORT_H
+
+#ifndef GAMEBOIADVANCE_ALGORITHM_H
+#define GAMEBOIADVANCE_ALGORITHM_H
 
 #include <algorithm>
 
-namespace gba {
+namespace gba::algo {
 
 template<typename Container>
 FORCEINLINE void insertion_sort(Container& container) noexcept
@@ -20,6 +21,6 @@ FORCEINLINE void insertion_sort(Container& container) noexcept
     }
 }
 
-} // namespace gba
+} // namespace gba::algo
 
-#endif //GAMEBOIADVANCE_SORT_H
+#endif //GAMEBOIADVANCE_ALGORITHM_H
