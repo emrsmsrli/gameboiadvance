@@ -9,7 +9,7 @@
 
 #include <algorithm>
 
-#include <gba/helper/algorithm.h>
+#include <gba/core/algorithm.h>
 
 namespace gba::ppu {
 
