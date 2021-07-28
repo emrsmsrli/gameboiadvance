@@ -37,7 +37,7 @@ int main(int argc, char** argv)
 #endif // SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
         ("fullscreen", "Enable fullscreen")
         ("S,viewport-scale", "Scale of the viewport (not used if fullscreen is set), (240x160)*S", cxxopts::value<uint32_t>()->default_value("2"))
-        ("bios", "BIOS binary path", cxxopts::value<std::string>())
+        ("bios", "BIOS binary path (looks for bios.bin if not provided)", cxxopts::value<std::string>()->default_value("bios.bin"))
         ("rom-path", "Rom path or directory", cxxopts::value<std::vector<std::string>>());
 
     options.parse_positional("rom-path");
@@ -53,23 +53,24 @@ int main(int argc, char** argv)
 #endif // SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
 
     if(parsed["version"].as<bool>()) {
-        fmt::print(stdout, "gameboiadvance v{}", gba::version);
+        fmt::print("gameboiadvance v{}", gba::version);
         return 0;
     }
 
     if(parsed["help"].as<bool>() || parsed["rom-path"].count() == 0) {
-        fmt::print(stdout, "{}", options.help());
-        return 0;
+        fmt::print("{}", options.help());
+        return EXIT_FAILURE;
+    }
+
+    const gba::fs::path bios_path = parsed["bios"].as<std::string>();
+    if(!gba::fs::exists(bios_path)) {
+        fmt::print("bios file not found: {}\n{}", bios_path.string(), options.help());
+        return EXIT_FAILURE;
     }
 
     sdl::init();
 
-    gba::vector<gba::u8> bios;
-    if(parsed["bios"].count() != 0) {
-        bios = gba::fs::read_file(parsed["bios"].as<std::string>());
-    }
-
-    gba::core g{std::move(bios)};
+    gba::core g{gba::fs::read_file(bios_path)};
     g.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
 
     gba::debugger::window window(&g);
