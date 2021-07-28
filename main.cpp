@@ -63,8 +63,8 @@ int main(int argc, char** argv)
     }
 
     const gba::fs::path bios_path = parsed["bios"].as<std::string>();
-    if(!gba::fs::exists(bios_path)) {
-        fmt::print("bios file not found: {}\n{}", bios_path.string(), options.help());
+    if(!gba::fs::exists(bios_path) || gba::fs::is_empty(bios_path)) {
+        fmt::print("bios file not found or empty: {}\n{}", bios_path.string(), options.help());
         return EXIT_FAILURE;
     }
 
