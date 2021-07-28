@@ -251,7 +251,7 @@ void mmap::impl::unmap([[maybe_unused]] const usize map_size, std::error_code& e
 void mmap::impl::flush(const usize flush_size, std::error_code& err) const noexcept
 {
 #ifdef _WIN32
-    if(FlushViewOfFile(map_ptr, flush_size.get()) == 0 || ::FlushFileBuffers(file_handle) == 0) {
+    if(FlushViewOfFile(map_ptr, flush_size.get()) == 0 || FlushFileBuffers(file_handle) == 0) {
         populate_err(err);
     }
 #else
