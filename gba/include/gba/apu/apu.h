@@ -10,13 +10,13 @@
 
 #include <gba/apu/apu_resampler.h>
 #include <gba/apu/apu_types.h>
-#include <gba/arm/dma_controller.h>
+#include <gba/cpu/dma_controller.h>
 #include <gba/core/fwd.h>
 
 namespace gba::apu {
 
 class engine {
-    friend class arm::arm7tdmi;
+    friend class core;
 
     scheduler* scheduler_;
     dma::controller_handle dma_;

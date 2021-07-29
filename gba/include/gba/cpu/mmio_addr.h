@@ -12,7 +12,7 @@
 
 namespace gba {
 
-namespace arm {
+namespace cpu {
 
 constexpr auto addr_ie = 0x0400'0200_u32;            // 2     R/W  IE        Interrupt Enable Register
 constexpr auto addr_if = 0x0400'0202_u32;            // 2     R/W  IF        Interrupt Request Flags / IRQ Acknowledge
@@ -47,7 +47,7 @@ constexpr auto addr_dma3dad = 0x0400'00D8_u32;       //  4    W    DMA3DAD   DMA
 constexpr auto addr_dma3cnt_l = 0x0400'00DC_u32;     //  2    W    DMA3CNT_L DMA 3 Word Count
 constexpr auto addr_dma3cnt_h = 0x0400'00DE_u32;     //  2    R/W  DMA3CNT_H DMA 3 Control
 
-} // namespace arm
+} // namespace cpu
 
 namespace keypad {
 

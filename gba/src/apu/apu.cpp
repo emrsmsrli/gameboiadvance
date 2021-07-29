@@ -7,15 +7,15 @@
 
 #include <gba/apu/apu.h>
 
-#include <gba/arm/timer.h>
 #include <gba/core/scheduler.h>
+#include <gba/cpu/timer.h>
 
 namespace gba::apu {
 
 namespace {
 
 constexpr u8 frame_sequencer_max = 8_u8;
-constexpr u64 frame_sequencer_cycles = arm::clock_speed / 512_u64;  // runs at 512hz
+constexpr u64 frame_sequencer_cycles = cpu::clock_speed / 512_u64;  // runs at 512hz
 
 constexpr array<i16, 4> psg_volume_tab{1_i16, 2_i16, 4_i16, 0_i16};
 constexpr array<i16, 2> dma_volume_tab{2_i16, 4_i16};

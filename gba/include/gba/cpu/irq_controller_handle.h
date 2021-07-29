@@ -10,7 +10,7 @@
 
 #include <gba/core/fwd.h>
 
-namespace gba::arm {
+namespace gba::cpu {
 
 enum class interrupt_source : u16::type {
     vblank = 1 << 0,
@@ -35,9 +35,9 @@ class irq_controller_handle {
 public:
     irq_controller_handle() = default;
     explicit irq_controller_handle(arm7tdmi* arm) noexcept : arm_{arm} {}
-    void request_interrupt(const interrupt_source irq) noexcept;
+    void request_interrupt(interrupt_source irq) noexcept;
 };
 
-} // namespace gba::arm
+} // namespace gba::cpu
 
 #endif //GAMEBOIADVANCE_IRQ_CONTROLLER_HANDLE_H

@@ -5,9 +5,9 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/arm/arm7tdmi.h>
+#include <gba/cpu/arm7tdmi.h>
 
-namespace gba::arm {
+namespace gba::cpu {
 
 namespace {
 
@@ -50,7 +50,7 @@ void arm7tdmi::data_processing_reg_shifted_reg(const u32 instr) noexcept
     const u8 shift_amount = narrow<u8>(r_[(instr >> 8_u32) & 0xF_u32]);
     bool carry = cpsr().c;
 
-    tick_internal();
+    bus_->idle();
 
     alu_barrel_shift(static_cast<barrel_shift_type>(shift_type.get()), reg_op, shift_amount, carry, false);
     data_processing(instr, first_op, reg_op, carry);
@@ -225,7 +225,7 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
                 UNREACHABLE();
         }
 
-        tick_internal();
+        bus_->idle();
     } else {
         // STRH
         ASSERT(((instr >> 5_u32) & 0b11_u32) == 1_u32);
@@ -235,7 +235,7 @@ void arm7tdmi::halfword_data_transfer(const u32 instr, const u32 offset) noexcep
             src += 4_u32;
         }
 
-        write_16(rn_addr, narrow<u16>(src), mem_access::non_seq);
+        bus_->write_16(rn_addr, narrow<u16>(src), mem_access::non_seq);
     }
 
     if(!is_ldr || rn != rd) {
@@ -333,7 +333,7 @@ void arm7tdmi::multiply(const u32 instr) noexcept
     if(bit::test(instr, 21_u8)) {
         ASSERT(((instr >> 12_u32) & 0xF_u32) != 15_u32);
         result += r_[(instr >> 12_u32) & 0xF_u32];
-        tick_internal();
+        bus_->idle();
     }
 
     if(bit::test(instr, 20_u8)) {
@@ -362,7 +362,7 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
     ASSERT(((instr >> 8_u32) & 0xF_u32) != 15_u32);
     ASSERT((instr & 0xF_u32) != 15_u32);
 
-    tick_internal();
+    bus_->idle();
 
     i64 result;
     if(bit::test(instr, 22_u8)) { // signed mul
@@ -381,7 +381,7 @@ void arm7tdmi::multiply_long(const u32 instr) noexcept
 
     if(bit::test(instr, 21_u8)) {
         result += (widen<u64>(rdhi) << 32_u64) | rdlo;
-        tick_internal();
+        bus_->idle();
     }
 
     if(bit::test(instr, 20_u8)) {
@@ -408,15 +408,15 @@ void arm7tdmi::single_data_swap(const u32 instr) noexcept
 
     u32 data;
     if(bit::test(instr, 22_u8)) {  // byte
-        data = read_8(rn_addr, mem_access::non_seq);
-        write_8(rn_addr, narrow<u8>(r_[rm]), mem_access::non_seq);
+        data = bus_->read_8(rn_addr, mem_access::non_seq);
+        bus_->write_8(rn_addr, narrow<u8>(r_[rm]), mem_access::non_seq);
     } else {  // word
         data = read_32_aligned(rn_addr, mem_access::non_seq);
-        write_32(rn_addr, r_[rm], mem_access::non_seq);
+        bus_->write_32(rn_addr, r_[rm], mem_access::non_seq);
     }
 
     r_[rd] = data;
-    tick_internal();
+    bus_->idle();
 
     pipeline_.fetch_type = mem_access::non_seq;
     pc() += 4_u8;
@@ -454,12 +454,12 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
 
     if(is_ldr) {
         if(transfer_byte) {
-            r_[rd] = read_8(rn_addr, mem_access::non_seq);
+            r_[rd] = bus_->read_8(rn_addr, mem_access::non_seq);
         } else {
             r_[rd] = read_32_aligned(rn_addr, mem_access::non_seq);
         }
 
-        tick_internal();
+        bus_->idle();
     } else {
         u32 src = r_[rd];
         if(rd == 15_u8) {
@@ -467,9 +467,9 @@ void arm7tdmi::single_data_transfer(const u32 instr) noexcept
         }
 
         if(transfer_byte) {
-            write_8(rn_addr, narrow<u8>(src), mem_access::non_seq);
+            bus_->write_8(rn_addr, narrow<u8>(src), mem_access::non_seq);
         } else {
-            write_32(rn_addr, src, mem_access::non_seq);
+            bus_->write_32(rn_addr, src, mem_access::non_seq);
         }
     }
 
@@ -550,17 +550,17 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
         }
 
         if(is_ldm) {
-            r_[reg] = read_32(rn_addr, access_type);
+            r_[reg] = bus_->read_32(rn_addr, access_type);
             if(reg == 15_u32 && load_psr && in_exception_mode()) {
                 cpsr().copy_without_mode(spsr());
                 switch_mode(spsr().mode);
             }
         } else if(reg == rn) {
-            write_32(rn_addr, rlist[0_usize] == rn ? rn_addr_old : rn_addr_new, access_type);
+            bus_->write_32(rn_addr, rlist[0_usize] == rn ? rn_addr_old : rn_addr_new, access_type);
         } else if(reg == 15_u32) {
-            write_32(rn_addr, pc() + 4_u32, access_type);
+            bus_-> write_32(rn_addr, pc() + 4_u32, access_type);
         } else {
-            write_32(rn_addr, r_[reg], access_type);
+            bus_->write_32(rn_addr, r_[reg], access_type);
         }
 
         if(!pre_indexing) {
@@ -579,7 +579,7 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
     }
 
     if(is_ldm) {
-        tick_internal();
+        bus_->idle();
     }
 
     if(is_ldm && transfer_pc) {
@@ -615,4 +615,4 @@ void arm7tdmi::swi_arm(const u32 /*instr*/) noexcept
     pipeline_flush<instruction_mode::arm>();
 }
 
-} // namespace gba::arm
+} // namespace gba::cpu

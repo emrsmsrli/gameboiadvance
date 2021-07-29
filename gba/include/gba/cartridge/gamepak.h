@@ -20,7 +20,7 @@
 namespace gba::cartridge {
 
 class gamepak {
-    friend arm::arm7tdmi;
+    friend core;
 
     fs::path path_;
     vector<u8> pak_data_;
@@ -49,7 +49,7 @@ public:
 
     void load(const fs::path& path);
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
     void set_scheduler(scheduler* s) noexcept { backup_->set_scheduler(s); }
 
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }

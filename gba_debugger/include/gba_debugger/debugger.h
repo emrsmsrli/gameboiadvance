@@ -42,6 +42,8 @@ class window {
     sdl::audio_device audio_device_;
 
     core* core_;
+    cpu::cpu* cpu_;
+    scheduler* scheduler_;
     breakpoint_database breakpoint_database_;
     disassembly_view disassembly_view_;
     memory_view memory_view_;
@@ -61,8 +63,8 @@ public:
     [[nodiscard]] bool draw() noexcept;
 
     bool on_instruction_execute(u32 address) noexcept;
-    void on_io_read(u32 address, arm::debugger_access_width access_type) noexcept;
-    void on_io_write(u32 address, u32 data, arm::debugger_access_width access_type) noexcept;
+    void on_io_read(u32 address, cpu::debugger_access_width access_type) noexcept;
+    void on_io_write(u32 address, u32 data, cpu::debugger_access_width access_type) noexcept;
 
 private:
     void on_execution_requested(cpu_debugger::execution_request type) noexcept;

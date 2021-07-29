@@ -8,7 +8,7 @@
 #ifndef GAMEBOIADVANCE_RTC_H
 #define GAMEBOIADVANCE_RTC_H
 
-#include <gba/arm/irq_controller_handle.h>
+#include <gba/cpu/irq_controller_handle.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
 
@@ -85,7 +85,7 @@ class rtc : public gpio {
         receiving
     };
 
-    arm::irq_controller_handle irq_;
+    cpu::irq_controller_handle irq_;
 
     array<u8, 7> internal_regs_;
     u8 control_;
@@ -103,7 +103,7 @@ public:
     using state_debugger = state;
 #endif // WITH_DEBUGGER
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { irq_ = irq; }
 
 protected:
     [[nodiscard]] u8 read_pin_states() const noexcept final;

@@ -39,7 +39,7 @@ void engine::check_vcounter_irq() noexcept
     dispstat_.vcounter = current_vcounter;
 
     if(dispstat_.vcounter_irq_enabled && !prev_vcounter && current_vcounter) {
-        irq_.request_interrupt(arm::interrupt_source::vcounter_match);
+        irq_.request_interrupt(cpu::interrupt_source::vcounter_match);
     }
 }
 
@@ -56,7 +56,7 @@ void engine::on_hdraw(const u64 late_cycles) noexcept
         dma_.request_dma(dma::occasion::vblank);
 
         if(dispstat_.vblank_irq_enabled) {
-            irq_.request_interrupt(arm::interrupt_source::vblank);
+            irq_.request_interrupt(cpu::interrupt_source::vblank);
         }
 
         mosaic_bg_.reset();
@@ -79,7 +79,7 @@ void engine::on_hblank(const u64 late_cycles) noexcept
     dispstat_.hblank = true;
 
     if(dispstat_.hblank_irq_enabled) {
-        irq_.request_interrupt(arm::interrupt_source::hblank);
+        irq_.request_interrupt(cpu::interrupt_source::hblank);
     }
 
     const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;

@@ -8,9 +8,9 @@
 #ifndef GAMEBOIADVANCE_PPU_H
 #define GAMEBOIADVANCE_PPU_H
 
-#include <gba/arm/dma_controller.h>
-#include <gba/arm/irq_controller_handle.h>
-#include <gba/arm/mmio_addr.h>
+#include <gba/cpu/dma_controller.h>
+#include <gba/cpu/irq_controller_handle.h>
+#include <gba/cpu/mmio_addr.h>
 #include <gba/core/container.h>
 #include <gba/core/event/event.h>
 #include <gba/core/fwd.h>
@@ -26,9 +26,9 @@ constexpr u32::type tile_dot_count = 8_u32;
 using scanline_buffer = array<color, screen_width>;
 
 class engine {
-    friend arm::arm7tdmi;
+    friend core;
 
-    arm::irq_controller_handle irq_;
+    cpu::irq_controller_handle irq_;
     dma::controller_handle dma_;
     scheduler* scheduler_;
 
@@ -68,9 +68,9 @@ public:
     event<u8, const scanline_buffer&> event_on_scanline;
     event<> event_on_vblank;
 
-    engine(scheduler* scheduler) noexcept;
+    explicit engine(scheduler* scheduler) noexcept;
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { irq_ = irq; }
     void set_dma_controller_handle(const dma::controller_handle dma) noexcept { dma_ = dma; }
 
     void check_vcounter_irq() noexcept;

@@ -12,7 +12,7 @@
 
 namespace gba {
 
-struct core;
+class core;
 class scheduler;
 
 namespace cartridge {
@@ -27,18 +27,20 @@ struct keypad;
 
 } // namespace keypad
 
-namespace arm {
+namespace cpu {
 
 static constexpr u32 clock_speed = 1_u32 << 24_u32; // 16.78 MHz
 
+struct bus_interface;
 class arm7tdmi;
+class cpu;
 enum class mem_access : u32::type;
 
 #if WITH_DEBUGGER
 enum class debugger_access_width : u32::type;
 #endif // WITH_DEBUGGER
 
-} // namespace arm
+} // namespace cpu
 
 namespace timer {
 

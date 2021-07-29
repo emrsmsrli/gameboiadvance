@@ -8,11 +8,8 @@
 #ifndef GAMEBOIADVANCE_ARM7TDMI_H
 #define GAMEBOIADVANCE_ARM7TDMI_H
 
-#include <algorithm>
-
-#include <gba/arm/dma_controller.h>
-#include <gba/arm/irq_controller_handle.h>
-#include <gba/arm/timer.h>
+#include <gba/cpu/bus_interface.h>
+#include <gba/cpu/irq_controller_handle.h>
 #include <gba/core/container.h>
 #include <gba/core/fwd.h>
 #include <gba/core/math.h>
@@ -20,12 +17,9 @@
 #include <gba/helper/bitflags.h>
 #include <gba/helper/function_ptr.h>
 #include <gba/helper/lookup_table.h>
+#include <gba/helper/range.h>
 
-namespace gba::arm {
-
-#if WITH_DEBUGGER
-enum class debugger_access_width : u32::type { byte, hword, word, any };
-#endif // WITH_DEBUGGER
+namespace gba::cpu {
 
 enum class register_bank : u32::type {
     none, irq, svc, fiq, abt, und
@@ -139,33 +133,7 @@ struct spsr_banks {
     }
 };
 
-struct waitstate_control {
-    u8 sram;
-    u8 ws0_nonseq;
-    u8 ws0_seq;
-    u8 ws1_nonseq;
-    u8 ws1_seq;
-    u8 ws2_nonseq;
-    u8 ws2_seq;
-    u8 phi;
-    bool prefetch_buffer_enable = false;
-};
-
-enum class halt_control {
-    halted,
-    stopped,
-    running,
-};
-
 enum class instruction_mode { arm, thumb };
-enum class mem_access : u32::type {
-    none = 0,
-    non_seq = 1,
-    seq = 2,
-    pak_prefetch = 4, // todo implement gamepak fetch with this
-    dma = 8,
-    dry_run = 16
-};
 
 struct pipeline {
     mem_access fetch_type{mem_access::non_seq};
@@ -174,21 +142,9 @@ struct pipeline {
 };
 
 class arm7tdmi {
-    friend dma::controller;
-
-    core* core_;
-
-    vector<u8> bios_{16_kb};
-    vector<u8> wram_{256_kb};
-    vector<u8> iwram_{32_kb};
-
-    /*
-     * The BIOS memory is protected against reading,
-     * the GBA allows to read opcodes or data only if the program counter is
-     * located inside of the BIOS area. If the program counter is not in the BIOS area,
-     * reading will return the most recent successfully fetched BIOS opcode.
-     */
-    u32 bios_last_read_;
+protected:
+    bus_interface* bus_;
+    scheduler* scheduler_;
 
     array<u32, 16> r_{};
     reg_banks reg_banks_{};
@@ -196,8 +152,6 @@ class arm7tdmi {
     psr cpsr_;
     spsr_banks spsr_banks_{};
 
-    u8 post_boot_;
-    halt_control haltcnt_{halt_control::running};
     u16 ie_;
     u16 if_;
     bool ime_ = false;
@@ -207,27 +161,14 @@ class arm7tdmi {
 
     pipeline pipeline_;
 
-    waitstate_control waitcnt_;
-    array<u8, 32> wait_16{ // cycle counts for 16bit r/w, nonseq and seq access
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
-    };
-    array<u8, 32> wait_32{ // cycle counts for 32bit r/w, nonseq and seq access
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
-    };
-
 public:
 #if WITH_DEBUGGER
     delegate<bool(u32)> on_instruction_execute;
-    delegate<void(u32, debugger_access_width)> on_io_read;
-    delegate<void(u32, u32, debugger_access_width)> on_io_write;
 #endif // WITH_DEBUGGER
 
-    explicit arm7tdmi(core* core) noexcept : arm7tdmi(core, {}) {}
-    arm7tdmi(core* core, vector<u8> bios) noexcept;
+    arm7tdmi(bus_interface* bus, scheduler* scheduler) noexcept;
 
-    void tick() noexcept;
+    void execute_instruction() noexcept;
 
     FORCEINLINE void request_interrupt(const interrupt_source irq) noexcept
     {
@@ -239,32 +180,12 @@ public:
 
 private:
     [[nodiscard]] u32 read_32_aligned(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u32 read_32(u32 addr, mem_access access) noexcept;
-    void write_32(u32 addr, u32 data, mem_access access) noexcept;
-
     [[nodiscard]] u32 read_16_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_16_aligned(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u16 read_16(u32 addr, mem_access access) noexcept;
-    void write_16(u32 addr, u16 data, mem_access access) noexcept;
-
     [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u8 read_8(u32 addr, mem_access access) noexcept;
-    void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
-    [[nodiscard]] u32 read_bios(u32 addr) noexcept;
-    [[nodiscard]] u32 read_unused(u32 addr, mem_access access) noexcept;
-
-    [[nodiscard]] u8 read_io(u32 addr, mem_access access) noexcept;
-    void write_io(u32 addr, u8 data) noexcept;
-
-    void update_waitstate_table() noexcept;
-
-    [[nodiscard]] FORCEINLINE bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
-    void schedule_update_irq_signal() noexcept;
-    void update_irq_signal(u64 /*late_cycles*/) noexcept;
+    void update_irq_signal(u64 /*late_cycles*/) noexcept { irq_signal_ = scheduled_irq_signal_; }
     void process_interrupts() noexcept;
-    void tick_internal() noexcept;
-    void tick_components(u64 cycles) noexcept;
 
     // ARM instructions
     void data_processing_imm_shifted_reg(u32 instr) noexcept;
@@ -326,6 +247,7 @@ private:
         return regs;
     }
 
+protected:
     [[nodiscard]] FORCEINLINE psr& cpsr() noexcept { return cpsr_; }
     [[nodiscard]] FORCEINLINE psr& spsr() noexcept { return spsr_banks_[bank_from_privilege_mode(cpsr().mode)]; }
 
@@ -336,19 +258,23 @@ private:
     [[nodiscard]] FORCEINLINE u32& pc() noexcept { return r_[15_u32]; }
     [[nodiscard]] FORCEINLINE u32 pc() const noexcept { return r_[15_u32]; }
 
-    void switch_mode(privilege_mode mode) noexcept;
+    [[nodiscard]] FORCEINLINE bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
 
+    void switch_mode(privilege_mode mode) noexcept;
+    void schedule_update_irq_signal() noexcept;
+
+private:
     template<instruction_mode Mode>
     void pipeline_flush() noexcept
     {
         if constexpr(Mode == instruction_mode::arm) {
-            pipeline_.executing = read_32(pc(), mem_access::non_seq);
-            pipeline_.decoding = read_32(pc() + 4_u32, mem_access::seq);
+            pipeline_.executing = bus_->read_32(pc(), mem_access::non_seq);
+            pipeline_.decoding = bus_->read_32(pc() + 4_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
             pc() += 8_u32;
         } else {
-            pipeline_.executing = read_16(pc(), mem_access::non_seq);
-            pipeline_.decoding = read_16(pc() + 2_u32, mem_access::seq);
+            pipeline_.executing = bus_->read_16(pc(), mem_access::non_seq);
+            pipeline_.decoding = bus_->read_16(pc() + 2_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
             pc() += 4_u32;
         }
@@ -374,13 +300,13 @@ private:
     {
         u32 mask = 0xFFFF'FF00_u32;
 
-        tick_internal();
+        bus_->idle();
         for(u32 i = 0_u32; i < 3_u32; ++i, mask <<= 8_u32) {
             const u32 result = rs & mask;
             if(rs_predicate(result, mask)) {
                 break;
             }
-            tick_internal();
+            bus_->idle();
         }
     }
 
@@ -427,8 +353,6 @@ private:
     };
 };
 
-} // namespace gba::arm
-
-ENABLE_BITFLAG_OPS(gba::arm::mem_access);
+} // namespace gba::cpu
 
 #endif //GAMEBOIADVANCE_ARM7TDMI_H

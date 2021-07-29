@@ -8,7 +8,7 @@
 #ifndef GAMEBOIADVANCE_APU_TYPES_H
 #define GAMEBOIADVANCE_APU_TYPES_H
 
-#include <gba/arm/dma_controller.h>
+#include <gba/cpu/dma_controller.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
 #include <gba/core/scheduler.h>
@@ -17,9 +17,9 @@
 namespace gba::apu {
 
 struct terminal {
-    static constexpr inline u32 left = 0_u32;
-    static constexpr inline u32 right = 1_u32;
-    static constexpr inline u32::type count = 2_u32;
+    static inline constexpr u32 left = 0_u32;
+    static inline constexpr u32 right = 1_u32;
+    static inline constexpr u32::type count = 2_u32;
 };
 
 template<typename T>

@@ -33,8 +33,8 @@ public:
     explicit disassembly_view(breakpoint_database* bp_db) noexcept
       : bp_db_(bp_db) {}
 
-    void add_entry(const memory_view_entry& entry) noexcept { entries_.push_back(entry); }
-    void add_custom_disassembly_entry() noexcept { entries_.push_back(custom_disassembly_entry{}); }
+    template<typename T, typename... Args>
+    void add_entry(Args&&... args) noexcept { entries_.push_back(T{std::forward<Args>(args)...}); }
     void draw_with_mode(bool thumb_mode) noexcept;
 };
 

@@ -5,18 +5,20 @@ configure_file(cmake/version.h.in
         ${CMAKE_CURRENT_SOURCE_DIR}/include/gba/version.h)
 
 add_library(${PROJECT_NAME} STATIC
+        src/core_bus.cpp
         src/apu/apu.cpp
         src/apu/apu_pulse_channel.cpp
         src/apu/apu_noise_channel.cpp
         src/apu/apu_wave_channel.cpp
-        src/arm/arm7tdmi.cpp
-        src/arm/arm7tdmi_alu.cpp
-        src/arm/arm7tdmi_isa_arm.cpp
-        src/arm/arm7tdmi_isa_thumb.cpp
-        src/arm/arm7tdmi_io.cpp
-        src/arm/dma_controller.cpp
-        src/arm/timer.cpp
-        src/arm/irq_controller_handle.cpp
+        src/cpu/cpu.cpp
+        src/cpu/arm7tdmi.cpp
+        src/cpu/arm7tdmi_alu.cpp
+        src/cpu/arm7tdmi_isa_arm.cpp
+        src/cpu/arm7tdmi_isa_thumb.cpp
+        src/cpu/arm7tdmi_io.cpp
+        src/cpu/dma_controller.cpp
+        src/cpu/timer.cpp
+        src/cpu/irq_controller_handle.cpp
         src/ppu/ppu.cpp
         src/ppu/ppu_render.cpp
         src/ppu/ppu_window.cpp

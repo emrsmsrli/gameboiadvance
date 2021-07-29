@@ -246,7 +246,7 @@ void rtc::write_register() noexcept
         case rtc_command::type::time:
             break;
         case rtc_command::type::force_irq:
-            irq_.request_interrupt(arm::interrupt_source::gamepak);
+            irq_.request_interrupt(cpu::interrupt_source::gamepak);
             break;
         case rtc_command::type::reset:
             control_ = 0_u8;

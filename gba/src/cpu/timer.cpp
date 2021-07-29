@@ -5,9 +5,7 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/arm/timer.h>
-
-#include <gba/arm/arm7tdmi.h>
+#include <gba/cpu/timer.h>
 
 namespace gba::timer {
 
@@ -110,8 +108,8 @@ void timer::overflow_internal() noexcept
     counter_ = reload_;
 
     if(control_.irq_enabled) {
-        irq_handle_.request_interrupt(to_enum<arm::interrupt_source>(
-          from_enum<u32>(arm::interrupt_source::timer_0_overflow) << id_));
+        irq_handle_.request_interrupt(to_enum<cpu::interrupt_source>(
+          from_enum<u32>(cpu::interrupt_source::timer_0_overflow) << id_));
     }
 
     on_overflow(this);
@@ -131,4 +129,4 @@ u32 timer::calculate_counter_delta() const noexcept
     return narrow<u32>(scheduler_->now() - last_scheduled_timestamp_) >> prescalar_shifts[control_.prescalar];
 }
 
-} // namespace gba::arm
+} // namespace gba::timer

@@ -21,11 +21,20 @@
 #include <gba/core.h>
 #include <gba_debugger/debugger_helpers.h>
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
+ACCESS_PRIVATE_FIELD(gba::debugger::window, gba::debugger::preferences, prefs_)
+ACCESS_PRIVATE_FIELD(gba::debugger::window, gba::core*, core_)
+
+ACCESS_PRIVATE_FIELD(gba::core, gba::scheduler, scheduler_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::cartridge::gamepak, gamepak_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::cpu::cpu, cpu_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::ppu::engine, ppu_engine_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::apu::engine, apu_engine_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::keypad::keypad, keypad_)
+
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::cpu::psr, cpsr_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, wram_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, iwram_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::vector<gba::u8>, pak_data_)
-ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u32, mirror_mask_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, std::unique_ptr<gba::cartridge::backup>, backup_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
@@ -36,12 +45,12 @@ namespace gba::debugger {
 
 namespace {
 
-std::string_view to_string_view(const arm::debugger_access_width access_type) noexcept
+std::string_view to_string_view(const cpu::debugger_access_width access_type) noexcept
 {
     switch(access_type) {
-        case arm::debugger_access_width::byte: return "byte";
-        case arm::debugger_access_width::hword: return "hword";
-        case arm::debugger_access_width::word: return "word";
+        case cpu::debugger_access_width::byte: return "byte";
+        case cpu::debugger_access_width::hword: return "hword";
+        case cpu::debugger_access_width::word: return "word";
         default: UNREACHABLE();
     }
 }
@@ -120,36 +129,42 @@ window::window(core* core) noexcept
     window_event_{},
     audio_device_{2, sdl::audio_device::format::f32, 48000, 2048},
     core_{core},
+    cpu_{&access_private::cpu_(core)},
+    scheduler_{&access_private::scheduler_(core)},
     disassembly_view_{&breakpoint_database_},
-    gamepak_debugger_{&core->pak},
-    cpu_debugger_{&core_->timer_controller, &core_->dma_controller, &core->arm, &breakpoint_database_, access_private::mirror_mask_(core_->pak)},
-    ppu_debugger_{&core->ppu, &prefs_},
-    apu_debugger_{&core->apu, &prefs_},
-    keypad_debugger_{&core->keypad}
+    gamepak_debugger_{&access_private::gamepak_(core)},
+    cpu_debugger_{&access_private::gamepak_(core), cpu_, &breakpoint_database_},
+    ppu_debugger_{&access_private::ppu_engine_(core), &prefs_},
+    apu_debugger_{&access_private::apu_engine_(core), &prefs_},
+    keypad_debugger_{&access_private::keypad_(core)}
 {
     window_.setFramerateLimit(60);
 
-    using namespace std::string_view_literals;
-    disassembly_view_.add_entry(memory_view_entry{"ROM"sv, view<u8>{access_private::pak_data_(core->pak)}, 0x0800'0000_u32});
-    disassembly_view_.add_entry(memory_view_entry{"EWRAM"sv, view<u8>{access_private::wram_(core->arm)}, 0x0200'0000_u32});
-    disassembly_view_.add_entry(memory_view_entry{"IWRAM"sv, view<u8>{access_private::iwram_(core->arm)}, 0x0300'0000_u32});
-    disassembly_view_.add_custom_disassembly_entry();
+    cartridge::gamepak& pak = access_private::gamepak_(core);
+    ppu::engine& ppu_engine = access_private::ppu_engine_(core);
+    apu::engine& apu_engine = access_private::apu_engine_(core);
 
-    memory_view_.add_entry(memory_view_entry{"ROM"sv, view<u8>{access_private::pak_data_(core->pak)}, 0x0800'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"EWRAM"sv, view<u8>{access_private::wram_(core->arm)}, 0x0200'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"IWRAM"sv, view<u8>{access_private::iwram_(core->arm)}, 0x0300'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, view<u8>{access_private::palette_ram_(core->ppu)}, 0x0500'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"VRAM"sv, view<u8>{access_private::vram_(core->ppu)}, 0x0600'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"OAM"sv, view<u8>{access_private::oam_(core->ppu)}, 0x0700'0000_u32});
-    switch(core->pak.backup_type()) {
+    using namespace std::string_view_literals;
+    disassembly_view_.add_entry<memory_view_entry>("ROM"sv, view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
+    disassembly_view_.add_entry<memory_view_entry>("EWRAM"sv, view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32);
+    disassembly_view_.add_entry<memory_view_entry>("IWRAM"sv, view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32);
+    disassembly_view_.add_entry<custom_disassembly_entry>();
+
+    memory_view_.add_entry(memory_view_entry{"ROM"sv, view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"EWRAM"sv, view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"IWRAM"sv, view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, view<u8>{access_private::palette_ram_(ppu_engine)}, 0x0500'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"VRAM"sv, view<u8>{access_private::vram_(ppu_engine)}, 0x0600'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"OAM"sv, view<u8>{access_private::oam_(ppu_engine)}, 0x0700'0000_u32});
+    switch(pak.backup_type()) {
         case cartridge::backup::type::eeprom_undetected:
         case cartridge::backup::type::eeprom_4:
         case cartridge::backup::type::eeprom_64:
             memory_view_.add_entry(memory_view_entry{
               "EEPROM"sv,
               view<u8>{
-                access_private::backup_(core->pak)->data().data(),
-                access_private::backup_(core->pak)->data().size()
+                access_private::backup_(pak)->data().data(),
+                access_private::backup_(pak)->data().size()
               },
               0x0DFF'FF00_u32
             });
@@ -158,8 +173,8 @@ window::window(core* core) noexcept
             memory_view_.add_entry(memory_view_entry{
               "SRAM"sv,
               view<u8>{
-                access_private::backup_(core->pak)->data().data(),
-                access_private::backup_(core->pak)->data().size()
+                access_private::backup_(pak)->data().data(),
+                access_private::backup_(pak)->data().size()
               },
               0x0E00'0000_u32
             });
@@ -169,8 +184,8 @@ window::window(core* core) noexcept
             memory_view_.add_entry(memory_view_entry{
               "FLASH"sv,
               view<u8>{
-                access_private::backup_(core->pak)->data().data(),
-                access_private::backup_(core->pak)->data().size()
+                access_private::backup_(pak)->data().data(),
+                access_private::backup_(pak)->data().size()
               },
               0x0E00'0000_u32
             });
@@ -200,17 +215,17 @@ window::window(core* core) noexcept
     LOG_INFO(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
     LOG_INFO(debugger, "{} {} {}", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
 
-    core_->arm.on_instruction_execute.connect<&window::on_instruction_execute>(this);
-    core_->arm.on_io_read.connect<&window::on_io_read>(this);
-    core_->arm.on_io_write.connect<&window::on_io_write>(this);
+    core_->on_io_read.connect<&window::on_io_read>(this);
+    core_->on_io_write.connect<&window::on_io_write>(this);
+    cpu_->on_instruction_execute.connect<&window::on_instruction_execute>(this);
 
     cpu_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
-    core_->ppu.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
-    core_->ppu.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
-    core_->apu.get_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
+    ppu_engine.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
+    ppu_engine.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
+    apu_engine.get_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
 
-    core_->apu.set_dst_sample_rate(audio_device_.frequency());
-    core_->apu.set_buffer_capacity(audio_device_.sample_count());
+    apu_engine.set_dst_sample_rate(audio_device_.frequency());
+    apu_engine.set_buffer_capacity(audio_device_.sample_count());
     apu_debugger_.set_buffer_capacity(audio_device_.sample_count());
 }
 
@@ -236,7 +251,7 @@ bool window::draw() noexcept
                 case sf::Keyboard::N: core_->press_key(keypad::key::start); break;
                 case sf::Keyboard::T: core_->press_key(keypad::key::left_shoulder); break;
                 case sf::Keyboard::U: core_->press_key(keypad::key::right_shoulder); break;
-                case sf::Keyboard::F7: core_->arm.tick(); break;
+                case sf::Keyboard::F7: cpu_->tick(); break;
                 default:
                     break;
             }
@@ -265,15 +280,15 @@ bool window::draw() noexcept
         return true;
     }
 
-    const u64 until = core_->schdlr.now() + ppu::engine::cycles_per_frame;
-    while (tick_allowed_ && core_->schdlr.now() < until) {
-        core_->arm.tick();
+    const u64 until = scheduler_->now() + ppu::engine::cycles_per_frame;
+    while(tick_allowed_ && scheduler_->now() < until) {
+        cpu_->tick();
     }
 
     const sf::Time dt = dt_.restart();
     ImGui::SFML::Update(window_, dt);
 
-    disassembly_view_.draw_with_mode(access_private::cpsr_(core_->arm).t);
+    disassembly_view_.draw_with_mode(access_private::cpsr_(cpu_).t);
     memory_view_.draw();
     gamepak_debugger_.draw();
     cpu_debugger_.draw();
@@ -282,41 +297,48 @@ bool window::draw() noexcept
     keypad_debugger_.draw();
 
     if(ImGui::Begin("Scheduler", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        const scheduler& scheduler = core_->schdlr;
-        vector<scheduler::hw_event> events = access_private::heap_(scheduler);
+        vector<scheduler::hw_event> events = access_private::heap_(scheduler_);
         std::sort(events.begin(), events.end(), [](const scheduler::hw_event& e1, const scheduler::hw_event& e2) {
             return e1.timestamp < e2.timestamp;
         });
 
-        ImGui::Text("Cycles: {}", scheduler.now());
+        ImGui::Text("Cycles: {}", scheduler_->now());
         ImGui::Text("Scheduled event count: {}", events.size());
 
         ImGui::Spacing();
         ImGui::Spacing();
         for(const scheduler::hw_event& event : events) {
-            ImGui::Text("{}, timestamp: {} ({})", event.name, event.timestamp, event.timestamp - scheduler.now());
+            ImGui::Text("{}, timestamp: {} ({})", event.name, event.timestamp, event.timestamp - scheduler_->now());
         }
     }
 
     ImGui::End();
 
-    if(ImGui::Begin("Debugger")) {
-        ImGui::Checkbox("Allow emulation when unfocused", &prefs_.debugger_background_emulate);
-        ImGui::Text("audio device id: {}", audio_device_.id());
-        ImGui::Text("sample rate: {}", audio_device_.frequency());
-        ImGui::Text("{}\n {}\n {}", glGetString(GL_RENDERER), glGetString(GL_VENDOR), glGetString(GL_VERSION));
-
-        static array framerates{0, 30, 60, 120, 144, 0};
-        static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
+    if(ImGui::Begin("Debugger", nullptr, ImGuiWindowFlags_MenuBar)) {
         static int framerate_idx = 2;
-        ImGui::SetNextItemWidth(150.f);
-        if(ImGui::Combo("framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
-            window_.setFramerateLimit(framerates[static_cast<u32::type>(framerate_idx)]);
-            window_.setVerticalSyncEnabled(framerate_idx == 5);
+        if(ImGui::BeginMenuBar()) {
+            if(ImGui::BeginMenu("Settings")) {
+                static array framerates{0, 30, 60, 120, 144, 0};
+                static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
+                ImGui::SetNextItemWidth(150.f);
+                if(ImGui::Combo("framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
+                    window_.setFramerateLimit(framerates[static_cast<u32::type>(framerate_idx)]);
+                    window_.setVerticalSyncEnabled(framerate_idx == 5);
 
-            total_frames_ = 0_usize;
-            total_frame_time_ = 0.f;
+                    total_frames_ = 0_usize;
+                    total_frame_time_ = 0.f;
+                }
+
+                ImGui::MenuItem("Allow emulation when unfocused", nullptr, &prefs_.debugger_background_emulate);
+                ImGui::MenuItem("Skip bios on start", nullptr, &prefs_.debugger_bios_skip);
+
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
         }
+
+        ImGui::Text("audio device id: {}\nsample rate: {}", audio_device_.id(), audio_device_.frequency());
+        ImGui::Text("{}\n {}\n {}", glGetString(GL_RENDERER), glGetString(GL_VENDOR), glGetString(GL_VERSION));
 
         const usize frame_time_idx = total_frames_ % frame_time_history_.size();
         frame_time_history_[frame_time_idx] = dt.asSeconds();
@@ -392,7 +414,7 @@ bool window::on_instruction_execute(const u32 address) noexcept
     return should_break;
 }
 
-void window::on_io_read(const u32 address, const arm::debugger_access_width access_type) noexcept
+void window::on_io_read(const u32 address, const cpu::debugger_access_width access_type) noexcept
 {
     if(tick_allowed_) {
         const access_breakpoint* access_bp = breakpoint_database_.get_enabled_read_breakpoint(address, access_type);
@@ -410,7 +432,7 @@ void window::on_io_read(const u32 address, const arm::debugger_access_width acce
     }
 }
 
-void window::on_io_write(const u32 address, const u32 data, const arm::debugger_access_width access_type) noexcept
+void window::on_io_write(const u32 address, const u32 data, const cpu::debugger_access_width access_type) noexcept
 {
     if(tick_allowed_) {
         const access_breakpoint* access_bp = breakpoint_database_.get_enabled_write_breakpoint(address, data, access_type);

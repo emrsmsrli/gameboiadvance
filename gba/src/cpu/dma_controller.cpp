@@ -5,11 +5,12 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/arm/dma_controller.h>
+#include <gba/cpu/dma_controller.h>
 
 #include <algorithm>
 
-#include <gba/arm/arm7tdmi.h>
+#include <gba/cpu/bus_interface.h>
+#include <gba/helper/range.h>
 
 namespace gba::dma {
 
@@ -22,7 +23,7 @@ constexpr array channel_masks{
   data{0x0FFF'FFFF_u32, 0x0FFF'FFFF_u32, 0xFFFF_u32}
 };
 
-void sort_by_priority(static_vector<channel*, channel_count_>& channels) noexcept
+void sort_by_priority(static_vector<channel*, channel_count>& channels) noexcept
 {
     std::sort(channels.begin(), channels.end(), [](const channel* l, const channel* r) {
         return l->id > r->id;
@@ -80,7 +81,7 @@ u8 channel::read_cnt_h() const noexcept
 
 void controller::write_cnt_l(const usize idx, const u8 data) noexcept
 {
-    auto& channel = channels[idx];
+    auto& channel = channels_[idx];
     channel.cnt.dst_control = to_enum<channel::control::address_control>((data >> 5_u8) & 0b11_u8);
     channel.cnt.src_control = to_enum<channel::control::address_control>(
       (from_enum<u8>(channel.cnt.src_control) & 0b10_u8) | bit::extract(data, 7_u8));
@@ -88,7 +89,7 @@ void controller::write_cnt_l(const usize idx, const u8 data) noexcept
 
 void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 {
-    auto& channel = channels[idx];
+    auto& channel = channels_[idx];
     const bool was_enabled = channel.cnt.enabled;
 
     channel.cnt.enabled = bit::test(data, 7_u8);
@@ -126,21 +127,22 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 
 void controller::run_channels() noexcept
 {
+    // todo move outside (core.h)
     if(LIKELY(is_running_ || running_channels_.empty())) {
         return;
     }
 
     is_running_ = true;
 
-    array<bool, channel_count_> first_run{true, true, true, true};
+    array<bool, channel_count> first_run{true, true, true, true};
 
     while(!running_channels_.empty()) {
         channel* channel = running_channels_.back(); // always has highest priority
 
         if(first_run[channel->id] && (!addr_in_rom_area(channel->src) || !addr_in_rom_area(channel->dst))) {
             first_run[channel->id] = false;
-            arm_->tick_internal();
-            arm_->tick_internal();
+            bus_->idle();
+            bus_->idle();
         }
 
         const bool for_fifo = is_for_fifo(channel);
@@ -157,14 +159,14 @@ void controller::run_channels() noexcept
         switch(size) {
             case channel::control::transfer_size::hword: {
                 if(LIKELY(channel->internal.src >= 0x0200'0000_u32)) {
-                    const u16 data = arm_->read_16(channel->internal.src, channel->next_access_type);
+                    const u16 data = bus_->read_16(channel->internal.src, channel->next_access_type);
                     channel->latch = (widen<u32>(data) << 16_u32) | data;
                     latch_ = channel->latch;
                 } else {
-                    arm_->tick_internal();
+                    bus_->idle();
                 }
 
-                arm_->write_16(channel->internal.dst, narrow<u16>(channel->latch), channel->next_access_type);
+                bus_->write_16(channel->internal.dst, narrow<u16>(channel->latch), channel->next_access_type);
 
                 static constexpr array modify_offsets{2_i32, -2_i32, 0_i32, 2_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];
@@ -173,13 +175,13 @@ void controller::run_channels() noexcept
             }
             case channel::control::transfer_size::word: {
                 if(LIKELY(channel->internal.src >= 0x0200'0000_u32)) {
-                    channel->latch = arm_->read_32(channel->internal.src, channel->next_access_type);
+                    channel->latch = bus_->read_32(channel->internal.src, channel->next_access_type);
                     latch_ = channel->latch;
                 } else {
-                    arm_->tick_internal();
+                    bus_->idle();
                 }
 
-                arm_->write_32(channel->internal.dst, channel->latch, channel->next_access_type);
+                bus_->write_32(channel->internal.dst, channel->latch, channel->next_access_type);
 
                 static constexpr array modify_offsets{4_i32, -4_i32, 0_i32, 4_i32};
                 channel->internal.src += modify_offsets[from_enum<u32>(src_control)];
@@ -189,14 +191,14 @@ void controller::run_channels() noexcept
         }
 
         --channel->internal.count;
-        channel->next_access_type = arm::mem_access::seq | arm::mem_access::dma;
+        channel->next_access_type = cpu::mem_access::seq | cpu::mem_access::dma;
 
         if(channel->internal.count == 0_u32) {
             running_channels_.erase(std::find(running_channels_.begin(), running_channels_.end(), channel));
 
             if(channel->cnt.irq) {
-                arm_->request_interrupt(to_enum<arm::interrupt_source>(
-                  from_enum<u32>(arm::interrupt_source::dma_0) << channel->id));
+                irq_.request_interrupt(to_enum<cpu::interrupt_source>(
+                  from_enum<u32>(cpu::interrupt_source::dma_0) << channel->id));
             }
 
             if(channel->cnt.repeat) {
@@ -216,22 +218,22 @@ void controller::request(const occasion occasion) noexcept {
 
     switch(occasion) {
         case occasion::vblank:
-            for(channel& channel : channels) {
+            for(channel& channel : channels_) {
                 schedule(channel, channel::control::timing::vblank);
             }
             break;
         case occasion::hblank:
-            for(channel& channel : channels) {
+            for(channel& channel : channels_) {
                 schedule(channel, channel::control::timing::hblank);
             }
             break;
         case occasion::video:
-            schedule(channels[3_usize], channel::control::timing::special);
+            schedule(channels_[3_usize], channel::control::timing::special);
             break;
         case occasion::fifo_a:
         case occasion::fifo_b:
             for(u32 n : range(1_u32, 3_u32)) {
-                channel& channel = channels[n];
+                channel& channel = channels_[n];
 
                 if((occasion == occasion::fifo_a && channel.dst == fifo_addr_a)
                   || (occasion == occasion::fifo_b && channel.dst == fifo_addr_b)) {
@@ -257,7 +259,7 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
         }
     }
 
-    channel.next_access_type = arm::mem_access::non_seq | arm::mem_access::dma;
+    channel.next_access_type = cpu::mem_access::non_seq | cpu::mem_access::dma;
 
     static constexpr array alignment_masks{0b1_u32, 0b11_u32};
     if(for_repeat) {
