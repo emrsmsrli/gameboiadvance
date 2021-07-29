@@ -33,6 +33,7 @@ struct preferences {
     unsigned int apu_enabled_channel_graphs = 0b1;
 
     bool debugger_background_emulate = false;
+    bool debugger_bios_skip = false;
 };
 
 } // namespace gba::debugger

@@ -57,69 +57,80 @@ std::string_view to_string_view(const cpu::debugger_access_width access_type) no
 
 void debugger_settings_hander_clear_all(ImGuiContext*, ImGuiSettingsHandler* handler)
 {
-    auto* prefs = static_cast<preferences*>(handler->UserData);
-    *prefs = preferences{};
+    auto& prefs = access_private::prefs_(static_cast<window*>(handler->UserData));
+    prefs = preferences{};
 }
 
 void* debugger_settings_hander_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, const char*) { return handler; }
 
 void debugger_settings_hander_read_line(ImGuiContext*, ImGuiSettingsHandler* handler, void*, const char* line)
 {
-    auto* prefs = static_cast<preferences*>(handler->UserData);
+    auto& prefs = access_private::prefs_(static_cast<window*>(handler->UserData));
     int dummy1;
     int dummy2;
     int dummy3;
     array<float, 4> dummy4{1.f, 1.f, 1.f, 1.f};
-         if(sscanf(line, "ppu_framebuffer_render_scale=%i", &dummy1) == 1) { prefs->ppu_framebuffer_render_scale = dummy1; }
-    else if(sscanf(line, "bg0=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs->ppu_bg_preferences[0_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg1=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs->ppu_bg_preferences[1_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg2=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs->ppu_bg_preferences[2_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg3=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs->ppu_bg_preferences[3_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "ppu_bg_tiles_render_scale=%i", &dummy1) == 1) { prefs->ppu_bg_tiles_render_scale = dummy1; }
-    else if(sscanf(line, "ppu_obj_tiles_render_scale=%i", &dummy1) == 1) { prefs->ppu_obj_tiles_render_scale = dummy1; }
-    else if(sscanf(line, "ppu_win_render_scale=%i", &dummy1) == 1) { prefs->ppu_win_render_scale = dummy1; }
-    else if(sscanf(line, "ppu_winout_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs->ppu_winout_color = dummy4; }
-    else if(sscanf(line, "ppu_win0_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs->ppu_win0_color = dummy4; }
-    else if(sscanf(line, "ppu_win1_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs->ppu_win1_color = dummy4; }
-    else if(sscanf(line, "ppu_winobj_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs->ppu_winobj_color = dummy4; }
+         if(sscanf(line, "ppu_framebuffer_render_scale=%i", &dummy1) == 1) { prefs.ppu_framebuffer_render_scale = dummy1; }
+    else if(sscanf(line, "bg0=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[0_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg1=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[1_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg2=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[2_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg3=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[3_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "ppu_bg_tiles_render_scale=%i", &dummy1) == 1) { prefs.ppu_bg_tiles_render_scale = dummy1; }
+    else if(sscanf(line, "ppu_obj_tiles_render_scale=%i", &dummy1) == 1) { prefs.ppu_obj_tiles_render_scale = dummy1; }
+    else if(sscanf(line, "ppu_win_render_scale=%i", &dummy1) == 1) { prefs.ppu_win_render_scale = dummy1; }
+    else if(sscanf(line, "ppu_winout_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_winout_color = dummy4; }
+    else if(sscanf(line, "ppu_win0_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_win0_color = dummy4; }
+    else if(sscanf(line, "ppu_win1_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_win1_color = dummy4; }
+    else if(sscanf(line, "ppu_winobj_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_winobj_color = dummy4; }
 
-    else if(sscanf(line, "apu_enabled_channel_graphs=%i", &dummy1) == 1) { prefs->apu_enabled_channel_graphs = dummy1; }
+    else if(sscanf(line, "apu_enabled_channel_graphs=%i", &dummy1) == 1) { prefs.apu_enabled_channel_graphs = dummy1; }
 
-    else if(sscanf(line, "debugger_background_emulate=%i", &dummy1) == 1) { prefs->debugger_background_emulate = dummy1 == 1; }
+    else if(sscanf(line, "debugger_background_emulate=%i", &dummy1) == 1) { prefs.debugger_background_emulate = dummy1 == 1; }
+    else if(sscanf(line, "debugger_bios_skip=%i", &dummy1) == 1) { prefs.debugger_bios_skip = dummy1 == 1; }
 }
 
 void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
 {
-    auto* prefs = static_cast<preferences*>(handler->UserData);
+    auto& prefs = access_private::prefs_(static_cast<window*>(handler->UserData));
     out_buf->appendf("[%s][%s]\n", handler->TypeName, handler->TypeName);
-    out_buf->appendf("ppu_framebuffer_render_scale=%i\n", prefs->ppu_framebuffer_render_scale);
+    out_buf->appendf("ppu_framebuffer_render_scale=%i\n", prefs.ppu_framebuffer_render_scale);
     out_buf->appendf("bg0=%i,%i,%i\n",
-        prefs->ppu_bg_preferences[0_u32].enable_visible_area,
-        prefs->ppu_bg_preferences[0_u32].enable_visible_area_border,
-        prefs->ppu_bg_preferences[0_u32].render_scale);
+        prefs.ppu_bg_preferences[0_u32].enable_visible_area,
+        prefs.ppu_bg_preferences[0_u32].enable_visible_area_border,
+        prefs.ppu_bg_preferences[0_u32].render_scale);
     out_buf->appendf("bg1=%i,%i,%i\n",
-        prefs->ppu_bg_preferences[1_u32].enable_visible_area,
-        prefs->ppu_bg_preferences[1_u32].enable_visible_area_border,
-        prefs->ppu_bg_preferences[1_u32].render_scale);
+        prefs.ppu_bg_preferences[1_u32].enable_visible_area,
+        prefs.ppu_bg_preferences[1_u32].enable_visible_area_border,
+        prefs.ppu_bg_preferences[1_u32].render_scale);
     out_buf->appendf("bg2=%i,%i,%i\n",
-        prefs->ppu_bg_preferences[2_u32].enable_visible_area,
-        prefs->ppu_bg_preferences[2_u32].enable_visible_area_border,
-        prefs->ppu_bg_preferences[2_u32].render_scale);
+        prefs.ppu_bg_preferences[2_u32].enable_visible_area,
+        prefs.ppu_bg_preferences[2_u32].enable_visible_area_border,
+        prefs.ppu_bg_preferences[2_u32].render_scale);
     out_buf->appendf("bg3=%i,%i,%i\n",
-        prefs->ppu_bg_preferences[3_u32].enable_visible_area,
-        prefs->ppu_bg_preferences[3_u32].enable_visible_area_border,
-        prefs->ppu_bg_preferences[3_u32].render_scale);
-    out_buf->appendf("ppu_bg_tiles_render_scale=%i\n", prefs->ppu_bg_tiles_render_scale);
-    out_buf->appendf("ppu_obj_tiles_render_scale=%i\n", prefs->ppu_obj_tiles_render_scale);
-    out_buf->appendf("ppu_win_render_scale=%i\n", prefs->ppu_win_render_scale);
-    out_buf->appendf("ppu_winout_color=%f,%f,%f\n", prefs->ppu_winout_color[0_u32], prefs->ppu_winout_color[1_u32], prefs->ppu_winout_color[2_u32]);
-    out_buf->appendf("ppu_win0_color=%f,%f,%f\n", prefs->ppu_win0_color[0_u32], prefs->ppu_win0_color[1_u32], prefs->ppu_win0_color[2_u32]);
-    out_buf->appendf("ppu_win1_color=%f,%f,%f\n", prefs->ppu_win1_color[0_u32], prefs->ppu_win1_color[1_u32], prefs->ppu_win1_color[2_u32]);
-    out_buf->appendf("ppu_winobj_color=%f,%f,%f\n", prefs->ppu_winobj_color[0_u32], prefs->ppu_winobj_color[1_u32], prefs->ppu_winobj_color[2_u32]);
+        prefs.ppu_bg_preferences[3_u32].enable_visible_area,
+        prefs.ppu_bg_preferences[3_u32].enable_visible_area_border,
+        prefs.ppu_bg_preferences[3_u32].render_scale);
+    out_buf->appendf("ppu_bg_tiles_render_scale=%i\n", prefs.ppu_bg_tiles_render_scale);
+    out_buf->appendf("ppu_obj_tiles_render_scale=%i\n", prefs.ppu_obj_tiles_render_scale);
+    out_buf->appendf("ppu_win_render_scale=%i\n", prefs.ppu_win_render_scale);
+    out_buf->appendf("ppu_winout_color=%f,%f,%f\n", prefs.ppu_winout_color[0_u32], prefs.ppu_winout_color[1_u32], prefs.ppu_winout_color[2_u32]);
+    out_buf->appendf("ppu_win0_color=%f,%f,%f\n", prefs.ppu_win0_color[0_u32], prefs.ppu_win0_color[1_u32], prefs.ppu_win0_color[2_u32]);
+    out_buf->appendf("ppu_win1_color=%f,%f,%f\n", prefs.ppu_win1_color[0_u32], prefs.ppu_win1_color[1_u32], prefs.ppu_win1_color[2_u32]);
+    out_buf->appendf("ppu_winobj_color=%f,%f,%f\n", prefs.ppu_winobj_color[0_u32], prefs.ppu_winobj_color[1_u32], prefs.ppu_winobj_color[2_u32]);
 
-    out_buf->appendf("apu_enabled_channel_graphs=%i\n", prefs->apu_enabled_channel_graphs);
+    out_buf->appendf("apu_enabled_channel_graphs=%i\n", prefs.apu_enabled_channel_graphs);
 
-    out_buf->appendf("debugger_background_emulate=%i\n", prefs->debugger_background_emulate);
+    out_buf->appendf("debugger_background_emulate=%i\n", prefs.debugger_background_emulate);
+    out_buf->appendf("debugger_bios_skip=%i\n", prefs.debugger_bios_skip);
+}
+
+void debugger_settings_hander_apply_all(ImGuiContext*, ImGuiSettingsHandler* handler)
+{
+    const auto* w = static_cast<window*>(handler->UserData);
+    const preferences& prefs = access_private::prefs_(w);
+    if(prefs.debugger_bios_skip) {
+        access_private::core_(w)->skip_bios();
+    }
 }
 
 } // namespace
@@ -200,12 +211,13 @@ window::window(core* core) noexcept
     ImGui::SFML::Init(window_, true);
 
     ImGuiSettingsHandler debugger_settings_handler;
-    debugger_settings_handler.UserData = &prefs_;
+    debugger_settings_handler.UserData = this;
     debugger_settings_handler.TypeName = "DebuggerSettings";
     debugger_settings_handler.TypeHash = ImHashStr("DebuggerSettings");
     debugger_settings_handler.ReadOpenFn = debugger_settings_hander_read_open;
     debugger_settings_handler.ClearAllFn = debugger_settings_hander_clear_all;
     debugger_settings_handler.ReadLineFn = debugger_settings_hander_read_line;
+    debugger_settings_handler.ApplyAllFn = debugger_settings_hander_apply_all;
     debugger_settings_handler.WriteAllFn = debugger_settings_hander_write_all;
     ImGui::GetCurrentContext()->SettingsHandlers.push_back(debugger_settings_handler);
 
