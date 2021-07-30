@@ -58,7 +58,7 @@ int main(int argc, char** argv)
 
     if(parsed["version"].as<bool>()) {
         fmt::print("gameboiadvance v{}", gba::version);
-        return 0;
+        return EXIT_SUCCESS;
     }
 
     if(parsed["help"].as<bool>() || parsed["rom-path"].count() == 0) {
