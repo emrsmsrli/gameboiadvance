@@ -74,15 +74,15 @@ int main(int argc, char** argv)
 
     sdl::init();
 
-    gba::core g{gba::fs::read_file(bios_path)};
-    g.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
+    gba::core core{gba::fs::read_file(bios_path)};
+    core.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
 
     if(parsed["skip-bios"].as<bool>()) {
-        g.skip_bios();
+        core.skip_bios();
     }
 
 #if WITH_DEBUGGER
-    gba::debugger::window window(&g);
+    gba::debugger::window window(&core);
 
     while(true) {
         if(!window.draw()) {

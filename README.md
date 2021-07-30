@@ -59,28 +59,28 @@ void on_audio(const gba::vector<apu::stereo_sample<float>>& buffer) noexcept;
 
 int main(int argc, char** argv) 
 {
-    // bios is required to boot
-    gba::core gba{"file/path/to/bios.gba"};
-    gba.load_pak("file/path/to/rom.gba");
+    // BIOS is required to boot
+    gba::core core{"file/path/to/bios.gba"};
+    core.load_pak("file/path/to/rom.gba");
 
 #if WITH_DEBUGGER
-    gba::debugger::window debugger_window(&gba);
+    gba::debugger::window debugger_window(&core);
 
     while(true) {
         // debugger window handles input, video and audio output
         debugger_window.tick();
     }
 #else
-    gba.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
-    gba.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
-    gba.apu.get_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
+    core.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
+    core.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
+    core.apu.get_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
 
     while(true) {
-        // gba.press_key(gba::keypad::key::a);
-        // gba.release_key(gba::keypad::key::start);
+        // core.press_key(gba::keypad::key::a);
+        // core.release_key(gba::keypad::key::start);
 
-        gba.tick_one_frame();
-        // or gba.tick(n); which executes n instructions every iteration
+    core.tick_one_frame();
+        // or core.tick(n); which executes n instructions every iteration
     }
 #endif // WITH_DEBUGGER
 
