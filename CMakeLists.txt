@@ -31,7 +31,7 @@ if(${LOG_LEVEL_IDX} EQUAL -1)
 endif()
 
 add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_17)
+target_compile_options(project_options INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>,/std:c++17,-std:c++17>)
 target_compile_definitions(project_options INTERFACE
         DEBUG=$<CONFIG:Debug>
         WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>
