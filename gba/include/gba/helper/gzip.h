@@ -15,7 +15,7 @@
 namespace gba::gzip {
 
 std::optional<vector<u8>> compress(const vector<u8>& uncompressed) noexcept;
-std::optional<vector<u8>> uncompress(const vector<u8>& compressed) noexcept;
+std::optional<vector<u8>> decompress(const vector<u8>& compressed) noexcept;
 
 } // namespace gba::gzip
 

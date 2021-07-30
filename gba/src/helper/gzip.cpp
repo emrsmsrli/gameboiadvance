@@ -25,7 +25,7 @@ z_stream make_z_stream() noexcept
 
 } // namespace
 
-std::optional<vector<u8>> compress(const vector<u8>& uncompressed) noexcept
+std::optional<vector<u8>> compress(const vector<u8>& decompressed) noexcept
 {
     z_stream stream = make_z_stream();
 
@@ -35,11 +35,11 @@ std::optional<vector<u8>> compress(const vector<u8>& uncompressed) noexcept
         return std::nullopt;
     }
 
-    // reserve at least as much size as `uncompressed` has
-    vector<u8> compressed = uncompressed;
+    // reserve at least as much size as `decompressed` has
+    vector<u8> compressed = decompressed;
 
-    stream.next_in = reinterpret_cast<const Bytef*>(uncompressed.data()); // NOLINT
-    stream.avail_in = uncompressed.size().get();
+    stream.next_in = reinterpret_cast<const Bytef*>(decompressed.data()); // NOLINT
+    stream.avail_in = decompressed.size().get();
     stream.next_out = reinterpret_cast<Bytef*>(compressed.data()); // NOLINT
     stream.avail_out = compressed.size().get();
 
@@ -54,7 +54,7 @@ std::optional<vector<u8>> compress(const vector<u8>& uncompressed) noexcept
     return compressed;
 }
 
-std::optional<vector<u8>> uncompress(const vector<u8>& compressed) noexcept
+std::optional<vector<u8>> decompress(const vector<u8>& compressed) noexcept
 {
     z_stream stream = make_z_stream();
 
@@ -64,13 +64,13 @@ std::optional<vector<u8>> uncompress(const vector<u8>& compressed) noexcept
     }
 
     // last 4 bytes encodes size modulo 2^32 (modulo can be ignored)
-    const u32 uncompressed_size = memcpy<u32>(compressed, compressed.size() - 4_usize);
+    const u32 decompressed_size = memcpy<u32>(compressed, compressed.size() - 4_usize);
 
-    vector<u8> uncompressed{uncompressed_size};
+    vector<u8> decompressed{decompressed_size};
     stream.next_in = reinterpret_cast<const Bytef*>(compressed.data()); // NOLINT
     stream.avail_in = compressed.size().get();
-    stream.next_out = reinterpret_cast<Bytef*>(uncompressed.data()); // NOLINT
-    stream.avail_out = uncompressed.size().get();
+    stream.next_out = reinterpret_cast<Bytef*>(decompressed.data()); // NOLINT
+    stream.avail_out = decompressed.size().get();
 
     if(const int status = inflate(&stream, Z_FINISH); status < Z_OK) {
         LOG_ERROR(fs, "gzip inflate: {}", zError(status));
@@ -78,7 +78,7 @@ std::optional<vector<u8>> uncompress(const vector<u8>& compressed) noexcept
     }
 
     inflateEnd(&stream);
-    return uncompressed;
+    return decompressed;
 }
 
 } // namespace gba::gzip
