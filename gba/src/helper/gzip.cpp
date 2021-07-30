@@ -29,7 +29,7 @@ std::optional<vector<u8>> compress(const vector<u8>& uncompressed) noexcept
 {
     z_stream stream = make_z_stream();
 
-    if(const int status = deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, 31, 8, Z_DEFAULT_STRATEGY);
+    if(const int status = deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, 16 + MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
       status != Z_OK) {
         LOG_ERROR(fs, "gzip deflateInit2: {}", zError(status));
         return std::nullopt;
@@ -58,7 +58,7 @@ std::optional<vector<u8>> uncompress(const vector<u8>& compressed) noexcept
 {
     z_stream stream = make_z_stream();
 
-    if(const int status = inflateInit2(&stream, 16); status != Z_OK) {
+    if(const int status = inflateInit2(&stream, 32 + MAX_WBITS); status != Z_OK) {
         LOG_ERROR(fs, "gzip inflateInit2: {}", zError(status));
         return std::nullopt;
     }
