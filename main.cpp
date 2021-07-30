@@ -13,7 +13,10 @@
 
 #include <gba/core.h>
 #include <gba/version.h>
-#include <gba_debugger/debugger.h>
+
+#if WITH_DEBUGGER
+  #include <gba_debugger/debugger.h>
+#endif // WITH_DEBUGGGER
 
 int main(int argc, char** argv)
 {
@@ -37,6 +40,7 @@ int main(int argc, char** argv)
 #endif // SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
         ("fullscreen", "Enable fullscreen")
         ("S,viewport-scale", "Scale of the viewport (not used if fullscreen is set), (240x160)*S", cxxopts::value<uint32_t>()->default_value("2"))
+        ("skip-bios", "Skips bios and starts the game directly")
         ("bios", "BIOS binary path (looks for bios.bin if not provided)", cxxopts::value<std::string>()->default_value("bios.bin"))
         ("rom-path", "Rom path or directory", cxxopts::value<std::vector<std::string>>());
 
@@ -73,6 +77,11 @@ int main(int argc, char** argv)
     gba::core g{gba::fs::read_file(bios_path)};
     g.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
 
+    if(parsed["skip-bios"].as<bool>()) {
+        g.skip_bios();
+    }
+
+#if WITH_DEBUGGER
     gba::debugger::window window(&g);
 
     while(true) {
@@ -80,7 +89,8 @@ int main(int argc, char** argv)
             break;
         }
     }
+#endif // WITH_DEBUGGGER
 
     sdl::quit();
-    return 0;
+    return EXIT_SUCCESS;
 }
