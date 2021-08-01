@@ -28,7 +28,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case keypad::addr_state + 1: return narrow<u8>(keypad_.keyinput_ >> 8_u16);
         case keypad::addr_control:   return narrow<u8>(keypad_.keycnt_.select);
         case keypad::addr_control + 1:
-            return narrow<u8>(widen<u32>(keypad_.keycnt_.select) >> 8_u32 & 0b11_u32
+            return narrow<u8>((widen<u32>(keypad_.keycnt_.select) >> 8_u32 & 0b11_u32)
               | bit::from_bool(keypad_.keycnt_.enabled) << 6_u32
               | from_enum<u32>(keypad_.keycnt_.cond_strategy) << 7_u32);
 
@@ -138,7 +138,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case apu::addr_soundcnt_x + 2:  return 0_u8;
         case apu::addr_soundcnt_x + 3:  return 0_u8;
         case apu::addr_soundbias:       return narrow<u8>(apu_engine_.soundbias_.bias);
-        case apu::addr_soundbias + 1:   return (narrow<u8>((apu_engine_.soundbias_.bias >> 8_u16)) & 0b11_u8) | apu_engine_.soundbias_.resolution << 6_u8;
+        case apu::addr_soundbias + 1:   return (narrow<u8>(apu_engine_.soundbias_.bias >> 8_u16) & 0b11_u8) | apu_engine_.soundbias_.resolution << 6_u8;
         case apu::addr_soundbias + 2:   return 0_u8;
         case apu::addr_soundbias + 3:   return 0_u8;
         case apu::addr_wave_ram:      case apu::addr_wave_ram + 1:  case apu::addr_wave_ram + 2:  case apu::addr_wave_ram + 3:
