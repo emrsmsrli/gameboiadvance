@@ -71,15 +71,19 @@ int main(int argc, char** argv)
         debugger_window.tick();
     }
 #else
-    core.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
-    core.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
-    core.apu.get_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
+    core.on_scanline_event().add_delegate(gba::connect_arg<&on_scanline>);
+    core.on_vblank_event().add_delegate(gba::connect_arg<&on_vblank>);
+    core.sound_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
+
+    // optionally set audio generation parameters
+    // core.set_dst_sample_rate(some_audio_device.sample_rate());
+    // core.set_sound_buffer_capacity(some_audio_device.sample_count());
 
     while(true) {
         // core.press_key(gba::keypad::key::a);
         // core.release_key(gba::keypad::key::start);
 
-    core.tick_one_frame();
+        core.tick_one_frame();
         // or core.tick(n); which executes n instructions every iteration
     }
 #endif // WITH_DEBUGGER

@@ -18,7 +18,6 @@
 namespace gba {
 
 class core : public cpu::bus_interface {
-private:
     scheduler scheduler_;
     cartridge::gamepak gamepak_;
     cpu::cpu cpu_;
@@ -45,6 +44,13 @@ public:
         gamepak_.set_irq_controller_handle(cpu_.get_interrupt_handle());
         // sio_engine_.set_irq_controller_handle(arm.get_interrupt_handle());
     }
+
+    [[nodiscard]] event<u8, const ppu::scanline_buffer&>& on_scanline_event() noexcept { return ppu_engine_.event_on_scanline; }
+    [[nodiscard]] event<>& on_vblank_event() noexcept { return ppu_engine_.event_on_vblank; }
+    [[nodiscard]] event<vector<apu::stereo_sample<float>>>& sound_buffer_overflow_event() noexcept { return apu_engine_.get_buffer_overflow_event(); }
+
+    FORCEINLINE void set_dst_sample_rate(const u32 sample_rate) noexcept { apu_engine_.set_dst_sample_rate(sample_rate); }
+    FORCEINLINE void set_sound_buffer_capacity(const usize capacity) noexcept { apu_engine_.set_buffer_capacity(capacity); }
 
     void tick(u64 cycles = 1_u8) noexcept
     {
@@ -83,7 +89,6 @@ private:
     void write_16(u32 addr, u16 data, cpu::mem_access access) noexcept final { write<u16>(addr, data, access); }
     [[nodiscard]] u8 read_8(u32 addr, cpu::mem_access access) noexcept final { return read<u8>(addr, access); }
     void write_8(u32 addr, u8 data, cpu::mem_access access) noexcept final { write<u8>(addr, data, access); }
-
 
     [[nodiscard]] u8 read_io(u32 addr, cpu::mem_access access) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
