@@ -5,19 +5,20 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/cpu/arm7tdmi.h>
+#ifndef GAMEBOIADVANCE_ARM7TDMI_DECODER_THUMB_H
+#define GAMEBOIADVANCE_ARM7TDMI_DECODER_THUMB_H
 
 namespace gba::cpu {
 
+template<arm7tdmi::move_shifted_reg_opcode OpCode>
 void arm7tdmi::move_shifted_reg(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
     const u8 offset = narrow<u8>((instr >> 6_u16) & 0x1F_u16);
     u32 rs = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
     bool carry = cpsr().c;
 
-    alu_barrel_shift(static_cast<barrel_shift_type>(opcode.get()), rs, offset, carry, true);
+    alu_barrel_shift(static_cast<barrel_shift_type>(OpCode), rs, offset, carry, true);
     rd = rs;
 
     cpsr().z = rs == 0_u32;
@@ -28,19 +29,14 @@ void arm7tdmi::move_shifted_reg(const u16 instr) noexcept
     pc() += 2_u32;
 }
 
+template<bool HasImmediateOperand, bool IsSub, u16::type Operand>
 void arm7tdmi::add_subtract(const u16 instr) noexcept
 {
-    const bool is_sub = bit::test(instr, 9_u8);
-    const bool is_imm = bit::test(instr, 10_u8);
-    u32 data = (instr >> 6_u16) & 0x7_u16;
+    const u32 data = HasImmediateOperand ? Operand : r_[Operand];
     const u32 rs = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
 
-    if(!is_imm) {
-        data = r_[data];
-    }
-
-    if(is_sub) {
+    if constexpr(IsSub) {
         rd = alu_sub(rs, data, true);
     } else {
         rd = alu_add(rs, data, true);
@@ -50,30 +46,25 @@ void arm7tdmi::add_subtract(const u16 instr) noexcept
     pc() += 2_u32;
 }
 
+template<arm7tdmi::imm_op_opcode OpCode, u16::type Rd>
 void arm7tdmi::mov_cmp_add_sub_imm(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
-    u32& rd = r_[(instr >> 8_u16) & 0x7_u16];
     const u16 offset = instr & 0xFF_u16;
-    switch(opcode.get()) {
-        case 0b00: { // MOV
-            rd = offset;
+    switch(OpCode) {
+        case imm_op_opcode::mov:
+            r_[Rd] = offset;
             cpsr().n = false;
             cpsr().z = offset == 0_u16;
             break;
-        }
-        case 0b01: { // CMP
-            alu_sub(rd, offset, true);
+        case imm_op_opcode::cmp:
+            alu_sub(r_[Rd], offset, true);
             break;
-        }
-        case 0b10: { // ADD
-            rd = alu_add(rd, offset, true);
+        case imm_op_opcode::add:
+            r_[Rd] = alu_add(r_[Rd], offset, true);
             break;
-        }
-        case 0b11: { // SUB
-            rd = alu_sub(rd, offset, true);
+        case imm_op_opcode::sub:
+            r_[Rd] = alu_sub(r_[Rd], offset, true);
             break;
-        }
         default:
             UNREACHABLE();
     }
@@ -82,14 +73,15 @@ void arm7tdmi::mov_cmp_add_sub_imm(const u16 instr) noexcept
     pc() += 2_u32;
 }
 
+template<arm7tdmi::thumb_alu_opcode OpCode>
 void arm7tdmi::alu(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 6_u16) & 0xF_u16;
     u32 rs = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
     bool carry = cpsr().c;
 
     pipeline_.fetch_type = mem_access::seq;
+    pc() += 2_u32;
 
     const auto evaluate_and_set_flags = [&](const u32 expression) {
         cpsr().n = bit::test(expression, 31_u8);
@@ -97,16 +89,14 @@ void arm7tdmi::alu(const u16 instr) noexcept
         return expression;
     };
 
-    switch(opcode.get()) {
-        case 0x0: { // AND
+    switch(OpCode) {
+        case thumb_alu_opcode::and_:
             rd = evaluate_and_set_flags(rd & rs);
             break;
-        }
-        case 0x1: { // EOR
+        case thumb_alu_opcode::eor:
             rd = evaluate_and_set_flags(rd ^ rs);
             break;
-        }
-        case 0x2: { // LSL
+        case thumb_alu_opcode::lsl:
             alu_lsl(rd, narrow<u8>(rs), carry);
             rd = evaluate_and_set_flags(rd);
             cpsr().c = carry;
@@ -114,8 +104,7 @@ void arm7tdmi::alu(const u16 instr) noexcept
             bus_->idle();
             pipeline_.fetch_type = mem_access::non_seq;
             break;
-        }
-        case 0x3: { // LSR
+        case thumb_alu_opcode::lsr:
             alu_lsr(rd, narrow<u8>(rs), carry, false);
             rd = evaluate_and_set_flags(rd);
             cpsr().c = carry;
@@ -123,8 +112,7 @@ void arm7tdmi::alu(const u16 instr) noexcept
             bus_->idle();
             pipeline_.fetch_type = mem_access::non_seq;
             break;
-        }
-        case 0x4: { // ASR
+        case thumb_alu_opcode::asr:
             alu_asr(rd, narrow<u8>(rs), carry, false);
             rd = evaluate_and_set_flags(rd);
             cpsr().c = carry;
@@ -132,16 +120,13 @@ void arm7tdmi::alu(const u16 instr) noexcept
             bus_->idle();
             pipeline_.fetch_type = mem_access::non_seq;
             break;
-        }
-        case 0x5: { // ADC
+        case thumb_alu_opcode::adc:
             rd = alu_adc(rd, rs, true);
             break;
-        }
-        case 0x6: { // SBC
+        case thumb_alu_opcode::sbc:
             rd = alu_sbc(rd, rs, true);
             break;
-        }
-        case 0x7: { // ROR
+        case thumb_alu_opcode::ror:
             alu_ror(rd, narrow<u8>(rs), carry, false);
             rd = evaluate_and_set_flags(rd);
             cpsr().c = carry;
@@ -149,28 +134,22 @@ void arm7tdmi::alu(const u16 instr) noexcept
             bus_->idle();
             pipeline_.fetch_type = mem_access::non_seq;
             break;
-        }
-        case 0x8: { // TST
+        case thumb_alu_opcode::tst:
             evaluate_and_set_flags(rd & rs);
             break;
-        }
-        case 0x9: { // NEG
+        case thumb_alu_opcode::neg:
             rd = alu_sub(0_u32, rs, true);
             break;
-        }
-        case 0xA: { // CMP
+        case thumb_alu_opcode::cmp:
             alu_sub(rd, rs, true);
             break;
-        }
-        case 0xB: { // CMN
+        case thumb_alu_opcode::cmn:
             alu_add(rd, rs, true);
             break;
-        }
-        case 0xC: { // ORR
+        case thumb_alu_opcode::orr:
             rd = evaluate_and_set_flags(rd | rs);
             break;
-        }
-        case 0xD: { // MUL
+        case thumb_alu_opcode::mul:
             alu_multiply_internal(rd, [](const u32 r, const u32 mask) {
                 return r == 0_u32 || r == mask;
             });
@@ -178,26 +157,21 @@ void arm7tdmi::alu(const u16 instr) noexcept
             cpsr().c = false;
             pipeline_.fetch_type = mem_access::non_seq;
             break;
-        }
-        case 0xE: { // BIC
+        case thumb_alu_opcode::bic:
             rd = evaluate_and_set_flags(rd & ~rs);
             break;
-        }
-        case 0xF: { // MVN
+        case thumb_alu_opcode::mvn:
             rd = evaluate_and_set_flags(~rs);
             break;
-        }
         default:
             UNREACHABLE();
     }
-
-   pc() += 2_u32;
 }
 
+template<arm7tdmi::hireg_bx_opcode OpCode>
 void arm7tdmi::hireg_bx(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 8_u16) & 0b11_u16;
-    const u32 rs_reg =(instr >> 3_u16) & 0xF_u16;
+    const u32 rs_reg = (instr >> 3_u16) & 0xF_u16;
     u32 rs = r_[rs_reg];
     const u32 rd_reg = (instr & 0x7_u16) | ((instr >> 4_u16) & 0x8_u16);
     u32& rd = r_[rd_reg];
@@ -217,25 +191,22 @@ void arm7tdmi::hireg_bx(const u16 instr) noexcept
         }
     };
 
-    switch(opcode.get()) {
-        case 0b00: { // ADD
+    switch(OpCode) {
+        case hireg_bx_opcode::add:
             ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
             set_rd_and_flush(rd + rs);
             break;
-        }
-        case 0b01: { // CMP
+        case hireg_bx_opcode::cmp:
             ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
             alu_sub(rd, rs, true);
             pipeline_.fetch_type = mem_access::seq;
             pc() += 2_u32;
             break;
-        }
-        case 0b10: { // MOV
+        case hireg_bx_opcode::mov:
             ASSERT(bit::test(instr, 6_u8) || bit::test(instr, 7_u8));
             set_rd_and_flush(rs);
             break;
-        }
-        case 0b11: { // BX
+        case hireg_bx_opcode::bx:
             ASSERT(!bit::test(instr, 7_u8));
             if(bit::test(rs, 0_u8)) {
                 pc() = bit::clear(rs, 0_u8);
@@ -246,170 +217,160 @@ void arm7tdmi::hireg_bx(const u16 instr) noexcept
                 pipeline_flush<instruction_mode::arm>();
             }
             break;
-        }
+        default:
+            UNREACHABLE();
     }
 }
 
-void arm7tdmi::pc_rel_load(const u16 instr) noexcept
+inline void arm7tdmi::pc_rel_load(const u16 instr) noexcept
 {
     u32& rd = r_[(instr >> 8_u16) & 0x7_u16];
-    const u16 offset = (instr & 0xFF_u16) << 2_u16;
-    rd = bus_->read_32(bit::clear(pc(), 1_u8) + offset, mem_access::non_seq);
-    bus_->idle();
+    const u32 addr = bit::clear(pc(), 1_u8) + ((instr & 0xFF_u16) << 2_u16);
 
     pipeline_.fetch_type = mem_access::non_seq;
     pc() += 2_u32;
+
+    rd = bus_->read_32(addr, mem_access::non_seq);
+    bus_->idle();
 }
 
+template<arm7tdmi::ld_str_reg_opcode OpCode>
 void arm7tdmi::ld_str_reg(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 10_u16) & 0b11_u16;
     const u32 ro = r_[(instr >> 6_u16) & 0x7_u16];
     const u32 rb = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
     const u32 address = rb + ro;
-    switch(opcode.get()) {
-        case 0b00: { // STR
+    switch(OpCode) {
+        case ld_str_reg_opcode::str:
             bus_->write_32(address, rd, mem_access::non_seq);
             break;
-        }
-        case 0b01: { // STRB
+        case ld_str_reg_opcode::strb:
             bus_->write_8(address, narrow<u8>(rd), mem_access::non_seq);
             break;
-        }
-        case 0b10: { // LDR
+        case ld_str_reg_opcode::ldr:
             rd = read_32_aligned(address, mem_access::non_seq);
             bus_->idle();
             break;
-        }
-        case 0b11: { // LDRB
+        case ld_str_reg_opcode::ldrb:
             rd = bus_->read_8(address, mem_access::non_seq);
             bus_->idle();
             break;
-        }
         default:
             UNREACHABLE();
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<arm7tdmi::ld_str_sign_extended_byte_hword_opcode OpCode>
 void arm7tdmi::ld_str_sign_extended_byte_hword(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 10_u16) & 0b11_u16;
     const u32 ro = r_[(instr >> 6_u16) & 0x7_u16];
     const u32 rb = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
     const u32 address = rb + ro;
-    switch(opcode.get()) {
-        case 0b00: { // STRH
+    switch(OpCode) {
+        case ld_str_sign_extended_byte_hword_opcode::strh:
             bus_->write_16(address, narrow<u16>(rd), mem_access::non_seq);
             break;
-        }
-        case 0b01: { // LDSB
+        case ld_str_sign_extended_byte_hword_opcode::ldsb:
             rd = read_8_signed(address, mem_access::non_seq);
             bus_->idle();
             break;
-        }
-        case 0b10: { // LDRH
+        case ld_str_sign_extended_byte_hword_opcode::ldrh:
             rd = read_16_aligned(address, mem_access::non_seq);
             bus_->idle();
             break;
-        }
-        case 0b11: { // LDSH
+        case ld_str_sign_extended_byte_hword_opcode::ldsh:
             rd = read_16_signed(address, mem_access::non_seq);
             bus_->idle();
             break;
-        }
         default:
             UNREACHABLE();
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<arm7tdmi::ld_str_imm_opcode OpCode>
 void arm7tdmi::ld_str_imm(const u16 instr) noexcept
 {
-    const u16 opcode = (instr >> 11_u16) & 0b11_u16;
     const u32 imm = (instr >> 6_u16) & 0x1F_u16;
     const u32 rb = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
 
-    switch(opcode.get()) {
-        case 0b00: { // STR
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
+    switch(OpCode) {
+        case ld_str_imm_opcode::str:
             bus_->write_32(rb + (imm << 2_u32), rd, mem_access::non_seq);
             break;
-        }
-        case 0b01: { // LDR
+        case ld_str_imm_opcode::ldr:
             rd = read_32_aligned(rb + (imm << 2_u32), mem_access::non_seq);
             bus_->idle();
             break;
-        }
-        case 0b10: { // STRB
+        case ld_str_imm_opcode::strb:
             bus_->write_8(rb + imm, narrow<u8>(rd), mem_access::non_seq);
             break;
-        }
-        case 0b11: { // LDRB
+        case ld_str_imm_opcode::ldrb:
             rd = bus_->read_8(rb + imm, mem_access::non_seq);
             bus_->idle();
             break;
-        }
         default:
             UNREACHABLE();
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<bool IsLoad>
 void arm7tdmi::ld_str_hword(const u16 instr) noexcept
 {
-    const bool is_ldr = bit::test(instr, 11_u8);
     const u16 imm = ((instr >> 6_u16) & 0x1F_u16) << 1_u16;
     const u32 rb = r_[(instr >> 3_u16) & 0x7_u16];
     u32& rd = r_[instr & 0x7_u16];
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
     const u32 address = rb + imm;
-    if(is_ldr) {
+    if constexpr(IsLoad) {
         rd = read_16_aligned(address, mem_access::non_seq);
         bus_->idle();
     } else {
         bus_->write_16(address, narrow<u16>(rd), mem_access::non_seq);
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<bool IsLoad>
 void arm7tdmi::ld_str_sp_relative(const u16 instr) noexcept
 {
-    const bool is_ldr = bit::test(instr, 11_u8);
     u32& rd = r_[(instr >> 8_u16) & 0x7_u16];
     const u16 imm_offset = (instr & 0xFF_u16) << 2_u16;
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
     const u32 address = sp() + imm_offset;
-    if(is_ldr) {
+    if constexpr(IsLoad) {
         rd = read_32_aligned(address, mem_access::non_seq);
         bus_->idle();
     } else {
         bus_->write_32(address, rd, mem_access::non_seq);
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<bool UseSP>
 void arm7tdmi::ld_addr(const u16 instr) noexcept
 {
-    const bool use_sp = bit::test(instr, 11_u8);
     u32& rd = r_[(instr >> 8_u16) & 0x7_u16];
     const u16 imm_offset = (instr & 0xFF_u16) << 2_u16;
 
-    if(use_sp) {
+    if constexpr(UseSP) {
         rd = sp() + imm_offset;
     } else {
         rd = bit::clear(pc(), 1_u8) + imm_offset;
@@ -419,12 +380,12 @@ void arm7tdmi::ld_addr(const u16 instr) noexcept
     pc() += 2_u32;
 }
 
+template<bool ShouldSubtract>
 void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
 {
-    const bool subtract = bit::test(instr, 7_u8);
     const u16 imm_offset = (instr & 0x7F_u16) << 2_u16;
 
-    if(subtract) {
+    if(ShouldSubtract) {
         sp() -= imm_offset;
     } else {
         sp() += imm_offset;
@@ -434,38 +395,40 @@ void arm7tdmi::add_offset_to_sp(const u16 instr) noexcept
     pc() += 2_u32;
 }
 
+template<bool IsPOP, bool UsePC_LR>
 void arm7tdmi::push_pop(const u16 instr) noexcept
 {
-    const bool is_pop = bit::test(instr, 11_u8);
-    const bool use_pc_lr = bit::test(instr, 8_u8);
     const auto rlist = generate_register_list<8>(instr);
     auto access = mem_access::non_seq;
 
-    if(rlist.empty() && !use_pc_lr) {
-        if(is_pop) {
-            pc() = bus_->read_32(sp(), access);
-            pipeline_flush<instruction_mode::thumb>();
-            sp() += 0x40_u32;
-        } else {
-            sp() -= 0x40_u32;
-            pipeline_.fetch_type = mem_access::seq;
-            pc() += 2_u32;
-            bus_->write_32(sp(), pc(), access);
-        }
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
 
-        return;
+    if constexpr(!UsePC_LR) {
+        if(rlist.empty()) {
+            if constexpr(IsPOP) {
+                pc() = bus_->read_32(sp(), access);
+                pipeline_flush<instruction_mode::thumb>();
+                sp() += 0x40_u32;
+            } else {
+                sp() -= 0x40_u32;
+                pipeline_.fetch_type = mem_access::seq;
+            }
+
+            return;
+        }
     }
 
     u32 address = sp();
 
-    if(is_pop) {
+    if constexpr(IsPOP) {
         for(const u8 reg : rlist) {
             r_[reg] = bus_->read_32(address, access);
             access = mem_access::seq;
             address += 4_u32;
         }
 
-        if(use_pc_lr) {
+        if constexpr(UsePC_LR) {
             pc() = bit::clear(bus_->read_32(address, access), 0_u8);
             sp() = address + 4_u32;
             bus_->idle();
@@ -477,11 +440,11 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
         sp() = address;
     } else {
         address -= 4_u32 * narrow<u32>(rlist.size());
-        if(use_pc_lr) {
+        if constexpr(UsePC_LR) {
             address -= 4_u32;
         }
 
-        const u32 new_sp = address;
+        sp() = address;
 
         for(const u8 reg : rlist) {
             bus_->write_32(address, r_[reg], access);
@@ -489,26 +452,24 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
             address += 4_u32;
         }
 
-        if(use_pc_lr) {
+        if constexpr(UsePC_LR) {
             bus_->write_32(address, lr(), access);
         }
-
-        sp() = new_sp;
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<bool IsLoad>
 void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
 {
-    const bool is_ldm = bit::test(instr, 11_u8);
     const u32 rb = (instr >> 8_u16) & 0x7_u16;
     const auto rlist = generate_register_list<8>(instr);
     u32& rb_reg = r_[rb];
 
+    pipeline_.fetch_type = mem_access::non_seq;
+    pc() += 2_u32;
+
     if(rlist.empty()) {
-        if(is_ldm) {
+        if constexpr(IsLoad) {
             pc() = bus_->read_32(rb_reg, mem_access::non_seq);
             pipeline_flush<instruction_mode::thumb>();
         } else {
@@ -522,7 +483,7 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
     }
 
     u32 address = rb_reg;
-    if(is_ldm) {
+    if constexpr(IsLoad) {
         auto access = mem_access::non_seq;
         for(const u8 reg : rlist) {
             r_[reg] = bus_->read_32(address, access);
@@ -546,14 +507,12 @@ void arm7tdmi::ld_str_multiple(const u16 instr) noexcept
             address += 4_u32;
         }
     }
-
-    pipeline_.fetch_type = mem_access::non_seq;
-    pc() += 2_u32;
 }
 
+template<u32::type Condition>
 void arm7tdmi::branch_cond(const u16 instr) noexcept
 {
-    if(condition_met((instr >> 8_u16) & 0xF_u16)) {
+    if(condition_met(Condition)) {
         const i32 offset = math::sign_extend<9>(widen<u32>((instr & 0xFF_u16)) << 1_u32);
         pc() += offset;
         pipeline_flush<instruction_mode::thumb>();
@@ -563,7 +522,7 @@ void arm7tdmi::branch_cond(const u16 instr) noexcept
     }
 }
 
-void arm7tdmi::swi_thumb(const u16 /*instr*/) noexcept
+inline void arm7tdmi::swi_thumb(const u16 /*instr*/) noexcept
 {
     spsr_banks_[register_bank::svc] = cpsr();
     switch_mode(privilege_mode::svc);
@@ -574,22 +533,23 @@ void arm7tdmi::swi_thumb(const u16 /*instr*/) noexcept
     pipeline_flush<instruction_mode::arm>();
 }
 
-void arm7tdmi::branch(const u16 instr) noexcept
+inline void arm7tdmi::branch(const u16 instr) noexcept
 {
     const i32 offset = math::sign_extend<12>(widen<u32>((instr & 0x7FF_u16)) << 1_u32);
     pc() += offset;
     pipeline_flush<instruction_mode::thumb>();
 }
 
+template<bool IsSecondIntruction>
 void arm7tdmi::long_branch_link(const u16 instr) noexcept
 {
     const u32 offset = instr & 0x7FF_u16;
-    if(bit::test(instr, 11_u8)) {   // second instr
+    if constexpr(IsSecondIntruction) {
         const u32 temp = pc() - 2_u32;
         pc() = bit::clear(lr() + (offset << 1_u32), 0_u8);
         lr() = bit::set(temp, 0_u8);
         pipeline_flush<instruction_mode::thumb>();
-    } else {                        // first instr
+    } else {
         lr() = pc() + math::sign_extend<23>(offset << 12_u32);
         pipeline_.fetch_type = mem_access::seq;
         pc() += 2_u32;
@@ -597,3 +557,5 @@ void arm7tdmi::long_branch_link(const u16 instr) noexcept
 }
 
 } // namespace gba::cpu
+
+#endif //GAMEBOIADVANCE_ARM7TDMI_DECODER_THUMB_H

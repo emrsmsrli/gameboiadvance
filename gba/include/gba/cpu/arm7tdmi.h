@@ -142,6 +142,8 @@ struct pipeline {
 };
 
 class arm7tdmi {
+    friend class decoder_table_generator;
+
 protected:
     bus_interface* bus_;
     scheduler* scheduler_;
@@ -188,45 +190,77 @@ private:
     void process_interrupts() noexcept;
 
     // ARM instructions
-    void data_processing_imm_shifted_reg(u32 instr) noexcept;
-    void data_processing_reg_shifted_reg(u32 instr) noexcept;
-    void data_processing_imm(u32 instr) noexcept;
-    void data_processing(u32 instr, u32 first_op, u32 second_op, bool carry) noexcept;
+    enum class arm_alu_opcode { and_, eor, sub, rsb, add, adc, sbc, rsc, tst, teq, cmp, cmn, orr, mov, bic, mvn };
+    enum class psr_transfer_opcode { mrs, msr };
+    enum class halfword_data_transfer_opcode { strh = 1, ldrd = 2, strd = 3, ldrh = 1, ldrsb = 2, ldrsh = 3 };
+
     void branch_exchange(u32 instr) noexcept;
-    void halfword_data_transfer_reg(u32 instr) noexcept;
-    void halfword_data_transfer_imm(u32 instr) noexcept;
-    void halfword_data_transfer(u32 instr, u32 offset) noexcept;
-    void psr_transfer_reg(u32 instr) noexcept;
-    void psr_transfer_imm(u32 instr) noexcept;
-    void psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept;
-    void multiply(u32 instr) noexcept;
-    void multiply_long(u32 instr) noexcept;
-    void single_data_swap(u32 instr) noexcept;
-    void single_data_transfer(u32 instr) noexcept;
-    void undefined(u32 instr) noexcept;
-    void block_data_transfer(u32 instr) noexcept;
+    template<bool WithLink>
     void branch_with_link(u32 instr) noexcept;
+    template<bool HasImmediateOp2, arm_alu_opcode OpCode, bool ShouldSetCond, u32::type Op2>
+    void data_processing(u32 instr) noexcept;
+    template<bool HasImmediateSrc, bool UseSPSR, psr_transfer_opcode OpCode>
+    void psr_transfer(u32 instr) noexcept;
+    template<bool ShouldAccumulate, bool ShouldSetCond>
+    void multiply(u32 instr) noexcept;
+    template<bool IsSigned, bool ShouldAccumulate, bool ShouldSetCond>
+    void multiply_long(u32 instr) noexcept;
+    template<bool HasImmediateOffset, bool HasPreIndexing, bool ShouldAddToBase,
+      bool IsByteTransfer, bool ShouldWriteback, bool IsLoad>
+    void single_data_transfer(u32 instr) noexcept;
+    template<bool HasPreIndexing, bool ShouldAddToBase, bool HasImmediateOffset,
+      bool ShouldWriteback, bool IsLoad, halfword_data_transfer_opcode OpCode>
+    void halfword_data_transfer(u32 instr) noexcept;
+    template<bool HasPreIndexing, bool ShouldAddToBase, bool LoadPSR_ForceUser, bool ShouldWriteback, bool IsLoad>
+    void block_data_transfer(u32 instr) noexcept;
+    template<bool IsByteTransfer>
+    void single_data_swap(u32 instr) noexcept;
     void swi_arm(u32 instr) noexcept;
+    void undefined(u32 instr) noexcept;
 
     // THUMB instructions
+    enum class move_shifted_reg_opcode { lsl, lsr, asr };
+    enum class imm_op_opcode { mov, cmp, add, sub };
+    enum class thumb_alu_opcode { and_, eor, lsl, lsr, asr, adc, sbc, ror, tst, neg, cmp, cmn, orr, mul, bic, mvn };
+    enum class hireg_bx_opcode { add, cmp, mov, bx };
+    enum class ld_str_reg_opcode { str, strb, ldr, ldrb };
+    enum class ld_str_sign_extended_byte_hword_opcode { strh, ldsb, ldrh, ldsh };
+    enum class ld_str_imm_opcode { str, ldr, strb, ldrb };
+
+    template<move_shifted_reg_opcode OpCode>
     void move_shifted_reg(u16 instr) noexcept;
+    template<bool HasImmediateOperand, bool IsSub, u16::type Operand>
     void add_subtract(u16 instr) noexcept;
+    template<imm_op_opcode OpCode, u16::type Rd>
     void mov_cmp_add_sub_imm(u16 instr) noexcept;
+    template<thumb_alu_opcode OpCode>
     void alu(u16 instr) noexcept;
+    template<hireg_bx_opcode OpCode>
     void hireg_bx(u16 instr) noexcept;
     void pc_rel_load(u16 instr) noexcept;
+    template<ld_str_reg_opcode OpCode>
     void ld_str_reg(u16 instr) noexcept;
+    template<ld_str_sign_extended_byte_hword_opcode OpCode>
     void ld_str_sign_extended_byte_hword(u16 instr) noexcept;
+    template<ld_str_imm_opcode OpCode>
     void ld_str_imm(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_hword(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_sp_relative(u16 instr) noexcept;
+    template<bool UseSP>
     void ld_addr(u16 instr) noexcept;
+    template<bool ShouldSubtract>
     void add_offset_to_sp(u16 instr) noexcept;
+    template<bool IsPOP, bool UsePC_LR>
     void push_pop(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_multiple(u16 instr) noexcept;
+    template<u32::type Condition>
     void branch_cond(u16 instr) noexcept;
     void swi_thumb(u16 instr) noexcept;
     void branch(u16 instr) noexcept;
+    template<bool IsSecondIntruction>
     void long_branch_link(u16 instr) noexcept;
 
     // decoder helpers
@@ -309,50 +343,11 @@ private:
             bus_->idle();
         }
     }
-
-    static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
-      {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},
-      {"000xxxxx0xx1", function_ptr{&arm7tdmi::data_processing_reg_shifted_reg}},
-      {"000xx0xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_reg}},
-      {"000xx1xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_imm}},
-      {"00001xxx1001", function_ptr{&arm7tdmi::multiply_long}},
-      {"000000xx1001", function_ptr{&arm7tdmi::multiply}},
-      {"00010xx00000", function_ptr{&arm7tdmi::psr_transfer_reg}},
-      {"00010x001001", function_ptr{&arm7tdmi::single_data_swap}},
-      {"000100100001", function_ptr{&arm7tdmi::branch_exchange}},
-      {"001xxxxxxxxx", function_ptr{&arm7tdmi::data_processing_imm}},
-      {"00110x10xxxx", function_ptr{&arm7tdmi::psr_transfer_imm}},
-      {"010xxxxxxxxx", function_ptr{&arm7tdmi::single_data_transfer}},
-      {"011xxxxxxxx0", function_ptr{&arm7tdmi::single_data_transfer}},
-      {"011xxxxxxxx1", function_ptr{&arm7tdmi::undefined}},
-      {"100xxxxxxxxx", function_ptr{&arm7tdmi::block_data_transfer}},
-      {"101xxxxxxxxx", function_ptr{&arm7tdmi::branch_with_link}},
-      {"1111xxxxxxxx", function_ptr{&arm7tdmi::swi_arm}},
-    };
-
-    static constexpr lookup_table<function_ptr<arm7tdmi, void(u16)>, 10_u32, 19_u32> thumb_table_{
-      {"000xxxxxxx", function_ptr{&arm7tdmi::move_shifted_reg}},
-      {"00011xxxxx", function_ptr{&arm7tdmi::add_subtract}},
-      {"001xxxxxxx", function_ptr{&arm7tdmi::mov_cmp_add_sub_imm}},
-      {"010000xxxx", function_ptr{&arm7tdmi::alu}},
-      {"010001xxxx", function_ptr{&arm7tdmi::hireg_bx}},
-      {"01001xxxxx", function_ptr{&arm7tdmi::pc_rel_load}},
-      {"0101xx0xxx", function_ptr{&arm7tdmi::ld_str_reg}},
-      {"0101xx1xxx", function_ptr{&arm7tdmi::ld_str_sign_extended_byte_hword}},
-      {"011xxxxxxx", function_ptr{&arm7tdmi::ld_str_imm}},
-      {"1000xxxxxx", function_ptr{&arm7tdmi::ld_str_hword}},
-      {"1001xxxxxx", function_ptr{&arm7tdmi::ld_str_sp_relative}},
-      {"1010xxxxxx", function_ptr{&arm7tdmi::ld_addr}},
-      {"1011x10xxx", function_ptr{&arm7tdmi::push_pop}},
-      {"10110000xx", function_ptr{&arm7tdmi::add_offset_to_sp}},
-      {"1100xxxxxx", function_ptr{&arm7tdmi::ld_str_multiple}},
-      {"1101xxxxxx", function_ptr{&arm7tdmi::branch_cond}},
-      {"11011111xx", function_ptr{&arm7tdmi::swi_thumb}},
-      {"11100xxxxx", function_ptr{&arm7tdmi::branch}},
-      {"1111xxxxxx", function_ptr{&arm7tdmi::long_branch_link}},
-    };
 };
 
 } // namespace gba::cpu
+
+#include <gba/cpu/arm7tdmi_decoder_arm.inl>
+#include <gba/cpu/arm7tdmi_decoder_thumb.inl>
 
 #endif //GAMEBOIADVANCE_ARM7TDMI_H

@@ -9,7 +9,16 @@
 
 #include <algorithm>
 
+#include <gba/cpu/arm7tdmi_decoder_table_gen.h>
+
 namespace gba::cpu {
+
+namespace {
+
+constexpr decoder_table_generator::arm_decoder_table arm_table = decoder_table_generator::generate_arm();
+constexpr decoder_table_generator::thumb_decoder_table thumb_table = decoder_table_generator::generate_thumb();
+
+} // namespace
 
 arm7tdmi::arm7tdmi(bus_interface* bus, scheduler* scheduler) noexcept
   : bus_{bus},
@@ -44,7 +53,7 @@ void arm7tdmi::execute_instruction() noexcept
     if(cpsr().t) {
         pc() = bit::clear(pc(), 0_u8); // halfword align
         pipeline_.decoding = bus_->read_16(pc(), pipeline_.fetch_type);
-        auto func = thumb_table_[instruction >> 6_u32];
+        auto func = thumb_table[instruction >> 6_u32];
         ASSERT(func.is_valid());
         func(this, narrow<u16>(instruction));
     } else {
@@ -52,7 +61,7 @@ void arm7tdmi::execute_instruction() noexcept
         pipeline_.decoding = bus_->read_32(pc(), pipeline_.fetch_type);
 
         if(condition_met(instruction >> 28_u32)) {
-            auto func = arm_table_[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
+            auto func = arm_table[((instruction >> 16_u32) & 0xFF0_u32) | ((instruction >> 4_u32) & 0xF_u32)];
             ASSERT(func.is_valid());
             func(this, instruction);
         } else {

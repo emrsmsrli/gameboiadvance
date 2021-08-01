@@ -13,8 +13,6 @@ add_library(${PROJECT_NAME} STATIC
         src/cpu/cpu.cpp
         src/cpu/arm7tdmi.cpp
         src/cpu/arm7tdmi_alu.cpp
-        src/cpu/arm7tdmi_isa_arm.cpp
-        src/cpu/arm7tdmi_isa_thumb.cpp
         src/cpu/arm7tdmi_io.cpp
         src/cpu/dma_controller.cpp
         src/cpu/timer.cpp
@@ -48,3 +46,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 
 target_compile_definitions(${PROJECT_NAME}
         PUBLIC WITH_GZIP=$<BOOL:${ENABLE_GZIP_SUPPORT}>)
+
+if(MSVC)
+    # allows static_for [0,2048) + some margin
+    target_compile_options(${PROJECT_NAME} PRIVATE /constexpr:depth2176)
+endif()

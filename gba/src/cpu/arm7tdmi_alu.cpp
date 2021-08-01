@@ -155,11 +155,12 @@ u32 arm7tdmi::alu_sub(const u32 first_op, const u32 second_op, const bool set_fl
 
 u32 arm7tdmi::alu_sbc(const u32 first_op, const u32 second_op, const bool set_flags) noexcept
 {
-    const u32 result = first_op - second_op - bit::from_bool(!cpsr().c);
+    const u32 borrow = bit::from_bool(!cpsr().c);
+    const u32 result = first_op - second_op - borrow;
     if(set_flags) {
         cpsr().n = bit::test(result, 31_u8);
         cpsr().z = result == 0_u32;
-        cpsr().c = first_op >= widen<u64>(second_op) + bit::from_bool(!cpsr().c);
+        cpsr().c = first_op >= widen<u64>(second_op) + borrow;
         cpsr().v = bit::test((first_op ^ second_op) & (first_op ^ result), 31_u8);
     }
     return result;
