@@ -16,7 +16,7 @@
 namespace gba::apu {
 
 class engine {
-    friend class core;
+    friend core;
 
     scheduler* scheduler_;
     dma::controller_handle dma_;
