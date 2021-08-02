@@ -50,7 +50,7 @@ u32 cpu::read_bios(u32 addr) noexcept
     addr = mask::clear(addr, 0b11_u32);
 
     if(UNLIKELY(addr >= 0x0000'4000_u32)) {
-        return read_unused(addr, mem_access::none); // dma can't access bios
+        return read_unused(addr, mem_access::none) >> shift; // dma can't access bios
     }
 
     if(pc() < 0x0000'4000_u32) {
