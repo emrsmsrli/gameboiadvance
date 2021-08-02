@@ -83,6 +83,7 @@ void debugger_settings_hander_read_line(ImGuiContext*, ImGuiSettingsHandler* han
     else if(sscanf(line, "ppu_win1_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_win1_color = dummy4; }
     else if(sscanf(line, "ppu_winobj_color=%f,%f,%f", dummy4.ptr(0_u32), dummy4.ptr(1_u32), dummy4.ptr(2_u32)) == 3) { prefs.ppu_winobj_color = dummy4; }
 
+    else if(sscanf(line, "apu_audio_volume=%f", dummy4.ptr(0_u32)) == 1) { prefs.apu_audio_volume = dummy4.front(); }
     else if(sscanf(line, "apu_enabled_channel_graphs=%i", &dummy1) == 1) { prefs.apu_enabled_channel_graphs = dummy1; }
 
     else if(sscanf(line, "debugger_background_emulate=%i", &dummy1) == 1) { prefs.debugger_background_emulate = dummy1 == 1; }
@@ -118,6 +119,7 @@ void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* han
     out_buf->appendf("ppu_win1_color=%f,%f,%f\n", prefs.ppu_win1_color[0_u32], prefs.ppu_win1_color[1_u32], prefs.ppu_win1_color[2_u32]);
     out_buf->appendf("ppu_winobj_color=%f,%f,%f\n", prefs.ppu_winobj_color[0_u32], prefs.ppu_winobj_color[1_u32], prefs.ppu_winobj_color[2_u32]);
 
+    out_buf->appendf("apu_audio_volume=%f\n", prefs.apu_audio_volume);
     out_buf->appendf("apu_enabled_channel_graphs=%i\n", prefs.apu_enabled_channel_graphs);
 
     out_buf->appendf("debugger_background_emulate=%i\n", prefs.debugger_background_emulate);
@@ -331,10 +333,12 @@ bool window::draw() noexcept
         static int framerate_idx = 2;
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Settings")) {
+                ImGui::SetNextItemWidth(150.f);
+                ImGui::SliderFloat("Volume", &prefs_.apu_audio_volume, 0.f, 1.f, "%.1f");
                 static array framerates{0, 30, 60, 120, 144, 0};
                 static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
                 ImGui::SetNextItemWidth(150.f);
-                if(ImGui::Combo("framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
+                if(ImGui::Combo("Framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
                     window_.setFramerateLimit(framerates[static_cast<u32::type>(framerate_idx)]);
                     window_.setVerticalSyncEnabled(framerate_idx == 5);
 
@@ -495,8 +499,12 @@ void window::on_vblank() noexcept
     }
 }
 
-void window::on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept
+void window::on_audio_buffer_full(vector<apu::stereo_sample<float>> buffer) noexcept
 {
+    std::for_each(buffer.begin(),  buffer.end(), [&](apu::stereo_sample<float>& sample) {
+        sample = sample * prefs_.apu_audio_volume;
+    });
+
     const usize buffer_size_in_bytes = sizeof(apu::stereo_sample<float>) * buffer.size();
     audio_device_.enqueue(reinterpret_cast<const void*>(buffer.data()), buffer_size_in_bytes.get()); // NOLINT
     while(audio_device_.queue_size() > buffer_size_in_bytes) {
