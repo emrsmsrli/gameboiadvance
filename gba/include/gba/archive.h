@@ -72,7 +72,11 @@ public:
         debug_write_type(state_type::integer);
 #endif // DEBUG
 
-        write_bytes(make_byte_view(data));
+        if constexpr(std::is_same_v<integer<T>, u8>) {
+            data_.push_back(data);
+        } else {
+            write_bytes(make_byte_view(data));
+        }
     }
 
     template<typename T>
@@ -119,7 +123,11 @@ public:
         debug_assert_type(state_type::integer);
 #endif // DEBUG
 
-        read_bytes(data);
+        if constexpr(std::is_same_v<integer<T>, u8>) {
+            data = data_[read_pos++];
+        } else {
+            read_bytes(data);
+        }
     }
 
     template<typename T>
