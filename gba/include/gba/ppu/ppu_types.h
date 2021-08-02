@@ -206,7 +206,7 @@ struct window {
     coord top_left;
     coord bottom_right;
 
-    explicit window(u32 i) : id{i} {}
+    explicit window(const u32 i) : id{i} {}
 };
 
 struct win_enable_bits {
@@ -229,6 +229,8 @@ struct win_out {
 
 struct mosaic : dimension<u8> {
     dimension<u8> internal;
+
+    mosaic() noexcept : dimension{1_u8, 1_u8} {}
 
     FORCEINLINE void reset() noexcept { internal = dimension{0_u8, 0_u8}; }
     FORCEINLINE void update_internal_v() noexcept
