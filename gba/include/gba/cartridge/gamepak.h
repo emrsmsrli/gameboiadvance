@@ -43,6 +43,10 @@ class gamepak {
     u32 mirror_mask_;
 
 public:
+#if WITH_DEBUGGER
+    event<> on_eeprom_width_detected_event;
+#endif // WITH_DEBUGGER
+
     static constexpr u32 default_mirror_mask = 0x01FF'FFFF_u32;
 
     event<const fs::path&> on_load;

@@ -155,6 +155,10 @@ void gamepak::on_eeprom_bus_width_detected(const backup::type eeprom_type) noexc
 
     backup_eeprom* eeprom = static_cast<backup_eeprom*>(backup_.get());
     eeprom->set_size(eeprom_type == backup::type::eeprom_64 ? 8_kb : 512_usize);
+
+#if WITH_DEBUGGER
+    on_eeprom_width_detected_event();
+#endif // WITH_DEBUGGER
 }
 
 } // namespace gba::cartridge

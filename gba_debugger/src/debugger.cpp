@@ -169,6 +169,7 @@ window::window(core* core) noexcept
     memory_view_.add_entry(memory_view_entry{"OAM"sv, view<u8>{access_private::oam_(ppu_engine)}, 0x0700'0000_u32});
     switch(pak.backup_type()) {
         case cartridge::backup::type::eeprom_undetected:
+            break; // will be added later
         case cartridge::backup::type::eeprom_4:
         case cartridge::backup::type::eeprom_64:
             memory_view_.add_entry(memory_view_entry{
@@ -229,16 +230,16 @@ window::window(core* core) noexcept
 
     core_->on_io_read.connect<&window::on_io_read>(this);
     core_->on_io_write.connect<&window::on_io_write>(this);
+    core_->on_scanline_event().add_delegate({connect_arg<&window::on_scanline>, this});
+    core_->on_vblank_event().add_delegate({connect_arg<&window::on_vblank>, this});
+    core_->sound_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
     cpu_->on_instruction_execute.connect<&window::on_instruction_execute>(this);
-
-    cpu_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
-    ppu_engine.event_on_scanline.add_delegate({connect_arg<&window::on_scanline>, this});
-    ppu_engine.event_on_vblank.add_delegate({connect_arg<&window::on_vblank>, this});
-    apu_engine.get_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
+    pak.on_eeprom_width_detected_event.add_delegate({connect_arg<&window::on_eeprom_bus_width_detected>, this});
 
     apu_engine.set_dst_sample_rate(audio_device_.frequency());
     apu_engine.set_buffer_capacity(audio_device_.sample_count());
     apu_debugger_.set_buffer_capacity(audio_device_.sample_count());
+    cpu_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
 }
 
 bool window::draw() noexcept
@@ -502,6 +503,19 @@ void window::on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffe
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(1ms);
     }
+}
+
+void window::on_eeprom_bus_width_detected() noexcept
+{
+    cartridge::gamepak& pak = access_private::gamepak_(core_);
+    memory_view_.add_entry(memory_view_entry{
+      "EEPROM",
+      view<u8>{
+        access_private::backup_(pak)->data().data(),
+        access_private::backup_(pak)->data().size()
+      },
+      0x0DFF'FF00_u32
+    });
 }
 
 } // namespace gba::debugger

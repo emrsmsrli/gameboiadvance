@@ -71,6 +71,7 @@ private:
     void on_scanline(u8, const ppu::scanline_buffer&) noexcept;
     void on_vblank() noexcept;
     void on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept;
+    void on_eeprom_bus_width_detected() noexcept;
 };
 
 } // namespace gba::debugger
