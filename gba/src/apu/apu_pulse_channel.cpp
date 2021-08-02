@@ -169,7 +169,7 @@ void pulse_channel::write(const register_index index, const u8 data)
             swp.shift_count = data & 0x7_u8;
             break;
         case register_index::wave_data:
-            wav_data.duty = (data >> 6_u8) & 0x03_u8;
+            wav_data.duty = data >> 6_u8;
             wav_data.sound_length = data & 0x3F_u8;
 
             adjust_waveform_duty_index();

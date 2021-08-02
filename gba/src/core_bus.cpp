@@ -28,7 +28,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case keypad::addr_state + 1: return narrow<u8>(keypad_.keyinput_ >> 8_u16);
         case keypad::addr_control:   return narrow<u8>(keypad_.keycnt_.select);
         case keypad::addr_control + 1:
-            return narrow<u8>((widen<u32>(keypad_.keycnt_.select) >> 8_u32 & 0b11_u32)
+            return narrow<u8>(((widen<u32>(keypad_.keycnt_.select) >> 8_u32) & 0b11_u32)
               | bit::from_bool(keypad_.keycnt_.enabled) << 6_u32
               | from_enum<u32>(keypad_.keycnt_.cond_strategy) << 7_u32);
 
@@ -86,7 +86,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
               | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.bg[3_usize]) << 3_u8
               | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.obj) << 4_u8
               | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.backdrop) << 5_u8;
-        case ppu::addr_bldalpha: return ppu_engine_.blend_settings_.eva;
+        case ppu::addr_bldalpha:     return ppu_engine_.blend_settings_.eva;
         case ppu::addr_bldalpha + 1: return ppu_engine_.blend_settings_.evb;
 
         case apu::addr_sound1cnt_l:     return apu_engine_.channel_1_.swp.read();
@@ -95,34 +95,34 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case apu::addr_sound1cnt_h + 1: return apu_engine_.channel_1_.env.read();
         case apu::addr_sound1cnt_x:     return 0_u8;
         case apu::addr_sound1cnt_x + 1: return apu_engine_.channel_1_.freq_data.freq_control.read();
-        case apu::addr_sound1cnt_x + 2: return 0_u8;
+        case apu::addr_sound1cnt_x + 2:
         case apu::addr_sound1cnt_x + 3: return 0_u8;
         case apu::addr_sound2cnt_l:     return apu_engine_.channel_2_.wav_data.read();
         case apu::addr_sound2cnt_l + 1: return apu_engine_.channel_2_.env.read();
         case apu::addr_sound2cnt_h:     return 0_u8;
         case apu::addr_sound2cnt_h + 1: return apu_engine_.channel_2_.freq_data.freq_control.read();
-        case apu::addr_sound2cnt_h + 2: return 0_u8;
+        case apu::addr_sound2cnt_h + 2:
         case apu::addr_sound2cnt_h + 3: return 0_u8;
         case apu::addr_sound3cnt_l:
             return bit::from_bool<u8>(apu_engine_.channel_3_.wave_bank_2d) << 5_u8
               | apu_engine_.channel_3_.wave_bank << 6_u8
               | bit::from_bool<u8>(apu_engine_.channel_3_.dac_enabled) << 7_u8;
-        case apu::addr_sound3cnt_l + 1: return 0_u8;
+        case apu::addr_sound3cnt_l + 1:
         case apu::addr_sound3cnt_h:     return 0_u8;
         case apu::addr_sound3cnt_h + 1:
             return apu_engine_.channel_3_.output_level << 5_u8
               | bit::from_bool<u8>(apu_engine_.channel_3_.force_output_level) << 7_u8;
         case apu::addr_sound3cnt_x:     return 0_u8;
         case apu::addr_sound3cnt_x + 1: return apu_engine_.channel_3_.freq_data.freq_control.read();
-        case apu::addr_sound3cnt_x + 2: return 0_u8;
-        case apu::addr_sound3cnt_x + 3: return 0_u8;
+        case apu::addr_sound3cnt_x + 2:
+        case apu::addr_sound3cnt_x + 3:
         case apu::addr_sound4cnt_l:     return 0_u8;
         case apu::addr_sound4cnt_l + 1: return apu_engine_.channel_4_.env.read();
-        case apu::addr_sound4cnt_l + 2: return 0_u8;
+        case apu::addr_sound4cnt_l + 2:
         case apu::addr_sound4cnt_l + 3: return 0_u8;
         case apu::addr_sound4cnt_h:     return apu_engine_.channel_4_.polynomial_cnt.read();
         case apu::addr_sound4cnt_h + 1: return apu_engine_.channel_4_.freq_control.read();
-        case apu::addr_sound4cnt_h + 2: return 0_u8;
+        case apu::addr_sound4cnt_h + 2:
         case apu::addr_sound4cnt_h + 3: return 0_u8;
         case apu::addr_soundcnt_l:      return apu_engine_.control_.read<0>();
         case apu::addr_soundcnt_l + 1:  return apu_engine_.control_.read<1>();
@@ -134,12 +134,12 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
               | bit::from_bool<u8>(apu_engine_.channel_3_.enabled) << 2_u8
               | bit::from_bool<u8>(apu_engine_.channel_2_.enabled) << 1_u8
               | bit::from_bool<u8>(apu_engine_.channel_1_.enabled) << 0_u8;
-        case apu::addr_soundcnt_x + 1:  return 0_u8;
-        case apu::addr_soundcnt_x + 2:  return 0_u8;
+        case apu::addr_soundcnt_x + 1:
+        case apu::addr_soundcnt_x + 2:
         case apu::addr_soundcnt_x + 3:  return 0_u8;
         case apu::addr_soundbias:       return narrow<u8>(apu_engine_.soundbias_.bias);
         case apu::addr_soundbias + 1:   return (narrow<u8>(apu_engine_.soundbias_.bias >> 8_u16) & 0b11_u8) | apu_engine_.soundbias_.resolution << 6_u8;
-        case apu::addr_soundbias + 2:   return 0_u8;
+        case apu::addr_soundbias + 2:
         case apu::addr_soundbias + 3:   return 0_u8;
         case apu::addr_wave_ram:      case apu::addr_wave_ram + 1:  case apu::addr_wave_ram + 2:  case apu::addr_wave_ram + 3:
         case apu::addr_wave_ram + 4:  case apu::addr_wave_ram + 5:  case apu::addr_wave_ram + 6:  case apu::addr_wave_ram + 7:
@@ -186,7 +186,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case cpu::addr_tm3cnt_l:     return timer_controller[3_usize].read(timer::register_type::cnt_l_lsb);
         case cpu::addr_tm3cnt_l + 1: return timer_controller[3_usize].read(timer::register_type::cnt_l_msb);
         case cpu::addr_tm3cnt_h:     return timer_controller[3_usize].read(timer::register_type::cnt_h_lsb);
-        case cpu::addr_tm3cnt_h + 1: return 0_u8;
+        case cpu::addr_tm3cnt_h + 1:
 
         case cpu::addr_dma0cnt_l:
         case cpu::addr_dma0cnt_l + 1: return 0_u8;
@@ -206,7 +206,9 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case cpu::addr_dma3cnt_h + 1: return dma_controller[3_usize].read_cnt_h();
 
         case cpu::addr_ime:     return bit::from_bool<u8>(cpu_.ime_);
-        case cpu::addr_ime + 1: return 0_u8;
+        case cpu::addr_ime + 1:
+        case cpu::addr_ime + 2:
+        case cpu::addr_ime + 3: return 0_u8;
         case cpu::addr_ie:      return narrow<u8>(cpu_.ie_);
         case cpu::addr_ie + 1:  return narrow<u8>(cpu_.ie_ >> 8_u8);
         case cpu::addr_if:      return narrow<u8>(cpu_.if_);
@@ -360,12 +362,12 @@ void core::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_winout + 1:  win_enable_write(ppu_engine_.win_out_.obj, data); break;
         case ppu::addr_mosaic:
             ppu_engine_.mosaic_bg_.h = (data & 0xF_u8) + 1_u8;
-            ppu_engine_.mosaic_bg_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu_engine_.mosaic_bg_.v = (data >> 4_u8) + 1_u8;
             ppu_engine_.mosaic_bg_.internal.v = 0_u8;
             break;
         case ppu::addr_mosaic + 1:
             ppu_engine_.mosaic_obj_.h = (data & 0xF_u8) + 1_u8;
-            ppu_engine_.mosaic_obj_.v = ((data >> 4_u8) & 0xF_u8) + 1_u8;
+            ppu_engine_.mosaic_obj_.v = (data >> 4_u8) + 1_u8;
             ppu_engine_.mosaic_obj_.internal.v = 0_u8;
             break;
         case ppu::addr_bldcnt:
@@ -375,7 +377,7 @@ void core::write_io(const u32 addr, const u8 data) noexcept
             ppu_engine_.bldcnt_.first.bg[3_usize] = bit::test(data, 3_u8);
             ppu_engine_.bldcnt_.first.obj = bit::test(data, 4_u8);
             ppu_engine_.bldcnt_.first.backdrop = bit::test(data, 5_u8);
-            ppu_engine_.bldcnt_.type = to_enum<ppu::bldcnt::effect>((data >> 6_u8) & 0b11_u8);
+            ppu_engine_.bldcnt_.type = to_enum<ppu::bldcnt::effect>(data >> 6_u8);
             break;
         case ppu::addr_bldcnt + 1:
             ppu_engine_.bldcnt_.second.bg[0_usize] = bit::test(data, 0_u8);

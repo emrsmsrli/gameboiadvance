@@ -160,7 +160,7 @@ struct bgcnt : T {
     void write_upper(const u8 data) noexcept
     {
         screen_entry_base_block = data & 0x1F_u8;
-        screen_size = (data >> 6_u8) & 0b11_u8;
+        screen_size = data >> 6_u8;
         if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
             T::wraparound = bit::test(data, 5_u8);
         }
