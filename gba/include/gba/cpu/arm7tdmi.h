@@ -16,7 +16,6 @@
 #include <gba/core/scheduler.h>
 #include <gba/helper/bitflags.h>
 #include <gba/helper/function_ptr.h>
-#include <gba/helper/lookup_table.h>
 #include <gba/helper/range.h>
 
 namespace gba::cpu {

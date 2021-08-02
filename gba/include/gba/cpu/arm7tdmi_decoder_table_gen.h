@@ -10,7 +10,6 @@
 
 #include <gba/cpu/arm7tdmi.h>
 #include <gba/helper/function_ptr.h>
-#include <gba/helper/lookup_table.h>
 #include <gba/helper/static_for.h>
 
 namespace gba::cpu {
