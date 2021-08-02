@@ -61,8 +61,9 @@ u32 cpu::read_bios(u32 addr) noexcept
 
 u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
 {
+    const u32 alignment = (addr & 0b11_u32) << 3_u32;
     if(UNLIKELY(bitflags::is_set(access, mem_access::dma))) {
-        return dma_controller_.latch() >> ((addr & 0b11_u32) << 3_u32);
+        return dma_controller_.latch() >> alignment;
     }
 
     u32 data;
@@ -78,7 +79,7 @@ u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
                 break;
             case memory_page::bios:
             case memory_page::oam_ram:
-                if((addr & 0b11_u32) != 0_u32) {
+                if((pc() & 0b11_u32) != 0_u32) {
                     data = pipeline_.executing | (pipeline_.decoding << 16_u32);
                 } else {
                     // LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
@@ -86,7 +87,7 @@ u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
                 }
                 break;
             case memory_page::iwram:
-                if((addr & 0b11_u32) != 0_u32) {
+                if((pc() & 0b11_u32) != 0_u32) {
                     data = pipeline_.executing | (pipeline_.decoding << 16_u32);
                 } else {
                     data = pipeline_.decoding | (pipeline_.executing << 16_u32);
@@ -99,7 +100,7 @@ u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
         data = pipeline_.decoding;
     }
 
-    return data >> ((addr & 0b11_u32) << 3_u32);
+    return data >> alignment;
 }
 
 void cpu::update_waitstate_table() noexcept
