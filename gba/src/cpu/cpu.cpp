@@ -26,6 +26,8 @@ void cpu::cpu::skip_bios() noexcept
     sp() = 0x0300'7F00_u32;
     lr() = 0x0800'0000_u32;
     pc() = 0x0800'0000_u32;
+    cpsr().i = false;
+    cpsr().f = false;
     cpsr().mode = privilege_mode::sys;
 }
 
