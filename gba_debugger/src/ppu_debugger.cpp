@@ -403,6 +403,8 @@ void ppu_debugger::draw() noexcept
                     ImGui::BeginGroup();
                     ImGui::AlignTextToFramePadding();
                     ImGui::TextUnformatted(name);
+                    const ImVec2 cursor_start = ImGui::GetCursorPos();
+                    constexpr float color_button_size = 25.f;
                     for(u32 palette_idx : range(16_u32)) {
                         for(u32 color_idx : range(16_u32)) {
                             const usize address = type_offset * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
@@ -414,7 +416,7 @@ void ppu_debugger::draw() noexcept
                               ImGuiColorEditFlags_NoBorder
                               | ImGuiColorEditFlags_NoAlpha
                               | ImGuiColorEditFlags_NoDragDrop
-                              | ImGuiColorEditFlags_NoTooltip, ImVec2(25, 25));
+                              | ImGuiColorEditFlags_NoTooltip, ImVec2(color_button_size, color_button_size));
                             if(ImGui::IsItemHovered()) {
                                 ImGui::BeginTooltip();
                                 ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
@@ -428,9 +430,10 @@ void ppu_debugger::draw() noexcept
                                 ImGui::EndTooltip();
                             }
 
-                            ImGui::SameLine(0, 4);
+                            ImGui::SameLine(0, 0);
                         }
                         ImGui::NewLine();
+                        ImGui::SetCursorPosY(cursor_start.y + (palette_idx + 1_u32).get() * color_button_size);
                     }
                     ImGui::EndGroup();
                 };
