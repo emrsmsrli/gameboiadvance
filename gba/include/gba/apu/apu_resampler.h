@@ -28,7 +28,7 @@ public:
       : buffer_{buffer} {}
     virtual ~resampler() = default;
 
-    virtual void write_sample(const Sample sample) = 0;
+    virtual void write_sample(Sample sample) = 0;
 
     FORCEINLINE void set_src_sample_rate(const u32 src_sample_rate) noexcept
     {

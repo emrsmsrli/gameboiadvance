@@ -76,8 +76,8 @@ void engine::tick_sequencer(const u64 late_cycles) noexcept
 void engine::tick_mixer(const u64 late_cycles) noexcept
 {
     resampler_.write_sample(stereo_sample<float>{
-      generate_sample(terminal::left).get() / float(0x200),
-      generate_sample(terminal::right).get() / float(0x200)
+      static_cast<float>(generate_sample(terminal::left).get()) / static_cast<float>(0x200),
+      static_cast<float>(generate_sample(terminal::right).get()) / static_cast<float>(0x200)
     });
 
     scheduler_->ADD_HW_EVENT(soundbias_.sample_interval() - late_cycles, apu::engine::tick_mixer);
