@@ -375,7 +375,7 @@ void ppu_debugger::draw() noexcept
                         draw_affine_bg_map(access_private::bg3_(ppu_engine_));
                         break;
                     default:
-                        UNREACHABLE();
+                        break;
                 }
             });
 
