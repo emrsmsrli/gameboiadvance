@@ -144,6 +144,7 @@ struct bgcnt : T {
 
     u8 priority;
     u8 char_base_block;
+    u8 _unused_2;
     bool mosaic_enabled = false;
     bool color_depth_8bit = false;
     u8 screen_entry_base_block;
@@ -153,6 +154,7 @@ struct bgcnt : T {
     {
         priority = data & 0b11_u8;
         char_base_block = (data >> 2_u8) & 0b11_u8;
+        _unused_2 = (data >> 4_u8) & 0b11_u8;
         mosaic_enabled = bit::test(data, 6_u8);
         color_depth_8bit = bit::test(data, 7_u8);
     }
@@ -170,6 +172,7 @@ struct bgcnt : T {
     {
         return priority
           | char_base_block << 2_u8
+          | _unused_2 << 4_u8
           | bit::from_bool<u8>(mosaic_enabled) << 6_u8
           | bit::from_bool<u8>(color_depth_8bit) << 7_u8;
     }
