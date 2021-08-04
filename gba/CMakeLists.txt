@@ -13,7 +13,7 @@ add_library(${PROJECT_NAME} STATIC
         src/cpu/cpu.cpp
         src/cpu/arm7tdmi.cpp
         src/cpu/arm7tdmi_alu.cpp
-        src/cpu/arm7tdmi_io.cpp
+        src/cpu/arm7tdmi_bus.cpp
         src/cpu/dma_controller.cpp
         src/cpu/timer.cpp
         src/cpu/irq_controller_handle.cpp
