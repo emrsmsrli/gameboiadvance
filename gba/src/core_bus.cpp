@@ -160,7 +160,9 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
         case sio::addr_siomlt_send:
         case sio::addr_siomlt_send + 1:
         case sio::addr_rcnt:
+            return 0x00_u8;
         case sio::addr_rcnt + 1:
+            return 0x80_u8;
         case sio::addr_joycnt:
         case sio::addr_joycnt + 1:
         case sio::addr_joy_recv:
