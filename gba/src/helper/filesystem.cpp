@@ -234,18 +234,18 @@ void mmap::impl::unmap([[maybe_unused]] const usize map_size, std::error_code& e
     }
 
 #ifdef _WIN32
-    const bool unmapped = UnmapViewOfFile(map_ptr) == 0;
-    const bool mapping_closed = CloseHandle(file_mapping_handle) == 0;
-    const bool file_closed = CloseHandle(file_handle) == 0;
-    if(unmapped || mapping_closed || file_closed) {
+    const bool not_unmapped = UnmapViewOfFile(map_ptr) == 0;
+    const bool mapping_not_closed = CloseHandle(file_mapping_handle) == 0;
+    const bool file_not_closed = CloseHandle(file_handle) == 0;
+    if(not_unmapped || mapping_not_closed || file_not_closed) {
         populate_err(err);
     }
 
     file_mapping_handle = invalid_handle;
 #else
-    const bool unmapped = ::munmap(map_ptr, map_size.size()) == -1;
-    const bool file_closed = ::close(file_handle) == -1;
-    if(unmapped || file_closed) {
+    const bool not_unmapped = ::munmap(map_ptr, map_size.size()) == -1;
+    const bool file_not_closed = ::close(file_handle) == -1;
+    if(not_unmapped || file_not_closed) {
         populate_err(err);
     }
 #endif // _WIN32
