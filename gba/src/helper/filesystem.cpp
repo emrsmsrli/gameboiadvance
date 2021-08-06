@@ -141,16 +141,22 @@ void mmap::map(std::error_code& err) noexcept
 
 void mmap::map(const usize map_size, std::error_code& err) noexcept
 {
+    if(!exists(path_)) {
+        err = std::make_error_code(std::errc::no_such_file_or_directory);
+        return;
+    }
+
     if(!impl_) {
         impl_ = std::make_unique<impl>();
     }
 
-    mapped_size_ = map_size;
-    impl_->map(path_, map_size, err);
-
-    if(is_mapped() && map_size == map_whole_file) {
-        mapped_size_ = fs::file_size(path_);
+    if(map_size == map_whole_file) {
+        mapped_size_ = file_size(path_);
+    } else {
+        mapped_size_ = map_size;
     }
+
+    impl_->map(path_, map_size, err);
 }
 
 void mmap::unmap(std::error_code& err) noexcept
