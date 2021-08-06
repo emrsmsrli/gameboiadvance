@@ -127,11 +127,6 @@ void controller::write_cnt_h(const usize idx, const u8 data) noexcept
 
 void controller::run_channels() noexcept
 {
-    // todo move outside (core.h)
-    if(LIKELY(is_running_ || running_channels_.empty())) {
-        return;
-    }
-
     is_running_ = true;
 
     array<bool, channel_count> first_run{true, true, true, true};
