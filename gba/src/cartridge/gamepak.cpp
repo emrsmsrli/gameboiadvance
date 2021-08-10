@@ -21,7 +21,7 @@ std::string_view make_pak_str_zero_padded(const vector<u8>& data, const usize st
 {
     usize len;
     for(; len < max_len; ++len) {
-        if(data[start + len] == 0) { return make_pak_str(data, start, len + 1_usize); }
+        if(data[start + len] == 0) { return make_pak_str(data, start, len); }
     }
 
     return make_pak_str(data, start, len);
