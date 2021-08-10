@@ -74,9 +74,9 @@ void timer::write(const register_type reg, const u8 data) noexcept
                 if(control_.cascaded) {
                     cascade_instance->on_overflow.add_delegate({connect_arg<&timer::tick_internal>, this});
                 } else {
-                    u64 delay = scheduler_->now() & start_delay_masks[control_.prescalar];
+                    u32 delay = narrow<u32>(scheduler_->now() & start_delay_masks[control_.prescalar]);
                     if(!was_enabled) {
-                        delay -= 2_u64;
+                        delay -= 2_u32;
                     }
 
                     schedule_overflow(delay);
@@ -89,7 +89,7 @@ void timer::write(const register_type reg, const u8 data) noexcept
     }
 }
 
-void timer::schedule_overflow(const u64 late_cycles) noexcept
+void timer::schedule_overflow(const u32 late_cycles) noexcept
 {
     last_scheduled_timestamp_ = scheduler_->now() - late_cycles;
     handle_ = scheduler_->ADD_HW_EVENT_NAMED(
@@ -97,7 +97,7 @@ void timer::schedule_overflow(const u64 late_cycles) noexcept
       timer::overflow, fmt::format("timer::overflow ({})", id_));
 }
 
-void timer::overflow(const u64 late_cycles) noexcept
+void timer::overflow(const u32 late_cycles) noexcept
 {
     overflow_internal();
     schedule_overflow(late_cycles);

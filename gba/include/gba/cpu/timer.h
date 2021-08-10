@@ -62,8 +62,8 @@ public:
 private:
     [[nodiscard]] u32 calculate_counter_delta() const noexcept;
 
-    void schedule_overflow(u64 late_cycles = 0_u64) noexcept;
-    void overflow(u64 late_cycles) noexcept;
+    void schedule_overflow(u32 late_cycles = 0_u32) noexcept;
+    void overflow(u32 late_cycles) noexcept;
     void overflow_internal() noexcept;
     void tick_internal() noexcept;
 };

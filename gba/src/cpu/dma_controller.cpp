@@ -283,7 +283,7 @@ void controller::schedule(channel& channel, const channel::control::timing timin
 {
     if(channel.cnt.enabled && channel.cnt.when == timing && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
         if(std::find(running_channels_.begin(), running_channels_.end(), &channel) == running_channels_.end()) {
-            channel.last_event_handle = scheduler_->ADD_HW_EVENT_NAMED(2_usize, controller::on_channel_start,
+            channel.last_event_handle = scheduler_->ADD_HW_EVENT_NAMED(2_u32, controller::on_channel_start,
               fmt::format("dma::controller::on_channel_start ({})", channel.id));
             scheduled_channels_.push_back(&channel);
         }

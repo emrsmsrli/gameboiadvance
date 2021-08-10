@@ -5,7 +5,6 @@
  * Refer to the included LICENSE file.
  */
 
-
 #ifndef GAMEBOIADVANCE_CPU_H
 #define GAMEBOIADVANCE_CPU_H
 

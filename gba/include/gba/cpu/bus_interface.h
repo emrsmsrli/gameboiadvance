@@ -39,7 +39,7 @@ struct bus_interface {
     virtual u8 read_8(u32 addr, mem_access access) noexcept = 0;
     virtual void write_8(u32 addr, u8 data, mem_access access) noexcept = 0;
 
-    virtual void tick_components(u64 cycles) noexcept = 0;
+    virtual void tick_components(u32 cycles) noexcept = 0;
     virtual void idle() noexcept = 0;
 };
 

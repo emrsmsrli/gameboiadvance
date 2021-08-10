@@ -57,8 +57,8 @@ private:
         else if constexpr(ChannelIdx == 4)  { channel_4_.write(reg_idx, data); }
     }
 
-    void tick_sequencer(u64 late_cycles) noexcept;
-    void tick_mixer(u64 late_cycles) noexcept;
+    void tick_sequencer(u32 late_cycles) noexcept;
+    void tick_mixer(u32 late_cycles) noexcept;
     [[nodiscard]] i16 generate_sample(u32 terminal) noexcept;
 
     void on_timer_overflow(timer::timer* timer) noexcept;

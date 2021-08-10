@@ -229,7 +229,7 @@ public:
 
     explicit pulse_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
 
     void write(register_index index, u8 data);
@@ -282,7 +282,7 @@ public:
 
     explicit wave_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
 
     void write(register_index index, u8 data) noexcept;
@@ -325,7 +325,7 @@ public:
 
     explicit noise_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] FORCEINLINE i8 get_output() const noexcept { return output; }
 
     void write(register_index index, u8 data) noexcept;

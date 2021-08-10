@@ -26,7 +26,7 @@ pulse_channel::pulse_channel(scheduler* scheduler) noexcept
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
 }
 
-void pulse_channel::generate_output_sample(const u64 late_cycles) noexcept
+void pulse_channel::generate_output_sample(const u32 late_cycles) noexcept
 {
     waveform_phase = (waveform_phase + 1_u8) & 0x07_u8;
     adjust_waveform_duty_index();

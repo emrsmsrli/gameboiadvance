@@ -16,8 +16,8 @@ namespace gba::ppu {
 
 namespace {
 
-constexpr u64 cycles_hdraw = 1006_u64;
-constexpr u64 cycles_hblank = 226_u64;
+constexpr u32 cycles_hdraw = 1006_u32;
+constexpr u32 cycles_hblank = 226_u32;
 constexpr u8 total_lines = 228_u8;
 constexpr u8 vcount_max = total_lines - 1_u8;
 
@@ -43,7 +43,7 @@ void engine::check_vcounter_irq() noexcept
     }
 }
 
-void engine::on_hdraw(const u64 late_cycles) noexcept
+void engine::on_hdraw(const u32 late_cycles) noexcept
 {
     scheduler_->ADD_HW_EVENT(cycles_hdraw - late_cycles, ppu::engine::on_hblank);
     dispstat_.hblank = false;
@@ -73,7 +73,7 @@ void engine::on_hdraw(const u64 late_cycles) noexcept
     check_vcounter_irq();
 }
 
-void engine::on_hblank(const u64 late_cycles) noexcept
+void engine::on_hblank(const u32 late_cycles) noexcept
 {
     scheduler_->ADD_HW_EVENT(cycles_hblank - late_cycles, ppu::engine::on_hdraw);
     dispstat_.hblank = true;

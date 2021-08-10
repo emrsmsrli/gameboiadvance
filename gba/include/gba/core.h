@@ -52,7 +52,7 @@ public:
     FORCEINLINE void set_dst_sample_rate(const u32 sample_rate) noexcept { apu_engine_.set_dst_sample_rate(sample_rate); }
     FORCEINLINE void set_sound_buffer_capacity(const usize capacity) noexcept { apu_engine_.set_buffer_capacity(capacity); }
 
-    void tick(u64 cycles = 1_u8) noexcept
+    void tick(u32 cycles = 1_u32) noexcept
     {
         const u64 until = scheduler_.now() + cycles;
         while(scheduler_.now() < until) {
@@ -93,8 +93,8 @@ private:
     [[nodiscard]] u8 read_io(u32 addr, cpu::mem_access access) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
 
-    void idle() noexcept final { tick_components(1_u64); }
-    void tick_components(u64 cycles) noexcept final
+    void idle() noexcept final { tick_components(1_u32); }
+    void tick_components(u32 cycles) noexcept final
     {
         // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
         if(UNLIKELY(!cpu_.dma_controller_.is_running())) {

@@ -63,7 +63,7 @@ class engine {
     array<win_enable_bits*, screen_width> win_buffer_;
 
 public:
-    static constexpr auto cycles_per_frame = 280'896_u64;
+    static constexpr u32 cycles_per_frame = 280'896_u32;
 
     event<u8, const scanline_buffer&> event_on_scanline;
     event<> event_on_vblank;
@@ -80,8 +80,8 @@ private:
 
     using tile_line = array<color, tile_dot_count>;
 
-    void on_hblank(u64 late_cycles) noexcept;
-    void on_hdraw(u64 late_cycles) noexcept;
+    void on_hblank(u32 late_cycles) noexcept;
+    void on_hdraw(u32 late_cycles) noexcept;
 
     void render_scanline() noexcept;
 

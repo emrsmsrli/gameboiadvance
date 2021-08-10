@@ -77,7 +77,7 @@ void arm7tdmi::schedule_update_irq_signal() noexcept
 
     if(scheduled_irq_signal_ != irq_signal_) {
         scheduler_->remove_event(irq_signal_delay_handle_);
-        irq_signal_delay_handle_ = scheduler_->ADD_HW_EVENT(1_usize, arm7tdmi::update_irq_signal);
+        irq_signal_delay_handle_ = scheduler_->ADD_HW_EVENT(1_u32, arm7tdmi::update_irq_signal);
     }
 }
 

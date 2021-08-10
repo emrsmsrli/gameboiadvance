@@ -18,7 +18,7 @@ namespace gba::cartridge {
 namespace {
 
 // from mgba
-constexpr u64 eeprom_settle_cycles = 115'000_u64;
+constexpr u32 eeprom_settle_cycles = 115'000_u32;
 
 } // namespace
 
