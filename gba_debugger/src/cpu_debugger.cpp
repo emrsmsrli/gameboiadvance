@@ -119,7 +119,7 @@ void draw_regs(cpu::cpu* c) noexcept
     ImGui::BeginGroup();
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
     if(ImGui::BeginTable("#cpu_registers_new", 2,
-      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_RowBg,
       ImVec2(0.f, 0.f))) {
 
         const regs_t& regs = access_private::r_(c);
