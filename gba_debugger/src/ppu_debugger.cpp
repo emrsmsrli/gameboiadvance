@@ -157,7 +157,6 @@ void ppu_debugger::draw() noexcept
     if(ImGui::Begin("PPU")) {
         if(ImGui::BeginTabBar("#pputabs")) {
             const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
-            const auto& palette = access_private::palette_ram_(ppu_engine_);
 
             if(ImGui::BeginTabItem("Registers")) {
                 if(!ImGui::BeginChild("#ppuregschild")) {
@@ -173,7 +172,7 @@ void ppu_debugger::draw() noexcept
                 ImGui::Spacing();
                 ImGui::Spacing();
 
-                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(10.f, 10.f));
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2{10.f, 10.f});
                 if(ImGui::BeginTable("#regtables", 2, ImGuiTableFlags_BordersInner)) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
@@ -399,48 +398,8 @@ void ppu_debugger::draw() noexcept
             });
 
             if(ImGui::BeginTabItem("Palette View")) {
-                const auto draw_palette = [&](const char* name, usize type_offset /*1 for obj*/) {
-                    ImGui::BeginGroup();
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(name);
-                    const ImVec2 cursor_start = ImGui::GetCursorPos();
-                    constexpr float color_button_size = 25.f;
-                    for(u32 palette_idx : range(16_u32)) {
-                        for(u32 color_idx : range(16_u32)) {
-                            const usize address = type_offset * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
-                            const u16 bgr_color = memcpy<u16>(palette, address);
-                            const ppu::color ppu_color{bgr_color};
-                            const sf::Color sf_color = to_sf_color(ppu_color);
-
-                            ImGui::ColorButton("", sf_color,
-                              ImGuiColorEditFlags_NoBorder
-                              | ImGuiColorEditFlags_NoAlpha
-                              | ImGuiColorEditFlags_NoDragDrop
-                              | ImGuiColorEditFlags_NoTooltip, ImVec2(color_button_size, color_button_size));
-                            if(ImGui::IsItemHovered()) {
-                                ImGui::BeginTooltip();
-                                ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
-                                ImGui::SameLine();
-                                ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
-                                  address + 0x0500'0000_u32,
-                                  bgr_color,
-                                  (bgr_color & ppu::color::r_mask),
-                                  (bgr_color & ppu::color::g_mask) >> 5_u16,
-                                  (bgr_color & ppu::color::b_mask) >> 10_u16);
-                                ImGui::EndTooltip();
-                            }
-
-                            ImGui::SameLine(0, 0);
-                        }
-                        ImGui::NewLine();
-                        ImGui::SetCursorPosY(cursor_start.y + (palette_idx + 1_u32).get() * color_button_size);
-                    }
-                    ImGui::EndGroup();
-                };
-
-                draw_palette("BG", 0_usize); ImGui::SameLine();
-                draw_palette("OBJ", 1_usize);
-
+                draw_palette(palette_type::bg); ImGui::SameLine();
+                draw_palette(palette_type::obj);
                 ImGui::EndTabItem();
             }
 
@@ -612,9 +571,10 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     const auto draw_visible_area = [&](const sf::IntRect& area) {
         if(area.width == 0 || area.height == 0) { return; }
 
-        ImGui::SetCursorScreenPos(ImVec2(
+        ImGui::SetCursorScreenPos(ImVec2{
           img_start.x + border_offset + area.left * draw_scale,
-          img_start.y + border_offset + area.top * draw_scale));
+          img_start.y + border_offset + area.top * draw_scale
+        });
         bg_sprite.setTextureRect(area);
         ImGui::Image(bg_sprite, sf::Color::White, bg_prefs.enable_visible_area_border ? sf::Color::White : sf::Color::Transparent);
         ImGui::SetCursorScreenPos(img_end);
@@ -1120,7 +1080,7 @@ void ppu_debugger::draw_obj() noexcept
 
             if(float s = float(dimension.h.get()) / dimension.v.get(); s < 1.f) {
                 ImGui::SameLine(0.f, 0.f);
-                ImGui::Dummy(ImVec2((1.f - s) * 64.f, 0.f));
+                ImGui::Dummy(ImVec2{(1.f - s) * 64.f, 0.f});
             }
 
             ImGui::SameLine(0.f, 10.f);
@@ -1175,6 +1135,60 @@ void ppu_debugger::draw_win_buffer() noexcept
     sf::Sprite win_sprite{win_texture_};
     win_sprite.setScale(draw_scale, draw_scale);
     ImGui::Image(win_sprite);
+}
+
+void ppu_debugger::draw_palette(const palette_type type) noexcept
+{
+    constexpr u32::type num_palette_cols = 16_u32;
+    constexpr float color_button_size = 25.f;
+    const auto& palette = access_private::palette_ram_(ppu_engine_);
+
+    ImGui::BeginGroup();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(type == palette_type::bg ? "BG" : "OBJ");
+
+    const ImVec2 cursor_start = ImGui::GetCursorPos();
+    const ImVec2 border_start = ImGui::GetCursorScreenPos();
+    const ImVec2 border_end{
+        border_start.x + num_palette_cols * color_button_size,
+        border_start.y + num_palette_cols * color_button_size
+    };
+
+    for(u32 palette_idx : range(num_palette_cols)) {
+        for(u32 color_idx : range(num_palette_cols)) {
+            const usize address = from_enum<u32>(type) * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
+            const u16 bgr_color = memcpy<u16>(palette, address);
+            const ppu::color ppu_color{bgr_color};
+            const sf::Color sf_color = to_sf_color(ppu_color);
+
+            ImGui::ColorButton("", sf_color,
+              ImGuiColorEditFlags_NoBorder
+                | ImGuiColorEditFlags_NoAlpha
+                | ImGuiColorEditFlags_NoDragDrop
+                | ImGuiColorEditFlags_NoTooltip, ImVec2{color_button_size, color_button_size});
+
+            if(ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
+                ImGui::SameLine();
+                ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
+                  address + 0x0500'0000_u32,
+                  bgr_color,
+                  (bgr_color & ppu::color::r_mask),
+                  (bgr_color & ppu::color::g_mask) >> 5_u16,
+                  (bgr_color & ppu::color::b_mask) >> 10_u16);
+                ImGui::EndTooltip();
+            }
+
+            ImGui::SameLine(0, 0);
+        }
+        ImGui::NewLine();
+        ImGui::SetCursorPosY(cursor_start.y + (palette_idx + 1_u32).get() * color_button_size);
+    }
+
+    ImDrawList* win_draw_list = ImGui::GetWindowDrawList();
+    win_draw_list->AddRect(border_start, border_end, 0xFFFFFFFF_u32);
+    ImGui::EndGroup();
 }
 
 } // namespace gba::debugger

@@ -44,6 +44,8 @@ public:
     void draw() noexcept;
 
 private:
+    enum class palette_type : u32::type { bg, obj };
+
     void on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept;
     void on_update_texture() noexcept;
 
@@ -54,6 +56,7 @@ private:
     void draw_obj_tiles() noexcept;
     void draw_obj() noexcept;
     void draw_win_buffer() noexcept;
+    void draw_palette(palette_type type) noexcept;
 };
 
 } // namespace gba::debugger
