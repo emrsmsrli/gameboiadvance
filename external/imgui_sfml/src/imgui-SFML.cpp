@@ -365,26 +365,18 @@ void ProcessEvent(const sf::Event& event) {
     }
 
     switch (event.type) {
-    case sf::Event::LostFocus: {
-        // reset all input - SFML doesn't send KeyReleased
-        // event when window goes out of focus
-        ImGuiIO& io = ImGui::GetIO();
-        for (int i = 0; i < IM_ARRAYSIZE(io.KeysDown); ++i) {
-            io.KeysDown[i] = false;
-        }
-        io.KeyCtrl = false;
-        io.KeyAlt = false;
-        io.KeyShift = false;
-        io.KeySuper = false;
-
+    case sf::Event::LostFocus:
         s_currentWindowContext->windowHasFocus = false;
-    } break;
+    break;
     case sf::Event::GainedFocus:
         s_currentWindowContext->windowHasFocus = true;
-        break;
+    break;
     default:
         break;
     }
+
+    ImGuiIO& io = ImGui::GetIO();
+    io.AddFocusEvent(s_currentWindowContext->windowHasFocus);
 }
 
 void Update(sf::RenderWindow& window, sf::Time dt) {
