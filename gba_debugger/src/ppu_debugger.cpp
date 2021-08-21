@@ -594,6 +594,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     // draw the actual visible area
     const u32::type xoffset = bg.hoffset.get() % map_total_dot_dimensions.x;
     const u32::type yoffset = bg.voffset.get() % map_total_dot_dimensions.y;
+    const i32::type border_offset = bg_prefs.enable_visible_area_border ? -1 : 0;
 
     sf::IntRect first_part(
       xoffset, yoffset,
@@ -612,8 +613,8 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
         if(area.width == 0 || area.height == 0) { return; }
 
         ImGui::SetCursorScreenPos(ImVec2(
-          img_start.x + area.left * draw_scale,
-          img_start.y + area.top * draw_scale));
+          img_start.x + border_offset + area.left * draw_scale,
+          img_start.y + border_offset + area.top * draw_scale));
         bg_sprite.setTextureRect(area);
         ImGui::Image(bg_sprite, sf::Color::White, bg_prefs.enable_visible_area_border ? sf::Color::White : sf::Color::Transparent);
         ImGui::SetCursorScreenPos(img_end);
