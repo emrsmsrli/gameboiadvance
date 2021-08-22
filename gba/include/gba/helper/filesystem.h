@@ -27,7 +27,7 @@ class mmap {
     usize mapped_size_;
 
     struct impl;
-    std::unique_ptr<impl> impl_ = nullptr;
+    std::unique_ptr<impl> impl_;
 
 public:
     static inline constexpr auto map_whole_file = 0_usize;

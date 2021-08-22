@@ -21,7 +21,7 @@ struct ppu_bg_preferences {
 struct preferences {
     int ppu_framebuffer_render_scale = 2;
 
-    array<ppu_bg_preferences, 4> ppu_bg_preferences{};
+    array<ppu_bg_preferences, 4> ppu_bg_prefs{};
     int ppu_bg_tiles_render_scale = 2;
     int ppu_obj_tiles_render_scale = 2;
     int ppu_win_render_scale = 2;

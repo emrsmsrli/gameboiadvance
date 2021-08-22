@@ -71,10 +71,10 @@ void debugger_settings_hander_read_line(ImGuiContext*, ImGuiSettingsHandler* han
     int dummy3;
     array<float, 4> dummy4{1.f, 1.f, 1.f, 1.f};
          if(sscanf(line, "ppu_framebuffer_render_scale=%i", &dummy1) == 1) { prefs.ppu_framebuffer_render_scale = dummy1; }
-    else if(sscanf(line, "bg0=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[0_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg1=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[1_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg2=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[2_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
-    else if(sscanf(line, "bg3=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_preferences[3_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg0=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_prefs[0_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg1=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_prefs[1_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg2=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_prefs[2_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
+    else if(sscanf(line, "bg3=%i,%i,%i", &dummy1, &dummy2, &dummy3) == 3) { prefs.ppu_bg_prefs[3_u32] = {dummy1 == 1, dummy2 == 1, dummy3}; }
     else if(sscanf(line, "ppu_bg_tiles_render_scale=%i", &dummy1) == 1) { prefs.ppu_bg_tiles_render_scale = dummy1; }
     else if(sscanf(line, "ppu_obj_tiles_render_scale=%i", &dummy1) == 1) { prefs.ppu_obj_tiles_render_scale = dummy1; }
     else if(sscanf(line, "ppu_win_render_scale=%i", &dummy1) == 1) { prefs.ppu_win_render_scale = dummy1; }
@@ -96,21 +96,21 @@ void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* han
     out_buf->appendf("[%s][%s]\n", handler->TypeName, handler->TypeName);
     out_buf->appendf("ppu_framebuffer_render_scale=%i\n", prefs.ppu_framebuffer_render_scale);
     out_buf->appendf("bg0=%i,%i,%i\n",
-        prefs.ppu_bg_preferences[0_u32].enable_visible_area,
-        prefs.ppu_bg_preferences[0_u32].enable_visible_area_border,
-        prefs.ppu_bg_preferences[0_u32].render_scale);
+        prefs.ppu_bg_prefs[0_u32].enable_visible_area,
+        prefs.ppu_bg_prefs[0_u32].enable_visible_area_border,
+        prefs.ppu_bg_prefs[0_u32].render_scale);
     out_buf->appendf("bg1=%i,%i,%i\n",
-        prefs.ppu_bg_preferences[1_u32].enable_visible_area,
-        prefs.ppu_bg_preferences[1_u32].enable_visible_area_border,
-        prefs.ppu_bg_preferences[1_u32].render_scale);
+        prefs.ppu_bg_prefs[1_u32].enable_visible_area,
+        prefs.ppu_bg_prefs[1_u32].enable_visible_area_border,
+        prefs.ppu_bg_prefs[1_u32].render_scale);
     out_buf->appendf("bg2=%i,%i,%i\n",
-        prefs.ppu_bg_preferences[2_u32].enable_visible_area,
-        prefs.ppu_bg_preferences[2_u32].enable_visible_area_border,
-        prefs.ppu_bg_preferences[2_u32].render_scale);
+        prefs.ppu_bg_prefs[2_u32].enable_visible_area,
+        prefs.ppu_bg_prefs[2_u32].enable_visible_area_border,
+        prefs.ppu_bg_prefs[2_u32].render_scale);
     out_buf->appendf("bg3=%i,%i,%i\n",
-        prefs.ppu_bg_preferences[3_u32].enable_visible_area,
-        prefs.ppu_bg_preferences[3_u32].enable_visible_area_border,
-        prefs.ppu_bg_preferences[3_u32].render_scale);
+        prefs.ppu_bg_prefs[3_u32].enable_visible_area,
+        prefs.ppu_bg_prefs[3_u32].enable_visible_area_border,
+        prefs.ppu_bg_prefs[3_u32].render_scale);
     out_buf->appendf("ppu_bg_tiles_render_scale=%i\n", prefs.ppu_bg_tiles_render_scale);
     out_buf->appendf("ppu_obj_tiles_render_scale=%i\n", prefs.ppu_obj_tiles_render_scale);
     out_buf->appendf("ppu_win_render_scale=%i\n", prefs.ppu_win_render_scale);

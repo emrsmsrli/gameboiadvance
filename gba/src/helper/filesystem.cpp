@@ -218,7 +218,7 @@ void mmap::impl::map(const path& path, usize map_size, std::error_code& err) noe
         return;
     }
 
-    map_ptr = static_cast<u8*>(::mmap(nullptr, map_size.size(),
+    map_ptr = static_cast<u8*>(::mmap(nullptr, map_size.get(),
       PROT_READ | PROT_WRITE, MAP_SHARED, file_handle, 0));
     if(map_ptr == MAP_FAILED) {
         populate_err(err);
@@ -243,7 +243,7 @@ void mmap::impl::unmap([[maybe_unused]] const usize map_size, std::error_code& e
 
     file_mapping_handle = invalid_handle;
 #else
-    const bool not_unmapped = ::munmap(map_ptr, map_size.size()) == -1;
+    const bool not_unmapped = ::munmap(map_ptr, map_size.get()) == -1;
     const bool file_not_closed = ::close(file_handle) == -1;
     if(not_unmapped || file_not_closed) {
         populate_err(err);
@@ -262,7 +262,7 @@ void mmap::impl::flush(const usize flush_size, std::error_code& err) const noexc
     }
 #else
     if(::msync(map_ptr, flush_size.get(), MS_SYNC) == -1) {
-        populate_err_and_log(err, "could not flush mmap");
+        populate_err(err);
     }
 #endif // _WIN32
 }

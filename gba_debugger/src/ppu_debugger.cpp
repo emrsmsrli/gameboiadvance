@@ -438,7 +438,7 @@ void ppu_debugger::on_update_texture() noexcept
 
 void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
 {
-    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_preferences[bg.id];
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
 
     const auto& vram = access_private::vram_(ppu_engine_);
     const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
@@ -590,7 +590,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
 
 void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 {
-    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_preferences[bg.id];
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
 
     const auto& vram = access_private::vram_(ppu_engine_);
     const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
@@ -672,7 +672,7 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 
 void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noexcept
 {
-    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_preferences[bg.id];
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
 
     const sf::Color backdrop = to_sf_color(call_private::palette_color_opaque(ppu_engine_, 0_u8, 0_u8));
     const auto& vram = access_private::vram_(ppu_engine_);

@@ -47,7 +47,9 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 target_compile_definitions(${PROJECT_NAME}
         PUBLIC WITH_GZIP=$<BOOL:${ENABLE_GZIP_SUPPORT}>)
 
+# allows static_for [0,2048) + some margin
 if(MSVC)
-    # allows static_for [0,2048) + some margin
     target_compile_options(${PROJECT_NAME} PRIVATE /constexpr:depth2176)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -ftemplate-depth=2176 -fconstexpr-depth=2176)
 endif()
