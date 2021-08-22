@@ -156,7 +156,7 @@ void mmap::map(const usize map_size, std::error_code& err) noexcept
         mapped_size_ = map_size;
     }
 
-    impl_->map(path_, map_size, err);
+    impl_->map(path_, mapped_size_, err);
 }
 
 void mmap::unmap(std::error_code& err) noexcept
