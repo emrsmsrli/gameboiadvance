@@ -202,7 +202,7 @@ TEST_CASE("backup_eeprom cmds")
 
         // should return 0 while settling
         CHECK(eeprom.read(0x0_u32) == 0x0_u8);
-        dummy_scheduler.add_cycles(120'000_u64); // approximate value
+        dummy_scheduler.add_cycles(120'000_u32); // approximate value
         // should return 1 after settling
         CHECK(eeprom.read(0x0_u32) == 0x1_u8);
 
