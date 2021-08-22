@@ -488,9 +488,8 @@ void arm7tdmi::block_data_transfer(const u32 instr) noexcept
 
     const bool should_switch_mode = LoadPSR_ForceUser && (!IsLoad || !transfer_pc);
 
-    privilege_mode old_mode;
+    const privilege_mode old_mode = cpsr().mode;
     if(should_switch_mode) {
-        old_mode = cpsr().mode;
         switch_mode(privilege_mode::usr);
     }
 
