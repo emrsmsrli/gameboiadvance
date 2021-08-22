@@ -41,7 +41,7 @@ public:
 
         std::error_code err;
         if(fs::exists(path_)) {
-            mmap_ = fs::mmap{path_, size_, err};
+            mmap_ = fs::mmap{path_,err};
         } else {
             fs::create_directories(path_.parent_path());
 
