@@ -23,11 +23,28 @@ struct mock_backup : public backup {
     [[nodiscard]] u8 read(u32 /*address*/) const noexcept override { return 0_u8; }
 };
 
+struct mock_existing_rom_file {
+    fs::path path;
+    fs::path backup_path;
+
+    mock_existing_rom_file(const std::string_view name, usize backup_size, u8 backup_init = 0xFF_u8)
+      : path{fs::temp_directory_path() / name},
+        backup_path{path.parent_path() / "backups" / name}
+    {
+        backup_path.replace_extension(".sav");
+        fs::create_directories(backup_path.parent_path());
+        const vector<u8> data{backup_size, backup_init};
+        fs::write_file(backup_path, data);
+    }
+
+    ~mock_existing_rom_file() noexcept {fs::remove(backup_path); }
+};
+
 } // namespace
 
 TEST_CASE("backup missing file")
 {
-    const auto path = fs::temp_directory_path() / "test.sav";  // backup will override the extension anyway
+    const auto path = fs::temp_directory_path() / "dummy_missing.gba";
     mock_backup b{path, 64_kb};
 
     CHECK(!fs::exists(path));
@@ -37,18 +54,13 @@ TEST_CASE("backup missing file")
 
 TEST_CASE("backup existing file")
 {
-    const auto path = fs::temp_directory_path() / "test.sav";  // backup will override the extension anyway
+    constexpr usize backup_size = 128_kb;
+    mock_existing_rom_file rom_file{"dummy_existing.gba", backup_size, 0x00_u8};
+    mock_backup b{rom_file.path, backup_size};
 
-    vector<u8> v{128_kb};
-    std::fill(v.begin(), v.end(), 0x0_u8);
-    fs::write_file(path, v);
-
-    mock_backup b{path, 128_kb};
-
-    CHECK(fs::exists(path));
+    CHECK(fs::exists(rom_file.backup_path));
     CHECK(b.data().size() == b.size());
     CHECK(std::all_of(b.data().begin(), b.data().end(), [](u8 u) { return u != 0xFF_u8; }));
-    fs::remove(path);
 }
 
 // on purpose hardcoded literals, so we can test them too
@@ -67,8 +79,11 @@ TEST_CASE("backup_flash cmds")
         flash.write(cmd_addr1, cmd);
     };
 
-    backup_flash flash64{"test", 64_kb};
-    backup_flash flash128{"test", 128_kb};
+    mock_existing_rom_file rom_file64{"dummy_flash64.gba", 64_kb};
+    mock_existing_rom_file rom_file128{"dummy_flash128.gba", 128_kb};
+
+    backup_flash flash64{rom_file64.path, 64_kb};
+    backup_flash flash128{rom_file128.path, 128_kb};
 
     SUBCASE("device id") {
         // ID       Name       Size
@@ -151,13 +166,15 @@ TEST_CASE("backup_eeprom cmds")
 
     // eeprom read-write addresses are unused
     const auto write_address = [](backup_eeprom& eeprom) {
-        // send address (0x1), second 64 bit data boundary
+        // send address (0x1), second 64-bit data boundary
         for(u32 i = 0_u8; i < 5_u32; ++i) { eeprom.write(0x0_u32, 0x0_u8); }
         eeprom.write(0x0_u32, 0x1_u8);
         CHECK(eeprom.get_addr() == 0x8_u8); // internally we store bytes so address should be multiplied by 8
     };
 
-    backup_eeprom eeprom{"test", 512_usize};  // 8_kb will perform the same.
+    mock_existing_rom_file rom_file{"dummy_eeprom.gba", 512_usize};
+
+    backup_eeprom eeprom{rom_file.path, 512_usize};  // 8_kb will perform the same.
     scheduler dummy_scheduler;
     eeprom.set_scheduler(&dummy_scheduler);
 

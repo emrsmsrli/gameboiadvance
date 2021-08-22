@@ -14,8 +14,10 @@
 #include <gba/core.h>
 
 using regs_t = gba::array<gba::u32, 16>;
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, regs_t, r_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::cartridge::gamepak, gamepak_)
+ACCESS_PRIVATE_FIELD(gba::core, gba::cpu::cpu, cpu_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, regs_t, r_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, wram_)
 
 TEST_CASE("test roms")
 {
@@ -24,15 +26,17 @@ TEST_CASE("test roms")
          if(auto ext = path.extension(); ext == ".gba") {
              MESSAGE("testing: ", path.string());
 
-             gba::core g{{}};
-             g.load_pak(path);
-
-             REQUIRE(g.pak.loaded());
-
              using namespace gba::integer_literals;
 
-             auto& wram = access_private::wram_(g.arm);
-             gba::u32& r12 = access_private::r_(g.arm)[12_u32];
+             gba::core g{gba::vector<gba::u8>{16_kb}};
+             g.load_pak(path);
+             g.skip_bios();
+
+             REQUIRE(access_private::gamepak_(g).loaded());
+
+             auto& cpu = access_private::cpu_(g);
+             auto& wram = access_private::wram_(cpu);
+             gba::u32& r12 = access_private::r_(cpu)[12_u32];
 
              while(true) {
                 g.tick_one_frame();
