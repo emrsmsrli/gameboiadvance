@@ -30,6 +30,7 @@ struct preferences {
     array<float, 4> ppu_win1_color{0.f, 0.f, 1.f, 1.f};
     array<float, 4> ppu_winobj_color{0.f, 0.f, 0.f, 1.f};
 
+    bool apu_audio_enabled = true;
     float apu_audio_volume = 0.5f;
     unsigned int apu_enabled_channel_graphs = 0b1;
 
