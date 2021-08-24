@@ -26,7 +26,14 @@ public:
 
     event<vector<Sample>> on_overflow;
 
-    FORCEINLINE void set_capacity(usize capacity) noexcept { capacity_ = capacity; buffer_.resize(capacity); }
+    FORCEINLINE void set_capacity(usize capacity) noexcept
+    {
+        capacity_ = capacity;
+        buffer_.resize(capacity);
+        write_idx_ = std::min(write_idx_, capacity);
+        notify_on_overflow();
+    }
+
     FORCEINLINE void write(const Sample& sample) noexcept
     {
 #if WITH_DEBUGGER
@@ -34,6 +41,12 @@ public:
 #endif // WITH_DEBUGGER
 
         buffer_[write_idx_++] = sample;
+        notify_on_overflow();
+    }
+
+private:
+    FORCEINLINE void notify_on_overflow() noexcept
+    {
         if(write_idx_ == capacity_) {
             write_idx_ = 0_usize;
             on_overflow(buffer_);
