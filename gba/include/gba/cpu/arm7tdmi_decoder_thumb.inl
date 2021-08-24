@@ -433,11 +433,10 @@ void arm7tdmi::push_pop(const u16 instr) noexcept
             sp() = address + 4_u32;
             bus_->idle();
             pipeline_flush<instruction_mode::thumb>();
-            return;
+        } else {
+            bus_->idle();
+            sp() = address;
         }
-
-        bus_->idle();
-        sp() = address;
     } else {
         address -= 4_u32 * narrow<u32>(rlist.size());
         if constexpr(UsePC_LR) {
