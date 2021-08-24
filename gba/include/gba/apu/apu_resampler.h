@@ -19,7 +19,7 @@ class resampler {
 protected:
     sound_buffer<Sample>& buffer_;
     u32 src_sample_rate_;
-    u32 dst_sample_rate_;
+    u32 dst_sample_rate_ = 48'000_u32;
     float resample_phase_ = 0.f;
     float resample_phase_shift_ = 1.f;
 
@@ -45,6 +45,7 @@ public:
 private:
     FORCEINLINE void calculate_resample_interval() noexcept
     {
+        ASSERT(dst_sample_rate_ > 0_u32);
         resample_phase_shift_ = static_cast<float>(src_sample_rate_.get())
           / static_cast<float>(dst_sample_rate_.get());
     }
