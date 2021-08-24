@@ -173,17 +173,11 @@ window::window(core* core) noexcept
     memory_view_.add_entry(memory_view_entry{"OAM"sv, view<u8>{access_private::oam_(ppu_engine)}, 0x0700'0000_u32});
     switch(pak.backup_type()) {
         case cartridge::backup::type::eeprom_undetected:
-            break; // will be added later
+            pak.on_eeprom_width_detected_event.add_delegate({connect_arg<&window::on_eeprom_bus_width_detected>, this});
+            break;
         case cartridge::backup::type::eeprom_4:
         case cartridge::backup::type::eeprom_64:
-            memory_view_.add_entry(memory_view_entry{
-              "EEPROM"sv,
-              view<u8>{
-                access_private::backup_(pak)->data().data(),
-                access_private::backup_(pak)->data().size()
-              },
-              0x0DFF'FF00_u32
-            });
+            on_eeprom_bus_width_detected();
             break;
         case cartridge::backup::type::sram:
             memory_view_.add_entry(memory_view_entry{
@@ -238,7 +232,6 @@ window::window(core* core) noexcept
     core_->on_vblank_event().add_delegate({connect_arg<&window::on_vblank>, this});
     core_->sound_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
     cpu_->on_instruction_execute.connect<&window::on_instruction_execute>(this);
-    pak.on_eeprom_width_detected_event.add_delegate({connect_arg<&window::on_eeprom_bus_width_detected>, this});
 
     apu_engine.set_dst_sample_rate(audio_device_.frequency());
     apu_engine.set_buffer_capacity(audio_device_.sample_count());
