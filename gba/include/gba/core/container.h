@@ -225,12 +225,13 @@ public:
     constexpr const_iterator cend() const noexcept { return ptr(size_); }
 
 private:
-    void destroy_range([[maybe_unused]] T* b, [[maybe_unused]] T* e)
+    void destroy_range([[maybe_unused]] T* first, [[maybe_unused]] T* last)
     {
         if constexpr(!std::is_trivially_destructible_v<T>) {
-            while(b != e) {
-                b->~T();
-                ++b; // NOLINT
+            ASSERT(first <= last);
+            while(first != last) {
+                first->~T();
+                ++first; // NOLINT
             }
         }
     }
