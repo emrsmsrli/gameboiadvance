@@ -478,29 +478,33 @@ void apu_debugger::on_sample_written(usize idx) noexcept
     const auto& ctrl = access_private::control_(apu_engine_);
     static constexpr array<i16, 2> dma_volume_tab = {2_i16, 4_i16};
 
+    const auto normalize = [](auto output, u32::type max) noexcept {
+        return static_cast<float>(output.get()) / static_cast<float>(max);
+    };
+
     sound_buffer_1_[idx] = {
-      ch1.output.get() / float(0x80),
-      ch1.output.get() / float(0x80),
+      normalize(ch1.get_output(), 0x80),
+      normalize(ch1.get_output(), 0x80)
     };
     sound_buffer_2_[idx] = {
-      ch2.output.get() / float(0x80),
-      ch2.output.get() / float(0x80),
+      normalize(ch2.get_output(), 0x80),
+      normalize(ch2.get_output(), 0x80)
     };
     sound_buffer_3_[idx] = {
-      ch3.output.get() / float(0x80),
-      ch3.output.get() / float(0x80),
+      normalize(ch3.get_output(), 0x80),
+      normalize(ch3.get_output(), 0x80)
     };
     sound_buffer_4_[idx] = {
-      ch4.output.get() / float(0x80),
-      ch4.output.get() / float(0x80),
+      normalize(ch4.get_output(), 0x80),
+      normalize(ch4.get_output(), 0x80)
     };
     sound_buffer_fifo_a_[idx] = {
-      (make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)]).get() / float(0x200),
-      (make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)]).get() / float(0x200),
+      normalize(make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)], 0x200),
+      normalize(make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)], 0x200),
     };
     sound_buffer_fifo_b_[idx] = {
-      (make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)]).get() / float(0x200),
-      (make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)]).get() / float(0x200),
+      normalize(make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)], 0x200),
+      normalize(make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)], 0x200),
     };
 }
 
