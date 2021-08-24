@@ -55,7 +55,7 @@ gameboiadvance library can be easily integrated to your own frontend implementat
 
 void on_scanline(const gba::u8 line_number, const gba::ppu::scanline_buffer& buffer) noexcept;
 void on_vblank() noexcept;
-void on_audio(const gba::vector<apu::stereo_sample<float>>& buffer) noexcept;
+void on_audio(const gba::vector<gba::apu::stereo_sample<float>>& buffer) noexcept;
 
 int main(int argc, char** argv) 
 {
