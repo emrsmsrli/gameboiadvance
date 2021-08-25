@@ -16,9 +16,10 @@ namespace {
 void cpu::cpu::skip_bios() noexcept
 {
     if(pc() != 0x0000'0000_u32) {
-        LOG_DEBUG(cpu, "skipping bios");
         return;
     }
+
+    LOG_DEBUG(cpu, "skipping bios");
 
     reg_banks_[register_bank::none].named.r13 = 0x0300'7F00_u32;
     reg_banks_[register_bank::irq].named.r13 = 0x0300'7FA0_u32;
