@@ -50,19 +50,21 @@ enum class halt_control {
     running,
 };
 
+struct prefetch_buffer {
+    static inline constexpr u32 capacity_in_bytes = 16_u32;
 
-// todo move to somewhere more meaningful
-FORCEINLINE u8& get_wait_cycles(array<u8, 32>& table, const memory_page page, const mem_access access) noexcept
-{
-    if(UNLIKELY(page > memory_page::pak_sram_2)) {
-        static u8 unused_area = 1_u8;
-        return unused_area;
-    }
+    u32 begin;
+    u32 end;
+    u32 size;
+    u32 capacity;
+    i32 cycles_left;
+    i32 cycles_needed;
+    u32 addr_increment;
+    bool active = false;
 
-    // make sure we only have nonseq & seq bits
-    const u32 access_offset = ((from_enum<u32>(access) & 0b11_u32) - 1_u32) * 16_u32;
-    return table[from_enum<u32>(page) + access_offset];
-}
+    [[nodiscard]] FORCEINLINE bool empty() const noexcept { return size == 0_u32; }
+    [[nodiscard]] FORCEINLINE bool full() const noexcept { return size == capacity; }
+};
 
 class cpu : public arm7tdmi {
     friend core;
@@ -85,13 +87,16 @@ class cpu : public arm7tdmi {
     u8 post_boot_;
 
     waitstate_control waitcnt_;
-    array<u8, 32> wait_16{ // cycle counts for 16bit r/w, nonseq and seq access
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
+    prefetch_buffer prefetch_buffer_;
+
+    using stall_table_entry = array<u8, 16>;
+    array<stall_table_entry, 2> stall_16_{
+      stall_table_entry{1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8},
+      stall_table_entry{1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8}
     };
-    array<u8, 32> wait_32{ // cycle counts for 32bit r/w, nonseq and seq access
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
+    array<stall_table_entry, 2> stall_32_{
+      stall_table_entry{1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8},
+      stall_table_entry{1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8}
     };
 
     halt_control haltcnt_{halt_control::running};
@@ -112,9 +117,28 @@ public:
     void tick() noexcept;
 
 private:
-    [[nodiscard]] u32 read_bios(u32 addr) noexcept;
-    [[nodiscard]] u32 read_unused(u32 addr, mem_access access) noexcept;
+    template<typename T>
+    [[nodiscard]] FORCEINLINE u8& stall_cycles(const mem_access access, const memory_page page) noexcept
+    {
+        if(UNLIKELY(page > memory_page::pak_sram_2)) {
+            static u8 unused_area_cycles = 1_u8;
+            return unused_area_cycles;
+        }
 
+        ASSERT(access != mem_access::none);
+        if constexpr(std::is_same_v<T, u32>) {
+            return stall_32_[from_enum<u32>(access)][from_enum<u32>(page)];
+        } else {
+            static_assert(std::is_same_v<T, u16> || std::is_same_v<T, u8>);
+            return stall_16_[from_enum<u32>(access)][from_enum<u32>(page)];
+        }
+    }
+
+    [[nodiscard]] u32 read_bios(u32 addr) noexcept;
+    [[nodiscard]] u32 read_unused(u32 addr) noexcept;
+
+    void prefetch(u32 addr, u32 cycles) noexcept;
+    void prefetch_tick(u32 cycles) noexcept;
     void update_waitstate_table() noexcept;
 };
 

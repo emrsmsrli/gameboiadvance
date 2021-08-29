@@ -186,7 +186,7 @@ void controller::run_channels() noexcept
         }
 
         --channel->internal.count;
-        channel->next_access_type = cpu::mem_access::seq | cpu::mem_access::dma;
+        channel->next_access_type = cpu::mem_access::seq;
 
         if(channel->internal.count == 0_u32) {
             running_channels_.erase(std::find(running_channels_.begin(), running_channels_.end(), channel));
@@ -254,7 +254,7 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
         }
     }
 
-    channel.next_access_type = cpu::mem_access::non_seq | cpu::mem_access::dma;
+    channel.next_access_type = cpu::mem_access::non_seq;
 
     static constexpr array alignment_masks{0b1_u32, 0b11_u32};
     if(for_repeat) {

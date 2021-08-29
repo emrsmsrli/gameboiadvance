@@ -51,7 +51,7 @@ u32 cpu::read_bios(u32 addr) noexcept
     addr = mask::clear(addr, 0b11_u32);
 
     if(UNLIKELY(addr >= 0x0000'4000_u32)) {
-        return read_unused(addr, mem_access::none) >> shift; // dma can't access bios
+        return read_unused(addr) >> shift;
     }
 
     if(pc() < 0x0000'4000_u32) {
@@ -60,10 +60,11 @@ u32 cpu::read_bios(u32 addr) noexcept
     return bios_last_read_ >> shift;
 }
 
-u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
+u32 cpu::read_unused(const u32 addr) noexcept
 {
     const u32 alignment = (addr & 0b11_u32) << 3_u32;
-    if(UNLIKELY(bitflags::is_set(access, mem_access::dma))) {
+
+    if(UNLIKELY(dma_controller_.is_running())) {
         return dma_controller_.latch() >> alignment;
     }
 
@@ -84,7 +85,7 @@ u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
                     data = pipeline_.executing | (pipeline_.decoding << 16_u32);
                 } else {
                     // LSW = [$+4], MSW = [$+6]   ;for opcodes at 4-byte aligned locations
-                    data = (widen<u32>(bus_->read_16(pc() + 2_u32, mem_access::dry_run)) << 16_u32) | pipeline_.decoding;
+                    data = (widen<u32>(bus_->read_16(pc() + 2_u32, mem_access::none)) << 16_u32) | pipeline_.decoding;
                 }
                 break;
             case memory_page::iwram:
@@ -104,6 +105,60 @@ u32 cpu::read_unused(const u32 addr, const mem_access access) noexcept
     return data >> alignment;
 }
 
+void cpu::prefetch(const u32 addr, const u32 cycles) noexcept
+{
+    if(!prefetch_buffer_.empty() && addr == prefetch_buffer_.begin) {
+        prefetch_buffer_.begin += prefetch_buffer_.addr_increment;
+        bus_->tick_components(1_u32);
+        return;
+    }
+
+    if(prefetch_buffer_.active && addr == prefetch_buffer_.end) {
+        bus_->tick_components(make_unsigned(prefetch_buffer_.cycles_left));
+        prefetch_buffer_.begin = prefetch_buffer_.end;
+        prefetch_buffer_.size = 0_u32;
+        return;
+    }
+
+    bus_->tick_components(cycles);
+    prefetch_buffer_.active = true;
+    prefetch_buffer_.size = 0_u32;
+
+    const u32 instr_width = cpsr().t ? 2_u32 : 4_u32;
+    const auto page = to_enum<memory_page>(addr >> 24_u32);
+
+    if(cpsr().t) {
+        prefetch_buffer_.cycles_needed = stall_cycles<u16>(mem_access::seq, page);
+    } else {
+        prefetch_buffer_.cycles_needed = stall_cycles<u32>(mem_access::seq, page);
+    }
+
+    prefetch_buffer_.cycles_left = prefetch_buffer_.cycles_needed;
+    prefetch_buffer_.capacity = prefetch_buffer::capacity_in_bytes / instr_width;
+    prefetch_buffer_.addr_increment = instr_width;
+    prefetch_buffer_.begin = addr + instr_width;
+    prefetch_buffer_.end = prefetch_buffer_.begin;
+}
+
+void cpu::prefetch_tick(const u32 cycles) noexcept
+{
+    if(!prefetch_buffer_.active || dma_controller_.is_running()) {
+        return;
+    }
+
+    prefetch_buffer_.cycles_left -= make_signed(cycles);
+    if (prefetch_buffer_.cycles_left <= 0_i32) {
+        ++prefetch_buffer_.size;
+
+        if(prefetch_buffer_.full()) {
+            prefetch_buffer_.active = false;
+        } else {
+            prefetch_buffer_.end += prefetch_buffer_.addr_increment;
+            prefetch_buffer_.cycles_left += prefetch_buffer_.cycles_needed;
+        }
+    }
+}
+
 void cpu::update_waitstate_table() noexcept
 {
     static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
@@ -112,38 +167,38 @@ void cpu::update_waitstate_table() noexcept
     static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
 
     const u8 w_sram = 1_u8 + ws_nonseq[waitcnt_.sram];
-    get_wait_cycles(wait_16, memory_page::pak_sram_1, mem_access::non_seq) = w_sram;
-    get_wait_cycles(wait_16, memory_page::pak_sram_1, mem_access::seq) = w_sram;
-    get_wait_cycles(wait_32, memory_page::pak_sram_1, mem_access::non_seq) = w_sram;
-    get_wait_cycles(wait_32, memory_page::pak_sram_1, mem_access::seq) = w_sram;
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_sram_1) = w_sram;
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_sram_1) = w_sram;
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_sram_1) = w_sram;
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_sram_1) = w_sram;
 
-    get_wait_cycles(wait_16, memory_page::pak_ws0_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
-    get_wait_cycles(wait_16, memory_page::pak_ws0_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
-    get_wait_cycles(wait_16, memory_page::pak_ws1_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
-    get_wait_cycles(wait_16, memory_page::pak_ws1_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
-    get_wait_cycles(wait_16, memory_page::pak_ws2_lower, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
-    get_wait_cycles(wait_16, memory_page::pak_ws2_upper, mem_access::non_seq) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws0_lower) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws0_upper) = 1_u8 + ws_nonseq[waitcnt_.ws0_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws1_lower) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws1_upper) = 1_u8 + ws_nonseq[waitcnt_.ws1_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws2_lower) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
+    stall_cycles<u16>(mem_access::non_seq, memory_page::pak_ws2_upper) = 1_u8 + ws_nonseq[waitcnt_.ws2_nonseq];
 
-    get_wait_cycles(wait_16, memory_page::pak_ws0_lower, mem_access::seq) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
-    get_wait_cycles(wait_16, memory_page::pak_ws0_upper, mem_access::seq) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
-    get_wait_cycles(wait_16, memory_page::pak_ws1_lower, mem_access::seq) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
-    get_wait_cycles(wait_16, memory_page::pak_ws1_upper, mem_access::seq) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
-    get_wait_cycles(wait_16, memory_page::pak_ws2_lower, mem_access::seq) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
-    get_wait_cycles(wait_16, memory_page::pak_ws2_upper, mem_access::seq) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws0_lower) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws0_upper) = 1_u8 + ws0_seq[waitcnt_.ws0_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws1_lower) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws1_upper) = 1_u8 + ws1_seq[waitcnt_.ws1_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws2_lower) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
+    stall_cycles<u16>(mem_access::seq, memory_page::pak_ws2_upper) = 1_u8 + ws2_seq[waitcnt_.ws2_seq];
 
-    get_wait_cycles(wait_32, memory_page::pak_ws0_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
-    get_wait_cycles(wait_32, memory_page::pak_ws0_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
-    get_wait_cycles(wait_32, memory_page::pak_ws1_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
-    get_wait_cycles(wait_32, memory_page::pak_ws1_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
-    get_wait_cycles(wait_32, memory_page::pak_ws2_lower, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
-    get_wait_cycles(wait_32, memory_page::pak_ws2_upper, mem_access::non_seq) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws0_lower) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws0_upper) = 2_u8 + ws_nonseq[waitcnt_.ws0_nonseq] + ws0_seq[waitcnt_.ws0_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws1_lower) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws1_upper) = 2_u8 + ws_nonseq[waitcnt_.ws1_nonseq] + ws1_seq[waitcnt_.ws1_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws2_lower) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
+    stall_cycles<u32>(mem_access::non_seq, memory_page::pak_ws2_upper) = 2_u8 + ws_nonseq[waitcnt_.ws2_nonseq] + ws2_seq[waitcnt_.ws2_seq];
 
-    get_wait_cycles(wait_32, memory_page::pak_ws0_lower, mem_access::seq) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
-    get_wait_cycles(wait_32, memory_page::pak_ws0_upper, mem_access::seq) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
-    get_wait_cycles(wait_32, memory_page::pak_ws1_lower, mem_access::seq) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
-    get_wait_cycles(wait_32, memory_page::pak_ws1_upper, mem_access::seq) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
-    get_wait_cycles(wait_32, memory_page::pak_ws2_lower, mem_access::seq) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
-    get_wait_cycles(wait_32, memory_page::pak_ws2_upper, mem_access::seq) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws0_lower) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws0_upper) = 2_u8 * (1_u8 + ws0_seq[waitcnt_.ws0_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws1_lower) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws1_upper) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws2_lower) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
+    stall_cycles<u32>(mem_access::seq, memory_page::pak_ws2_upper) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
 }
 
 } // namespace gba::cpu

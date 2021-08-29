@@ -31,10 +31,12 @@ ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::u16, ie_)
 ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::u16, if_)
 ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, bool, ime_)
 
-using cpu_waitstate_container = gba::array<gba::u8, 32>;
-ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_waitstate_container, wait_16)
-ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_waitstate_container, wait_32)
+using cpu_stall_table_entry = gba::array<gba::u8, 16>;
+using cpu_stall_table_container = gba::array<cpu_stall_table_entry, 2>;
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_stall_table_container, stall_16_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_stall_table_container, stall_32_)
 ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::waitstate_control, waitcnt_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::prefetch_buffer, prefetch_buffer_)
 ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::halt_control, haltcnt_)
 ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::u8, post_boot_)
 
@@ -175,7 +177,7 @@ void draw_banked_regs(cpu::cpu* c) noexcept
 {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
     if(ImGui::BeginTable("#cpu_registers", 7,
-      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_RowBg,
       ImVec2(0.f, 0.f))) {
         ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
         ImGui::TableSetColumnIndex(1);
@@ -188,7 +190,6 @@ void draw_banked_regs(cpu::cpu* c) noexcept
         ImGui::TextUnformatted("UND");
         ImGui::TableNextRow();
 
-        const regs_t& r = access_private::r_(c);
         const cpu::reg_banks& banks = access_private::reg_banks_(c);
 
         const auto draw_banked_reg = [&](auto&& reg_selector) {
@@ -332,107 +333,123 @@ void cpu_debugger::draw() noexcept
             if(ImGui::BeginTabItem("ARM")) {
                 draw_regs(cpu_); ImGui::SameLine();
 
-                ImGui::BeginGroup();
-                ImGui::TextUnformatted("Pipeline");
-                ImGui::Separator();
-
-                regs_t& r = access_private::r_(cpu_);
-                const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
-                    ImGui::Text(access_private::cpsr_(cpu_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
-                    if(ImGui::IsItemHovered()) {
-                        ImGui::BeginTooltip();
-                        if(access_private::cpsr_(cpu_).t) {
-                            ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                              r[15_u32] - offset * 4_u32,
-                              narrow<u16>(instr)).c_str());
-                        } else {
-                            ImGui::TextUnformatted(disassembler::disassemble_arm(
-                              r[15_u32] - offset * 2_u32,
-                              instr).c_str());
-                        }
-                        ImGui::EndTooltip();
-                    }
-                };
-
                 ImGui::BeginGroup(); {
-                    draw_pipeline_instr("executing", access_private::pipeline_(cpu_).executing, 1_u32);
-                    draw_pipeline_instr("decoding", access_private::pipeline_(cpu_).decoding, 2_u32);
-                    ImGui::Text("fetch: {}", [&]() {
-                        switch(access_private::pipeline_(cpu_).fetch_type) {
-                            case cpu::mem_access::non_seq: return "non seq";
-                            case cpu::mem_access::seq: return "seq";
-                            default: UNREACHABLE();
-                        }
-                    }());
+                    ImGui::TextUnformatted("Pipeline");
+                    ImGui::Separator();
 
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-
-                    ImGui::Text("postboot: {:X}", access_private::post_boot_(cpu_).get());
-                    ImGui::Text("haltcnt: {}", [&]() {
-                        switch(access_private::haltcnt_(cpu_)) {
-                            case cpu::halt_control::halted: return "halted";
-                            case cpu::halt_control::stopped: return "stopped";
-                            case cpu::halt_control::running: return "running";
-                            default: UNREACHABLE();
-                        }
-                    }());
-
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-
-                    const auto draw_irq_reg = [](const char* name, const u16 reg) {
-                        ImGui::Text("{}: {:04X}", name, reg);
+                    regs_t& r = access_private::r_(cpu_);
+                    const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
+                        ImGui::Text(access_private::cpsr_(cpu_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
                         if(ImGui::IsItemHovered()) {
                             ImGui::BeginTooltip();
-                            for(u16 idx : range(14_u16)) {
-                                u16 irq = 1_u16 << idx;
-                                bool s = (reg & irq) == irq;
-                                ImGui::Text("{}: {}", to_string_view(to_enum<cpu::interrupt_source>(irq)), s);
+                            if(access_private::cpsr_(cpu_).t) {
+                                ImGui::TextUnformatted(disassembler::disassemble_thumb(
+                                        r[15_u32] - offset * 4_u32,
+                                        narrow<u16>(instr)).c_str());
+                            } else {
+                                ImGui::TextUnformatted(disassembler::disassemble_arm(
+                                        r[15_u32] - offset * 2_u32,
+                                        instr).c_str());
                             }
                             ImGui::EndTooltip();
                         }
                     };
 
-                    draw_irq_reg("ie", access_private::ie_(cpu_));
-                    draw_irq_reg("if", access_private::if_(cpu_));
-                    ImGui::Text("ime: {}", access_private::ime_(cpu_));
-                    ImGui::EndGroup();
-                }
+                    ImGui::BeginGroup(); {
+                        ImGui::BeginGroup(); {
+                            draw_pipeline_instr("executing", access_private::pipeline_(cpu_).executing, 1_u32);
+                            draw_pipeline_instr("decoding", access_private::pipeline_(cpu_).decoding, 2_u32);
+                            ImGui::Text("fetch: {}", [&]() {
+                                switch(access_private::pipeline_(cpu_).fetch_type) {
+                                    case cpu::mem_access::non_seq: return "non seq";
+                                    case cpu::mem_access::seq: return "seq";
+                                    default: UNREACHABLE();
+                                }
+                            }());
 
-                ImGui::SameLine(160.f, 0.f);
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
 
-                ImGui::BeginGroup(); {
-                    static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
-                    static constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
-                    static constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
-                    static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+                            ImGui::Text("postboot: {:X}", access_private::post_boot_(cpu_).get());
+                            ImGui::Text("haltcnt: {}", [&]() {
+                                switch(access_private::haltcnt_(cpu_)) {
+                                    case cpu::halt_control::halted: return "halted";
+                                    case cpu::halt_control::stopped: return "stopped";
+                                    case cpu::halt_control::running: return "running";
+                                    default: UNREACHABLE();
+                                }
+                            }());
 
-                    ImGui::TextUnformatted("waitcnt");
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
+                            const auto draw_irq_reg = [](const char* name, const u16 reg) {
+                                ImGui::Text("{}: {:04X}", name, reg);
+                                if(ImGui::IsItemHovered()) {
+                                    ImGui::BeginTooltip();
+                                    for(u16 idx : range(14_u16)) {
+                                        u16 irq = 1_u16 << idx;
+                                        bool s = (reg & irq) == irq;
+                                        ImGui::Text("{}: {}", to_string_view(to_enum<cpu::interrupt_source>(irq)), s);
+                                    }
+                                    ImGui::EndTooltip();
+                                }
+                            };
+
+                            draw_irq_reg("ie", access_private::ie_(cpu_));
+                            draw_irq_reg("if", access_private::if_(cpu_));
+                            ImGui::Text("ime: {}", access_private::ime_(cpu_));
+                            ImGui::EndGroup();
+                        }
+
+                        ImGui::SameLine(160.f, 0.f);
+
+                        ImGui::BeginGroup(); {
+                            static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
+                            static constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
+                            static constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
+                            static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+
+                            ImGui::TextUnformatted("waitcnt");
+                            ImGui::Separator();
+                            ImGui::Text("sram   {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).sram], access_private::waitcnt_(cpu_).sram);
+                            ImGui::Text("ws0 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws0_nonseq], access_private::waitcnt_(cpu_).ws0_nonseq);
+                            ImGui::Text("ws0  s {} ({})", ws0_seq[access_private::waitcnt_(cpu_).ws0_seq], access_private::waitcnt_(cpu_).ws0_seq);
+                            ImGui::Text("ws1 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws1_nonseq], access_private::waitcnt_(cpu_).ws1_nonseq);
+                            ImGui::Text("ws1  s {} ({})", ws1_seq[access_private::waitcnt_(cpu_).ws1_seq], access_private::waitcnt_(cpu_).ws1_seq);
+                            ImGui::Text("ws2 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws2_nonseq], access_private::waitcnt_(cpu_).ws2_nonseq);
+                            ImGui::Text("ws2  s {} ({})", ws2_seq[access_private::waitcnt_(cpu_).ws2_seq], access_private::waitcnt_(cpu_).ws2_seq);
+                            ImGui::Text("phi    {}", access_private::waitcnt_(cpu_).phi);
+                            ImGui::Text("prefetch {}", access_private::waitcnt_(cpu_).prefetch_buffer_enable);
+                            ImGui::EndGroup();
+                        }
+                        ImGui::EndGroup();
+                    }
+
+                    ImGui::Spacing();
+                    ImGui::TextUnformatted("Prefetch Buffer");
                     ImGui::Separator();
-                    ImGui::Text("sram {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).sram], access_private::waitcnt_(cpu_).sram);
-                    ImGui::Text("ws0_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws0_nonseq], access_private::waitcnt_(cpu_).ws0_nonseq);
-                    ImGui::Text("ws0_seq {} ({})", ws0_seq[access_private::waitcnt_(cpu_).ws0_seq], access_private::waitcnt_(cpu_).ws0_seq);
-                    ImGui::Text("ws1_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws1_nonseq], access_private::waitcnt_(cpu_).ws1_nonseq);
-                    ImGui::Text("ws1_seq {} ({})", ws1_seq[access_private::waitcnt_(cpu_).ws1_seq], access_private::waitcnt_(cpu_).ws1_seq);
-                    ImGui::Text("ws2_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws2_nonseq], access_private::waitcnt_(cpu_).ws2_nonseq);
-                    ImGui::Text("ws2_seq {} ({})", ws2_seq[access_private::waitcnt_(cpu_).ws2_seq], access_private::waitcnt_(cpu_).ws2_seq);
-                    ImGui::Text("phi {}", access_private::waitcnt_(cpu_).phi);
-                    ImGui::Text("prefetch {}", access_private::waitcnt_(cpu_).prefetch_buffer_enable);
+
+                    auto& prefetch = access_private::prefetch_buffer_(cpu_);
+                    ImGui::Text("active: {}", prefetch.active);
+                    ImGui::Text("begin:  {:08X}", prefetch.begin);
+                    ImGui::Text("end:    {:08X}", prefetch.end);
+                    ImGui::Text("size:   {}/{} ({} byte instr)", prefetch.size,
+                      prefetch.capacity, prefetch.addr_increment);
+                    ImGui::Text("cycles: {}/{}", prefetch.cycles_left, prefetch.cycles_needed);
+
                     ImGui::EndGroup();
                 }
-                ImGui::EndGroup();
-
                 static bool show_banked_registers = false;
                 ImGui::Checkbox("Show banked registers", &show_banked_registers);
                 if(show_banked_registers) {
                     draw_banked_regs(cpu_);
                 }
 
-                auto& w16 = access_private::wait_16(cpu_);
-                auto& w32 = access_private::wait_32(cpu_);
+                auto& stall16 = access_private::stall_16_(cpu_);
+                auto& stall32 = access_private::stall_32_(cpu_);
                 static bool show_wait_table = false;
                 ImGui::Checkbox("Show wait table", &show_wait_table);
 
@@ -453,15 +470,15 @@ void cpu_debugger::draw() noexcept
                                     case 0x02: return "ewram";
                                     case 0x03: return "iwram";
                                     case 0x04: return "io";
-                                    case 0x05: return "palram";
+                                    case 0x05: return "palette ram";
                                     case 0x06: return "vram";
                                     case 0x07: return "oam";
-                                    case 0x08: return "pak0_l";
-                                    case 0x09: return "pak0_u";
-                                    case 0x0A: return "pak1_l";
-                                    case 0x0B: return "pak1_u";
-                                    case 0x0C: return "pak2_l";
-                                    case 0x0D: return "pak2_u";
+                                    case 0x08: return "pak0_1";
+                                    case 0x09: return "pak0_2";
+                                    case 0x0A: return "pak1_1";
+                                    case 0x0B: return "pak1_2";
+                                    case 0x0C: return "pak2_1";
+                                    case 0x0D: return "pak2_2";
                                     case 0x0E: return "sram_1";
                                     case 0x0F: return "sram_2";
                                     default:
@@ -477,7 +494,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("16n");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w16[page]);
+                        ImGui::Text("{}", stall16[from_enum<u32>(cpu::mem_access::non_seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -485,7 +502,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("16s");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w16[page + 16]);
+                        ImGui::Text("{}", stall16[from_enum<u32>(cpu::mem_access::seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -493,7 +510,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("32n");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w32[page]);
+                        ImGui::Text("{}", stall32[from_enum<u32>(cpu::mem_access::non_seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -501,7 +518,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("32s");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w32[page + 16]);
+                        ImGui::Text("{}", stall32[from_enum<u32>(cpu::mem_access::seq)][page]);
                     }
 
                     ImGui::EndTable();

@@ -233,7 +233,7 @@ u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
             return cpu_.post_boot_;
     }
 
-    return narrow<u8>(cpu_.read_unused(addr, access));
+    return narrow<u8>(cpu_.read_unused(addr));
 }
 
 void core::write_io(const u32 addr, const u8 data) noexcept

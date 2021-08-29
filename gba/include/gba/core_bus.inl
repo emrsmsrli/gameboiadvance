@@ -48,13 +48,12 @@ FORCEINLINE constexpr bool is_sram_flash(const cartridge::backup::type type) noe
       || type == cartridge::backup::type::flash_128;
 }
 
-FORCEINLINE cpu::mem_access get_actual_access(const cpu::memory_page page, const u32 addr, cpu::mem_access default_access) noexcept
+FORCEINLINE cpu::mem_access force_nonseq_access(const u32 addr, const cpu::mem_access default_access) noexcept
 {
-    if(page >= cpu::memory_page::pak_ws0_lower && page <= cpu::memory_page::pak_ws2_upper
-       && (addr & 0x1'FFFF_u32) != 0_u32) { // force nonseq access on 128kb boundaries in rom
-        return (default_access & ~cpu::mem_access::seq) | cpu::mem_access::non_seq;
+    // force nonseq access on 128kb boundaries in rom
+    if((addr & 0x1'FFFF_u32) != 0_u32 && default_access == cpu::mem_access::seq) {
+        return cpu::mem_access::non_seq;
     }
-
     return default_access;
 }
 
@@ -101,19 +100,24 @@ struct io_traits<u8> {
 } // namespace traits
 
 template<typename T>
-T core::read(u32 addr, const cpu::mem_access access) noexcept
+T core::read(u32 addr, cpu::mem_access access) noexcept
 {
 #if WITH_DEBUGGER
     on_io_read(addr, traits::io_traits<T>::debugger_access_width);
 #endif // WITH_DEBUGGER
 
     const auto page = to_enum<cpu::memory_page>(addr >> 24_u32);
-    if(LIKELY(!bitflags::is_set(access, cpu::mem_access::dry_run))) {
-        // todo make get_wait_cycles better
-        if constexpr(traits::is_word_access<T>) {
-            tick_components(get_wait_cycles(cpu_.wait_32, page, detail::get_actual_access(page, addr, access)));
+    if(LIKELY(access != cpu::mem_access::none)) {
+        const bool accessing_rom = page >= cpu::memory_page::pak_ws0_lower && page <= cpu::memory_page::pak_ws2_upper;
+        if(accessing_rom) {
+            access = detail::force_nonseq_access(addr, access);
+        }
+
+        const u32 cycles = cpu_.stall_cycles<T>(access, page);
+        if(LIKELY(cpu_.waitcnt_.prefetch_buffer_enable) && accessing_rom) {
+            cpu_.prefetch(addr, cycles);
         } else {
-            tick_components(get_wait_cycles(cpu_.wait_16, page, detail::get_actual_access(page, addr, access)));
+            tick_components(cycles);
         }
     }
 
@@ -187,12 +191,12 @@ T core::read(u32 addr, const cpu::mem_access access) noexcept
             return data * traits::io_traits<T>::sram_flash_panning_mask;
         }
         default:
-            return narrow<T>(cpu_.read_unused(addr, access));
+            return narrow<T>(cpu_.read_unused(addr));
     }
 }
 
 template<typename T>
-void core::write(u32 addr, const T data, const cpu::mem_access access) noexcept
+void core::write(u32 addr, const T data, cpu::mem_access access) noexcept
 {
 #if WITH_DEBUGGER
     on_io_write(addr, data, traits::io_traits<T>::debugger_access_width);
@@ -200,12 +204,17 @@ void core::write(u32 addr, const T data, const cpu::mem_access access) noexcept
 
     const auto page = to_enum<cpu::memory_page>(addr >> 24_u32);
 
-    ASSERT(!bitflags::is_set(access, cpu::mem_access::dry_run));
-    // todo make this better
-    if constexpr(traits::is_word_access<T>) {
-        tick_components(get_wait_cycles(cpu_.wait_32, page, access));
+    ASSERT(access != cpu::mem_access::none);
+    const bool accessing_rom = page >= cpu::memory_page::pak_ws0_lower && page <= cpu::memory_page::pak_ws2_upper;
+    if(accessing_rom) {
+        access = detail::force_nonseq_access(addr, access);
+    }
+
+    const u32 cycles = cpu_.stall_cycles<T>(access, page);
+    if(LIKELY(cpu_.waitcnt_.prefetch_buffer_enable) && accessing_rom) {
+        cpu_.prefetch(addr, cycles);
     } else {
-        tick_components(get_wait_cycles(cpu_.wait_16, page, access));
+        tick_components(cycles);
     }
 
     if constexpr(traits::io_traits<T>::addr_alignment_mask != 0_u32) {
@@ -252,7 +261,7 @@ void core::write(u32 addr, const T data, const cpu::mem_access access) noexcept
             if constexpr(traits::is_hword_access<T>) {
                 const bool is_eeprom = detail::is_eeprom(gamepak_.pak_data_.size(), gamepak_.backup_type(), addr);
                 if(UNLIKELY(is_eeprom)) {
-                    if(bitflags::is_set(access, cpu::mem_access::dma)) {
+                    if(cpu_.dma_controller_.is_running()) {
                         if(UNLIKELY(gamepak_.backup_type() == cartridge::backup::type::eeprom_undetected)) {
                             const bool is_eeprom_64 = cpu_.dma_controller_[3_usize].internal.count == 17_u8;
                             gamepak_.on_eeprom_bus_width_detected(is_eeprom_64

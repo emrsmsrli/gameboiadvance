@@ -18,12 +18,12 @@ its features are limited compared to other emulators.
 - Accurate DMA interleaving
 - EEPROM, FLASH and SRAM save-load capability
 - RTC support _(sadly, no other GPIO extensions)_
+- Gamepak prefetch emulation
 - Disassembler and a powerful debugger
   - Capable of showing all the internals of the emulator
   - Execution and data access breakpoint support
   
 ### Feature TODO
-- Gamepak prefetch emulation
 - SIO emulation, and networked multiplayer support
 
 ## Screenshots
@@ -48,16 +48,16 @@ gameboiadvance library can be easily integrated to your own frontend implementat
 ```cpp
 #include <gba/core.h>
 
-// WITH_DEBUGGER can be set with cmake argument -DWITH_DEBUGGER=ON
+// WITH_DEBUGGER can be set with CMake argument -DWITH_DEBUGGER=ON
 #if WITH_DEBUGGER
   #include <gba_debugger/debugger.h>
-#endif //WITH_DEBUGGER
+#endif // WITH_DEBUGGER
 
 void on_scanline(const gba::u8 line_number, const gba::ppu::scanline_buffer& buffer) noexcept;
 void on_vblank() noexcept;
 void on_audio(const gba::vector<gba::apu::stereo_sample<float>>& buffer) noexcept;
 
-int main(int argc, char** argv) 
+int main(int argc, char* argv[]) 
 {
     // BIOS is required to boot
     gba::core core{"file/path/to/bios.gba"};
@@ -84,7 +84,7 @@ int main(int argc, char** argv)
         // core.release_key(gba::keypad::key::start);
 
         core.tick_one_frame();
-        // or core.tick(n); which executes n instructions every iteration
+        // or core.tick(n); which executes at least `n` cycles every iteration
     }
 #endif // WITH_DEBUGGER
 

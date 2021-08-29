@@ -19,12 +19,9 @@ enum class debugger_access_width : u32::type { byte, hword, word, any };
 #endif // WITH_DEBUGGER
 
 enum class mem_access : u32::type {
-    none = 0,
-    non_seq = 1,
-    seq = 2,
-    pak_prefetch = 4,
-    dma = 8,
-    dry_run = 16
+    non_seq,
+    seq,
+    none
 };
 
 struct bus_interface {

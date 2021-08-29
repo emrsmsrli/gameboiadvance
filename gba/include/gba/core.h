@@ -94,14 +94,14 @@ private:
     void write_io(u32 addr, u8 data) noexcept;
 
     void idle() noexcept final { tick_components(1_u32); }
-    void tick_components(u32 cycles) noexcept final
+    void tick_components(const u32 cycles) noexcept final
     {
-        // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
         if(UNLIKELY(!cpu_.dma_controller_.is_running() && cpu_.dma_controller_.should_start_running())) {
             cpu_.dma_controller_.run_channels();
         }
 
         scheduler_.add_cycles(cycles);
+        cpu_.prefetch_tick(cycles);
     }
 
     template<typename T> T read(u32 address, cpu::mem_access access) noexcept;
