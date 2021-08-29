@@ -51,7 +51,7 @@ FORCEINLINE constexpr bool is_sram_flash(const cartridge::backup::type type) noe
 FORCEINLINE cpu::mem_access force_nonseq_access(const u32 addr, const cpu::mem_access default_access) noexcept
 {
     // force nonseq access on 128kb boundaries in rom
-    if((addr & 0x1'FFFF_u32) != 0_u32 && default_access == cpu::mem_access::seq) {
+    if((addr & 0x1'FFFF_u32) == 0_u32) {
         return cpu::mem_access::non_seq;
     }
     return default_access;
