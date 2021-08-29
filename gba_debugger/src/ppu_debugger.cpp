@@ -1004,7 +1004,7 @@ void ppu_debugger::draw_obj() noexcept
 
                             for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
                                 for(u32 px = 0_u32; px < ppu::tile_dot_count; ++px) {
-                                    const u8 color_idx = memcpy<u8>(vram, 0x1'0000_u32 + tile_num * 32_u32 + py * ppu::tile_dot_count + px);
+                                    const u8 color_idx = memcpy<u8>(vram, 0x1'0000_u32 + (tile_num & 0x3FF_u32) * 32_u32 + py * ppu::tile_dot_count + px);
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
@@ -1018,7 +1018,7 @@ void ppu_debugger::draw_obj() noexcept
 
                             for(u32 py = 0_u32; py < ppu::tile_dot_count; ++py) {
                                 for(u32 px = 0_u32; px < ppu::tile_dot_count; px += 2_u32) {
-                                    const u8 color_idxs = memcpy<u8>(vram, 0x1'0000_u32 + tile_num * 32_u32 + (py * ppu::tile_dot_count / 2_u32) + (px / 2_u32));
+                                    const u8 color_idxs = memcpy<u8>(vram, 0x1'0000_u32 + (tile_num & 0x3FF_u32) * 32_u32 + (py * ppu::tile_dot_count / 2_u32) + (px / 2_u32));
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),

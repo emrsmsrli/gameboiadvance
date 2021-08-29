@@ -136,7 +136,8 @@ void engine::render_obj() noexcept
                     continue;
                 }
 
-                dot = tile_dot_8bpp(dot_x, dot_y, 0x1'0000_u32 + tile_idx * 32_u32, palette_8bpp_target::obj);
+                const auto tile_addr = 0x1'0000_u32 + (tile_idx & 0x3FF_u32) * 32_u32;
+                dot = tile_dot_8bpp(dot_x, dot_y, tile_addr, palette_8bpp_target::obj);
             } else {
                 const u32 tile_idx = dispcnt_.obj_mapping_1d
                   ? obj.attr2.tile_idx() + tile_y * (dimensions.h / 8_u8) + tile_x
@@ -146,7 +147,8 @@ void engine::render_obj() noexcept
                     continue;
                 }
 
-                dot = tile_dot_4bpp(dot_x, dot_y, 0x1'0000_u32 + tile_idx * 32_u32, obj.attr2.palette_idx());
+                const auto tile_addr = 0x1'0000_u32 + (tile_idx & 0x3FF_u32) * 32_u32;
+                dot = tile_dot_4bpp(dot_x, dot_y, tile_addr, obj.attr2.palette_idx());
             }
 
             const bool is_transparent = dot == color::transparent();
