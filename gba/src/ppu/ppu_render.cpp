@@ -32,8 +32,6 @@ void engine::render_obj() noexcept
         return;
     }
 
-    static constexpr obj_affine identity_affine;
-
     static constexpr range<u8> bitmap_modes{3_u8, 6_u8};
     const bool in_bitmap_mode = bitmap_modes.contains(dispcnt_.bg_mode);
 
