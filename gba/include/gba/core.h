@@ -97,7 +97,7 @@ private:
     void tick_components(u32 cycles) noexcept final
     {
         // todo break this into pieces that handle pak prefetch system https://mgba.io/2015/06/27/cycle-counting-prefetch/
-        if(UNLIKELY(!cpu_.dma_controller_.is_running())) {
+        if(UNLIKELY(!cpu_.dma_controller_.is_running() && cpu_.dma_controller_.should_start_running())) {
             cpu_.dma_controller_.run_channels();
         }
 

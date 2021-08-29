@@ -94,7 +94,8 @@ public:
     void write_cnt_l(usize idx, u8 data) noexcept;
     void write_cnt_h(usize idx, u8 data) noexcept;
 
-    [[nodiscard]] FORCEINLINE bool is_running() const noexcept { return is_running_ || running_channels_.empty(); }
+    [[nodiscard]] FORCEINLINE bool is_running() const noexcept { return is_running_; }
+    [[nodiscard]] FORCEINLINE bool should_start_running() const noexcept { return !running_channels_.empty(); }
     void run_channels() noexcept;
     void request(occasion occasion) noexcept;
 
