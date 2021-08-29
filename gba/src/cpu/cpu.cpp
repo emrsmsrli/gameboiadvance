@@ -109,6 +109,7 @@ void cpu::prefetch(const u32 addr, const u32 cycles) noexcept
 {
     if(!prefetch_buffer_.empty() && addr == prefetch_buffer_.begin) {
         prefetch_buffer_.begin += prefetch_buffer_.addr_increment;
+        --prefetch_buffer_.size;
         bus_->tick_components(1_u32);
         return;
     }
@@ -124,19 +125,18 @@ void cpu::prefetch(const u32 addr, const u32 cycles) noexcept
     prefetch_buffer_.active = true;
     prefetch_buffer_.size = 0_u32;
 
-    const u32 instr_width = cpsr().t ? 2_u32 : 4_u32;
     const auto page = to_enum<memory_page>(addr >> 24_u32);
-
     if(cpsr().t) {
         prefetch_buffer_.cycles_needed = stall_cycles<u16>(mem_access::seq, page);
+        prefetch_buffer_.addr_increment = 2_u32;
     } else {
         prefetch_buffer_.cycles_needed = stall_cycles<u32>(mem_access::seq, page);
+        prefetch_buffer_.addr_increment = 4_u32;
     }
 
     prefetch_buffer_.cycles_left = prefetch_buffer_.cycles_needed;
-    prefetch_buffer_.capacity = prefetch_buffer::capacity_in_bytes / instr_width;
-    prefetch_buffer_.addr_increment = instr_width;
-    prefetch_buffer_.begin = addr + instr_width;
+    prefetch_buffer_.capacity = prefetch_buffer::capacity_in_bytes / prefetch_buffer_.addr_increment;
+    prefetch_buffer_.begin = addr + prefetch_buffer_.addr_increment;
     prefetch_buffer_.end = prefetch_buffer_.begin;
 }
 
