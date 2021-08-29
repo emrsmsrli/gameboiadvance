@@ -251,32 +251,32 @@ bool window::draw() noexcept
 
         if(window_event_.type == sf::Event::KeyPressed) {
             switch(window_event_.key.code) {
-                case sf::Keyboard::W: core_->press_key(keypad::key::up); break;
-                case sf::Keyboard::A: core_->press_key(keypad::key::left); break;
-                case sf::Keyboard::S: core_->press_key(keypad::key::down); break;
-                case sf::Keyboard::D: core_->press_key(keypad::key::right); break;
-                case sf::Keyboard::K: core_->press_key(keypad::key::b); break;
-                case sf::Keyboard::O: core_->press_key(keypad::key::a); break;
-                case sf::Keyboard::B: core_->press_key(keypad::key::select); break;
-                case sf::Keyboard::N: core_->press_key(keypad::key::start); break;
-                case sf::Keyboard::T: core_->press_key(keypad::key::left_shoulder); break;
-                case sf::Keyboard::U: core_->press_key(keypad::key::right_shoulder); break;
+                case sf::Keyboard::W: if(tick_allowed_) { core_->press_key(keypad::key::up); } break;
+                case sf::Keyboard::A: if(tick_allowed_) { core_->press_key(keypad::key::left); } break;
+                case sf::Keyboard::S: if(tick_allowed_) { core_->press_key(keypad::key::down); } break;
+                case sf::Keyboard::D: if(tick_allowed_) { core_->press_key(keypad::key::right); } break;
+                case sf::Keyboard::K: if(tick_allowed_) { core_->press_key(keypad::key::b); } break;
+                case sf::Keyboard::O: if(tick_allowed_) { core_->press_key(keypad::key::a); } break;
+                case sf::Keyboard::B: if(tick_allowed_) { core_->press_key(keypad::key::select); } break;
+                case sf::Keyboard::N: if(tick_allowed_) { core_->press_key(keypad::key::start); } break;
+                case sf::Keyboard::T: if(tick_allowed_) { core_->press_key(keypad::key::left_shoulder); } break;
+                case sf::Keyboard::U: if(tick_allowed_) { core_->press_key(keypad::key::right_shoulder); } break;
                 case sf::Keyboard::F7: cpu_->tick(); break;
                 default:
                     break;
             }
         } else if(window_event_.type == sf::Event::KeyReleased) {
             switch(window_event_.key.code) {
-                case sf::Keyboard::W: core_->release_key(keypad::key::up); break;
-                case sf::Keyboard::A: core_->release_key(keypad::key::left); break;
-                case sf::Keyboard::S: core_->release_key(keypad::key::down); break;
-                case sf::Keyboard::D: core_->release_key(keypad::key::right); break;
-                case sf::Keyboard::K: core_->release_key(keypad::key::b); break;
-                case sf::Keyboard::O: core_->release_key(keypad::key::a); break;
-                case sf::Keyboard::B: core_->release_key(keypad::key::select); break;
-                case sf::Keyboard::N: core_->release_key(keypad::key::start); break;
-                case sf::Keyboard::T: core_->release_key(keypad::key::left_shoulder); break;
-                case sf::Keyboard::U: core_->release_key(keypad::key::right_shoulder); break;
+                case sf::Keyboard::W: if(tick_allowed_) { core_->release_key(keypad::key::up); } break;
+                case sf::Keyboard::A: if(tick_allowed_) { core_->release_key(keypad::key::left); } break;
+                case sf::Keyboard::S: if(tick_allowed_) { core_->release_key(keypad::key::down); } break;
+                case sf::Keyboard::D: if(tick_allowed_) { core_->release_key(keypad::key::right); } break;
+                case sf::Keyboard::K: if(tick_allowed_) { core_->release_key(keypad::key::b); } break;
+                case sf::Keyboard::O: if(tick_allowed_) { core_->release_key(keypad::key::a); } break;
+                case sf::Keyboard::B: if(tick_allowed_) { core_->release_key(keypad::key::select); } break;
+                case sf::Keyboard::N: if(tick_allowed_) { core_->release_key(keypad::key::start); } break;
+                case sf::Keyboard::T: if(tick_allowed_) { core_->release_key(keypad::key::left_shoulder); } break;
+                case sf::Keyboard::U: if(tick_allowed_) { core_->release_key(keypad::key::right_shoulder); } break;
                 case sf::Keyboard::F9: tick_allowed_ = !tick_allowed_; break;
                 default:
                     break;
@@ -505,7 +505,7 @@ void window::on_audio_buffer_full(vector<apu::stereo_sample<float>> buffer) noex
         return;
     }
 
-    std::for_each(buffer.begin(),  buffer.end(), [&](apu::stereo_sample<float>& sample) {
+    std::for_each(buffer.begin(), buffer.end(), [&](apu::stereo_sample<float>& sample) {
         sample = sample * prefs_.apu_audio_volume;
     });
 
