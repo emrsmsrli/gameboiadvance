@@ -129,13 +129,12 @@ void controller::run_channels() noexcept
 {
     is_running_ = true;
 
-    array<bool, channel_count> first_run{true, true, true, true};
-
+    bool first_run = true;
     while(!running_channels_.empty()) {
-        channel* channel = running_channels_.back(); // always has highest priority
+        channel* channel = running_channels_.back(); // always has the highest priority
 
-        if(first_run[channel->id] && (!addr_in_rom_area(channel->src) || !addr_in_rom_area(channel->dst))) {
-            first_run[channel->id] = false;
+        if(UNLIKELY(first_run && (!addr_in_rom_area(channel->src) || !addr_in_rom_area(channel->dst)))) {
+            first_run = false;
             bus_->idle();
             bus_->idle();
         }
@@ -207,7 +206,8 @@ void controller::run_channels() noexcept
     is_running_ = false;
 }
 
-void controller::request(const occasion occasion) noexcept {
+void controller::request(const occasion occasion) noexcept
+{
     constexpr u32 fifo_addr_a = 0x0400'00A0_u32;
     constexpr u32 fifo_addr_b = 0x0400'00A4_u32;
 

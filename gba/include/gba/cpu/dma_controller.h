@@ -71,7 +71,6 @@ struct channel : data {
     [[nodiscard]] u8 read_cnt_h() const noexcept;
 };
 
-// todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
     cpu::bus_interface* bus_;
     cpu::irq_controller_handle irq_;
