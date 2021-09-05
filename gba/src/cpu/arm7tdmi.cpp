@@ -87,6 +87,12 @@ void arm7tdmi::process_interrupts() noexcept
         return;
     }
 
+    if (cpsr().t) {
+        void(bus_->read_16(bit::clear(pc(), 0_u8), pipeline_.fetch_type));
+    } else {
+        void(bus_->read_32(mask::clear(pc(), 0b11_u32), pipeline_.fetch_type));
+    }
+
     spsr_banks_[register_bank::irq] = cpsr();
     switch_mode(privilege_mode::irq);
     cpsr().i = true;
