@@ -8,15 +8,15 @@
 #ifndef GAMEBOIADVANCE_APU_H
 #define GAMEBOIADVANCE_APU_H
 
-#include <gba/apu/apu_types.h>
 #include <gba/apu/apu_resampler.h>
+#include <gba/apu/apu_types.h>
+#include <gba/cpu/dma_controller.h>
 #include <gba/core/fwd.h>
-#include <gba/arm/dma_controller.h>
 
 namespace gba::apu {
 
 class engine {
-    friend class arm::arm7tdmi;
+    friend core;
 
     scheduler* scheduler_;
     dma::controller_handle dma_;
@@ -57,8 +57,8 @@ private:
         else if constexpr(ChannelIdx == 4)  { channel_4_.write(reg_idx, data); }
     }
 
-    void tick_sequencer(u64 late_cycles) noexcept;
-    void tick_mixer(u64 late_cycles) noexcept;
+    void tick_sequencer(u32 late_cycles) noexcept;
+    void tick_mixer(u32 late_cycles) noexcept;
     [[nodiscard]] i16 generate_sample(u32 terminal) noexcept;
 
     void on_timer_overflow(timer::timer* timer) noexcept;

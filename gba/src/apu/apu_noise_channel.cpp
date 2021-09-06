@@ -15,7 +15,7 @@ noise_channel::noise_channel(scheduler* scheduler) noexcept
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), noise_channel::generate_output_sample);
 }
 
-void noise_channel::generate_output_sample(const u64 late_cycles) noexcept
+void noise_channel::generate_output_sample(const u32 late_cycles) noexcept
 {
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, noise_channel::generate_output_sample);
 

@@ -8,8 +8,8 @@
 #ifndef GAMEBOIADVANCE_LOOKUP_TABLE_H
 #define GAMEBOIADVANCE_LOOKUP_TABLE_H
 
-#include <string_view>
 #include <initializer_list>
+#include <string_view>
 
 #include <gba/core/container.h>
 

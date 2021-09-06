@@ -10,15 +10,17 @@
 
 #include <imgui_memory_editor/imgui_memory_editor.h>
 
-#include <gba/core/fwd.h>
-#include <gba/core/container.h>
 #include <gba/apu/apu_types.h>
+#include <gba/core/container.h>
+#include <gba/core/fwd.h>
 
 namespace gba::debugger {
 
-struct apu_debugger {
-private:
+struct preferences;
+
+class apu_debugger {
     MemoryEditor ram_viewer_;
+    preferences* prefs_;
     apu::engine* apu_engine_;
 
     vector<apu::stereo_sample<float>> sound_buffer_1_;
@@ -29,7 +31,7 @@ private:
     vector<apu::stereo_sample<float>> sound_buffer_fifo_b_;
 
 public:
-    apu_debugger(apu::engine* apu_engine) noexcept;
+    apu_debugger(apu::engine* apu_engine, preferences* prefs) noexcept;
     void draw() noexcept;
 
     FORCEINLINE void set_buffer_capacity(const usize capacity) noexcept
@@ -42,6 +44,7 @@ public:
         sound_buffer_fifo_b_.resize(capacity);
     }
 
+private:
     void on_sample_written(usize idx) noexcept;
 };
 

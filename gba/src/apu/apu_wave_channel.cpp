@@ -21,7 +21,7 @@ wave_channel::wave_channel(scheduler* scheduler) noexcept
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), wave_channel::generate_output_sample);
 }
 
-void wave_channel::generate_output_sample(const u64 late_cycles) noexcept
+void wave_channel::generate_output_sample(const u32 late_cycles) noexcept
 {
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, wave_channel::generate_output_sample);
 

@@ -18,12 +18,12 @@ its features are limited compared to other emulators.
 - Accurate DMA interleaving
 - EEPROM, FLASH and SRAM save-load capability
 - RTC support _(sadly, no other GPIO extensions)_
+- Gamepak prefetch emulation
 - Disassembler and a powerful debugger
   - Capable of showing all the internals of the emulator
   - Execution and data access breakpoint support
   
 ### Feature TODO
-- Gamepak prefetch emulation
 - SIO emulation, and networked multiplayer support
 
 ## Screenshots
@@ -48,39 +48,43 @@ gameboiadvance library can be easily integrated to your own frontend implementat
 ```cpp
 #include <gba/core.h>
 
-// WITH_DEBUGGER can be set with cmake argument -DWITH_DEBUGGER=ON
+// WITH_DEBUGGER can be set with CMake argument -DWITH_DEBUGGER=ON
 #if WITH_DEBUGGER
   #include <gba_debugger/debugger.h>
-#endif //WITH_DEBUGGER
+#endif // WITH_DEBUGGER
 
 void on_scanline(const gba::u8 line_number, const gba::ppu::scanline_buffer& buffer) noexcept;
 void on_vblank() noexcept;
-void on_audio(const gba::vector<apu::stereo_sample<float>>& buffer) noexcept;
+void on_audio(const gba::vector<gba::apu::stereo_sample<float>>& buffer) noexcept;
 
-int main(int argc, char** argv) 
+int main(int argc, char* argv[]) 
 {
-    // bios is required to boot
-    gba::core gba{"file/path/to/bios.gba"};
-    gba.load_pak("file/path/to/rom.gba");
+    // BIOS is required to boot
+    gba::core core{"file/path/to/bios.gba"};
+    core.load_pak("file/path/to/rom.gba");
 
 #if WITH_DEBUGGER
-    gba::debugger::window debugger_window(&gba);
+    gba::debugger::window debugger_window(&core);
 
     while(true) {
         // debugger window handles input, video and audio output
         debugger_window.tick();
     }
 #else
-    gba.ppu.event_on_scanline.add_delegate(gba::connect_arg<&on_scanline>);
-    gba.ppu.event_on_vblank.add_delegate(gba::connect_arg<&on_vblank>);
-    gba.apu.get_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
+    core.on_scanline_event().add_delegate(gba::connect_arg<&on_scanline>);
+    core.on_vblank_event().add_delegate(gba::connect_arg<&on_vblank>);
+    core.sound_buffer_overflow_event().add_delegate(gba::connect_arg<&on_audio>);
+
+    // optionally set audio generation parameters
+    // core.set_dst_sample_rate(some_audio_device.sample_rate());
+    // core.set_sound_buffer_capacity(some_audio_device.sample_count());
 
     while(true) {
-        // gba.press_key(gba::keypad::key::a);
-        // gba.release_key(gba::keypad::key::start);
+        // core.press_key(gba::keypad::key::a);
+        // core.release_key(gba::keypad::key::start);
 
-        gba.tick_one_frame();
-        // or gba.tick(n); which executes n instructions every iteration
+        core.tick_one_frame();
+        // or core.tick(n); which executes at least `n` cycles every iteration
     }
 #endif // WITH_DEBUGGER
 

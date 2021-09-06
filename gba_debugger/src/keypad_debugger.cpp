@@ -9,8 +9,8 @@
 
 #include <imgui.h>
 
-#include <gba/keypad.h>
 #include <gba/helper/range.h>
+#include <gba/keypad.h>
 #include <gba_debugger/debugger_helpers.h>
 
 namespace gba::debugger {

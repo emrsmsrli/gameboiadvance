@@ -8,13 +8,13 @@
 #ifndef GAMEBOIADVANCE_PPU_H
 #define GAMEBOIADVANCE_PPU_H
 
-#include <gba/arm/irq_controller_handle.h>
-#include <gba/arm/dma_controller.h>
+#include <gba/cpu/dma_controller.h>
+#include <gba/cpu/irq_controller_handle.h>
+#include <gba/cpu/mmio_addr.h>
 #include <gba/core/container.h>
 #include <gba/core/event/event.h>
 #include <gba/core/fwd.h>
 #include <gba/ppu/ppu_types.h>
-#include <gba/arm/mmio_addr.h>
 
 namespace gba::ppu {
 
@@ -26,9 +26,9 @@ constexpr u32::type tile_dot_count = 8_u32;
 using scanline_buffer = array<color, screen_width>;
 
 class engine {
-    friend arm::arm7tdmi;
+    friend core;
 
-    arm::irq_controller_handle irq_;
+    cpu::irq_controller_handle irq_;
     dma::controller_handle dma_;
     scheduler* scheduler_;
 
@@ -63,14 +63,14 @@ class engine {
     array<win_enable_bits*, screen_width> win_buffer_;
 
 public:
-    static constexpr auto cycles_per_frame = 280'896_u64;
+    static constexpr u32 cycles_per_frame = 280'896_u32;
 
     event<u8, const scanline_buffer&> event_on_scanline;
     event<> event_on_vblank;
 
-    engine(scheduler* scheduler) noexcept;
+    explicit engine(scheduler* scheduler) noexcept;
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { irq_ = irq; }
     void set_dma_controller_handle(const dma::controller_handle dma) noexcept { dma_ = dma; }
 
     void check_vcounter_irq() noexcept;
@@ -80,8 +80,8 @@ private:
 
     using tile_line = array<color, tile_dot_count>;
 
-    void on_hblank(u64 late_cycles) noexcept;
-    void on_hdraw(u64 late_cycles) noexcept;
+    void on_hblank(u32 late_cycles) noexcept;
+    void on_hdraw(u32 late_cycles) noexcept;
 
     void render_scanline() noexcept;
 
@@ -105,7 +105,7 @@ private:
     void generate_window_buffer() noexcept;
     void generate_window_buffer(window& win, win_enable_bits* enable_bits) noexcept;
     void compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept;
-    color blend(color first, color second, bldcnt::effect type) const noexcept;
+    [[nodiscard]] color blend(color first, color second, bldcnt::effect type) const noexcept;
 
     template<typename BG>
     [[nodiscard]] static FORCEINLINE u32 map_entry_index(const u32 tile_x, const u32 tile_y, const BG& bg) noexcept

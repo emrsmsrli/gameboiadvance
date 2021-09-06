@@ -13,9 +13,11 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+option(ENABLE_GZIP_SUPPORT "Enable gzip compressed file read-write support" ON)
 option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
+option(ENABLE_ASSERTIONS "Enable assertions" OFF)
 option(WITH_WARNINGS "Enable compiler warnings" ON)
 option(LOG_LEVEL "Log level" "OFF")
 
@@ -29,10 +31,11 @@ if(${LOG_LEVEL_IDX} EQUAL -1)
 endif()
 
 add_library(project_options INTERFACE)
-target_compile_features(project_options INTERFACE cxx_std_17)
+target_compile_options(project_options INTERFACE $<IF:$<CXX_COMPILER_ID:MSVC>,/std:c++17,-std=c++17>)
 target_compile_definitions(project_options INTERFACE
         DEBUG=$<CONFIG:Debug>
         WITH_DEBUGGER=$<BOOL:${ENABLE_DEBUGGER}>
+        $<$<BOOL:${ENABLE_ASSERTIONS}>:ENABLE_ASSERTIONS>
         SPDLOG_ACTIVE_LEVEL=${LOG_LEVEL_IDX})
 
 if(NOT MSVC)
@@ -62,6 +65,9 @@ endif()
 
 find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
+if(ENABLE_GZIP_SUPPORT)
+    find_package(ZLIB REQUIRED)
+endif()
 
 add_subdirectory(external)
 add_subdirectory(gba)

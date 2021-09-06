@@ -12,8 +12,8 @@
 
 #include <gba/core/container.h>
 #include <gba/core/fwd.h>
-#include <gba/helper/range.h>
 #include <gba/helper/bitflags.h>
+#include <gba/helper/range.h>
 
 namespace gba::debugger {
 
@@ -37,7 +37,7 @@ struct access_breakpoint {
     enum class type { read = 1, write = 2, read_write = read | write };
 
     range<u32> address_range{1u};
-    arm::debugger_access_width access_width;
+    cpu::debugger_access_width access_width;
     type access_type{type::read};
     std::optional<u32> data;
     breakpoint_hit_type hit_type = breakpoint_hit_type::suspend;
@@ -55,15 +55,15 @@ public:
     [[nodiscard]] vector<access_breakpoint>& get_access_breakpoints() noexcept { return access_breakpoints_; }
 
     [[nodiscard]] execution_breakpoint* get_execution_breakpoint(u32 address) noexcept;
-    [[nodiscard]] access_breakpoint* get_enabled_read_breakpoint(u32 address, arm::debugger_access_width access_width) noexcept;
-    [[nodiscard]] access_breakpoint* get_enabled_write_breakpoint(u32 address, u32 data, arm::debugger_access_width access_width) noexcept;
+    [[nodiscard]] access_breakpoint* get_enabled_read_breakpoint(u32 address, cpu::debugger_access_width access_width) noexcept;
+    [[nodiscard]] access_breakpoint* get_enabled_write_breakpoint(u32 address, u32 data, cpu::debugger_access_width access_width) noexcept;
 
     void modify_execution_breakpoint(u32 address, bool toggle);
-    bool add_execution_breakpoint(execution_breakpoint breakpoint);
-    void add_access_breakpoint(access_breakpoint breakpoint);
+    bool add_execution_breakpoint(const execution_breakpoint& breakpoint);
+    void add_access_breakpoint(const access_breakpoint& breakpoint);
 };
 
-std::string_view to_string_view(const access_breakpoint::type type) noexcept;
+std::string_view to_string_view(access_breakpoint::type type) noexcept;
 
 } // namespace gba::debugger
 

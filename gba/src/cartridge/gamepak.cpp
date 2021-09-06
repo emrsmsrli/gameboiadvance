@@ -21,7 +21,7 @@ std::string_view make_pak_str_zero_padded(const vector<u8>& data, const usize st
 {
     usize len;
     for(; len < max_len; ++len) {
-        if(data[start + len] == 0) { return make_pak_str(data, start, len + 1_usize); }
+        if(data[start + len] == 0) { return make_pak_str(data, start, len); }
     }
 
     return make_pak_str(data, start, len);
@@ -71,18 +71,18 @@ void gamepak::load(const fs::path& path)
     }
     calculated_checksum -= 0x19_u8;
 
-    LOG_TRACE(gamepak, "------ gamepak ------");
-    LOG_TRACE(gamepak, "path: {}", path_.string());
-    LOG_TRACE(gamepak, "title: {}", game_title_);
-    LOG_TRACE(gamepak, "game code: AGB-{}", game_code_);
-    LOG_TRACE(gamepak, "maker code: {}", maker_code_);
-    LOG_TRACE(gamepak, "main unit code: {}", main_unit_code_);
-    LOG_TRACE(gamepak, "software version: {}", software_version_);
+    LOG_INFO(gamepak, "------ gamepak ------");
+    LOG_INFO(gamepak, "path: {}", path_.string());
+    LOG_INFO(gamepak, "title: {}", game_title_);
+    LOG_INFO(gamepak, "game code: AGB-{}", game_code_);
+    LOG_INFO(gamepak, "maker code: {}", maker_code_);
+    LOG_INFO(gamepak, "main unit code: {}", main_unit_code_);
+    LOG_INFO(gamepak, "software version: {}", software_version_);
 
     if(calculated_checksum != checksum_) {
         LOG_WARN(gamepak, "checksum: {:02X} - mismatch, found: {:02X}", calculated_checksum, checksum_);
     } else {
-        LOG_TRACE(gamepak, "checksum: {:02X}", calculated_checksum);
+        LOG_INFO(gamepak, "checksum: {:02X}", calculated_checksum);
     }
 
     detect_backup_type();
@@ -96,10 +96,10 @@ void gamepak::load(const fs::path& path)
         mirror_mask_ = default_mirror_mask;
     }
 
-    LOG_TRACE(gamepak, "rtc: {}", has_rtc_);
-    LOG_TRACE(gamepak, "address mirroring: {}, mask: {:08X}", has_mirroring_, mirror_mask_);
+    LOG_INFO(gamepak, "rtc: {}", has_rtc_);
+    LOG_INFO(gamepak, "address mirroring: {}, mask: {:08X}", has_mirroring_, mirror_mask_);
 
-    LOG_TRACE(gamepak, "---------------------");
+    LOG_INFO(gamepak, "---------------------");
 
     on_load(path);
 }
@@ -114,7 +114,7 @@ void gamepak::detect_backup_type() noexcept
         has_rtc_ = entry->has_rtc;
 
         backup_ = make_backup_from_type(backup_type_, path_);
-        LOG_TRACE(gamepak, "backup: {} (database entry)", to_string_view(backup_type_));
+        LOG_INFO(gamepak, "backup: {} (database entry)", to_string_view(backup_type_));
         return;
     }
 
@@ -155,6 +155,10 @@ void gamepak::on_eeprom_bus_width_detected(const backup::type eeprom_type) noexc
 
     backup_eeprom* eeprom = static_cast<backup_eeprom*>(backup_.get());
     eeprom->set_size(eeprom_type == backup::type::eeprom_64 ? 8_kb : 512_usize);
+
+#if WITH_DEBUGGER
+    on_eeprom_width_detected_event();
+#endif // WITH_DEBUGGER
 }
 
 } // namespace gba::cartridge

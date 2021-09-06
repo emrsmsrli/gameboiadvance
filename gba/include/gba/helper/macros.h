@@ -16,9 +16,14 @@
 #define LOG_INFO(category, ...) SPDLOG_INFO("[" #category "] " __VA_ARGS__) /*NOLINT*/
 #define LOG_DEBUG(category, ...) SPDLOG_DEBUG("[" #category "] " __VA_ARGS__) /*NOLINT*/
 #define LOG_TRACE(category, ...) SPDLOG_TRACE("[" #category "] " __VA_ARGS__) /*NOLINT*/
+#define PANIC()                           \
+  do {                                    \
+      spdlog::default_logger()->flush();  \
+      std::terminate();                   \
+  } while(0)
 
-#if DEBUG
-  #define ASSERT(x) do { if(!(x)) { LOG_ERROR(assert, "assertion failure: " # x); std::terminate(); } } while(0)
+#if DEBUG || defined(ENABLE_ASSERTIONS)
+  #define ASSERT(x) do { if(!(x)) { LOG_ERROR(assert, "assertion failure: " # x); PANIC(); } } while(0)
 #else
   #define ASSERT(x) (void)0
 #endif
@@ -47,7 +52,7 @@
   #define UNREACHABLE()                                                         \
     do {                                                                        \
         LOG_CRITICAL(assert, "unreachable code hit");                           \
-        std::terminate();                                                       \
+        PANIC();                                                       \
     } while(0)
   #define LIKELY(x) (x)
   #define UNLIKELY(x) (x)

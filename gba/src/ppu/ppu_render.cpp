@@ -5,10 +5,11 @@
  * Refer to the included LICENSE file.
  */
 
+#include <gba/ppu/ppu.h>
+
 #include <algorithm>
 
-#include <gba/ppu/ppu.h>
-#include <gba/helper/sort.h>
+#include <gba/core/algorithm.h>
 
 namespace gba::ppu {
 
@@ -31,16 +32,13 @@ void engine::render_obj() noexcept
         return;
     }
 
-    static constexpr obj_affine identity_affine;
-
     static constexpr range<u8> bitmap_modes{3_u8, 6_u8};
     const bool in_bitmap_mode = bitmap_modes.contains(dispcnt_.bg_mode);
 
     const view<obj_affine> affine_view{oam_};
-    const u32 render_cycles_max = dispcnt_.hblank_interval_free
-      ? 954_u32
-      : 1210_u32;
-    u32 render_cycles_spent = 0_u32;
+    i32 render_cycles_remaining = dispcnt_.hblank_interval_free
+      ? 954_i32
+      : 1210_i32;
 
     std::fill(obj_buffer_.begin(), obj_buffer_.end(), obj_buffer_entry{});
 
@@ -65,20 +63,13 @@ void engine::render_obj() noexcept
         if(y >= make_signed(screen_height)) { y -= 256_i32; }
         if(x >= make_signed(screen_width)) { x -= 512_i32; }
 
-        y += half_dimensions.v;
-        x += half_dimensions.h;
-
         dimension<u32> flip_offsets{0_u32, 0_u32};
         obj_affine affine_matrix;
-        u32 cycles_per_dot = 1_u32;
 
         if(is_affine) {
             affine_matrix = affine_view[obj.attr1.affine_idx()];
-            cycles_per_dot = 2_u32;
 
             if(render_mode == obj_attr0::rendering_mode::affine_double) {
-                y += half_dimensions.v;
-                x += half_dimensions.h;
                 half_dimensions = dimensions;
             }
         } else {
@@ -94,12 +85,11 @@ void engine::render_obj() noexcept
             }
         }
 
+        y += half_dimensions.v;
+        x += half_dimensions.h;
+
         if(!range(y - half_dimensions.v, y + half_dimensions.v).contains(vcount_)) {
             continue;
-        }
-
-        if(is_affine) {
-            render_cycles_spent += 10_u32;
         }
 
         i32 local_y = make_signed(widen<u32>(vcount_)) - y;
@@ -112,14 +102,8 @@ void engine::render_obj() noexcept
         }
 
         for(i32 obj_local_x : range(-make_signed(half_dimensions.h), make_signed(half_dimensions.h))) {
-            if(render_cycles_spent > render_cycles_max) {
-                return;
-            }
-
             const i32 local_x = obj_local_x - mosaic_obj_.internal.h;
             const i32 global_x = obj_local_x + x;
-
-            render_cycles_spent += cycles_per_dot;
 
             if(!range(make_signed(screen_width)).contains(global_x)) {
                 continue;
@@ -179,6 +163,16 @@ void engine::render_obj() noexcept
                 }
             }
         }
+
+        if(is_affine) {
+            render_cycles_remaining -= 10_i32 + make_signed(half_dimensions.h) * 2_i32;
+        } else {
+            render_cycles_remaining -= make_signed(half_dimensions.h);
+        }
+
+        if(render_cycles_remaining <= 0_i32) {
+            break;
+        }
     }
 }
 
@@ -213,7 +207,7 @@ void engine::compose_impl(static_vector<bg_priority_pair, 4> ids) noexcept
     };
 
     // stable sort bg ids to render them in least importance order
-    insertion_sort(ids);
+    algo::insertion_sort(ids);
     std::reverse(ids.begin(), ids.end());
 
     const bool any_window_enabled = dispcnt_.win0_enabled || dispcnt_.win1_enabled || dispcnt_.win_obj_enabled;

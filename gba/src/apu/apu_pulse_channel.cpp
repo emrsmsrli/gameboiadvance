@@ -26,7 +26,7 @@ pulse_channel::pulse_channel(scheduler* scheduler) noexcept
     timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
 }
 
-void pulse_channel::generate_output_sample(const u64 late_cycles) noexcept
+void pulse_channel::generate_output_sample(const u32 late_cycles) noexcept
 {
     waveform_phase = (waveform_phase + 1_u8) & 0x07_u8;
     adjust_waveform_duty_index();
@@ -169,7 +169,7 @@ void pulse_channel::write(const register_index index, const u8 data)
             swp.shift_count = data & 0x7_u8;
             break;
         case register_index::wave_data:
-            wav_data.duty = (data >> 6_u8) & 0x03_u8;
+            wav_data.duty = data >> 6_u8;
             wav_data.sound_length = data & 0x3F_u8;
 
             adjust_waveform_duty_index();

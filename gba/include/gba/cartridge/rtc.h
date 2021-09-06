@@ -8,9 +8,9 @@
 #ifndef GAMEBOIADVANCE_RTC_H
 #define GAMEBOIADVANCE_RTC_H
 
+#include <gba/cpu/irq_controller_handle.h>
 #include <gba/core/container.h>
 #include <gba/core/math.h>
-#include <gba/arm/irq_controller_handle.h>
 
 namespace gba::cartridge {
 
@@ -23,6 +23,8 @@ public:
     static inline constexpr auto port_data = 0xC4_u32;
     static inline constexpr auto port_direction = 0xC6_u32;
     static inline constexpr auto port_control = 0xC8_u32;
+
+    virtual ~gpio() = default;
 
     [[nodiscard]] u8 read(u32 address) noexcept;
     void write(u32 address, u8 value) noexcept;
@@ -85,7 +87,7 @@ class rtc : public gpio {
         receiving
     };
 
-    arm::irq_controller_handle irq_;
+    cpu::irq_controller_handle irq_;
 
     array<u8, 7> internal_regs_;
     u8 control_;
@@ -103,7 +105,7 @@ public:
     using state_debugger = state;
 #endif // WITH_DEBUGGER
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { irq_ = irq; }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { irq_ = irq; }
 
 protected:
     [[nodiscard]] u8 read_pin_states() const noexcept final;

@@ -8,11 +8,11 @@
 #ifndef GAMEBOIADVANCE_TIMER_H
 #define GAMEBOIADVANCE_TIMER_H
 
+#include <gba/cpu/irq_controller_handle.h>
+#include <gba/core/event/event.h>
 #include <gba/core/fwd.h>
 #include <gba/core/math.h>
-#include <gba/core/event/event.h>
 #include <gba/core/scheduler.h>
-#include <gba/arm/irq_controller_handle.h>
 #include <gba/helper/range.h>
 
 namespace gba::timer {
@@ -34,7 +34,7 @@ class timer {
     friend controller;
 
     scheduler* scheduler_;
-    arm::irq_controller_handle irq_handle_;
+    cpu::irq_controller_handle irq_handle_;
     timer* cascade_instance = nullptr;
 
     scheduler::hw_event::handle handle_;
@@ -49,9 +49,10 @@ class timer {
 public:
     event<timer*> on_overflow;
 
-    timer(const u32 id, scheduler* scheduler) noexcept
+    timer(const u32 id, scheduler* scheduler, cpu::irq_controller_handle irq) noexcept
       : scheduler_{scheduler},
-        id_{id} {}
+        id_{id},
+        irq_handle_{irq} {}
 
     [[nodiscard]] u8 read(register_type reg) const noexcept;
     void write(register_type reg, u8 data) noexcept;
@@ -61,8 +62,8 @@ public:
 private:
     [[nodiscard]] u32 calculate_counter_delta() const noexcept;
 
-    void schedule_overflow(u64 late_cycles = 0_u64) noexcept;
-    void overflow(u64 late_cycles) noexcept;
+    void schedule_overflow(u32 late_cycles = 0_u32) noexcept;
+    void overflow(u32 late_cycles) noexcept;
     void overflow_internal() noexcept;
     void tick_internal() noexcept;
 };
@@ -71,23 +72,16 @@ class controller {
     array<timer, 4> timers_;
 
 public:
-    controller(scheduler* scheduler) noexcept
+    controller(scheduler* scheduler, cpu::irq_controller_handle irq) noexcept
       : timers_{
-          timer{0_u32, scheduler},
-          timer{1_u32, scheduler},
-          timer{2_u32, scheduler},
-          timer{3_u32, scheduler}
+          timer{0_u32, scheduler, irq},
+          timer{1_u32, scheduler, irq},
+          timer{2_u32, scheduler, irq},
+          timer{3_u32, scheduler, irq}
         }
     {
         for(u32 id : range(1_u32, 4_u32)) {
             timers_[id].cascade_instance = &timers_[id - 1_u32];
-        }
-    }
-
-    void set_irq_controller_handle(const arm::irq_controller_handle irq_handle) noexcept
-    {
-        for(timer& t : timers_) {
-            t.irq_handle_ = irq_handle;
         }
     }
 

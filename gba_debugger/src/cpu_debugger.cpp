@@ -11,33 +11,37 @@
 #include <sstream>
 #include <string_view>
 
-#include <imgui.h>
 #include <access_private.h>
+#include <imgui.h>
 
 #include <gba/core.h>
-#include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/breakpoint_database.h>
+#include <gba_debugger/debugger_helpers.h>
 #include <gba_debugger/disassembler.h>
 #include <gba_debugger/disassembly_entry.h>
 
 using regs_t = gba::array<gba::u32, 16>;
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, regs_t, r_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::reg_banks, reg_banks_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::psr, cpsr_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::spsr_banks, spsr_banks_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::pipeline, pipeline_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, ie_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u16, if_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, bool, ime_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, regs_t, r_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::cpu::reg_banks, reg_banks_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::cpu::psr, cpsr_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::cpu::spsr_banks, spsr_banks_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::cpu::pipeline, pipeline_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::u16, ie_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, gba::u16, if_)
+ACCESS_PRIVATE_FIELD(gba::cpu::arm7tdmi, bool, ime_)
 
-using arm_waitstate_container = gba::array<gba::u8, 32>;
+using cpu_stall_table_entry = gba::array<gba::u8, 16>;
+using cpu_stall_table_container = gba::array<cpu_stall_table_entry, 2>;
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_stall_table_container, stall_16_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, cpu_stall_table_container, stall_32_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::waitstate_control, waitcnt_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::prefetch_buffer, prefetch_buffer_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::cpu::halt_control, haltcnt_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::u8, post_boot_)
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, arm_waitstate_container, wait_16)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, arm_waitstate_container, wait_32)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::waitstate_control, waitcnt_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::arm::halt_control, haltcnt_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::u8, post_boot_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::timer::controller, timer_controller_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::dma::controller, dma_controller_)
 
 using timers_t = gba::array<gba::timer::timer, 4>;
 ACCESS_PRIVATE_FIELD(gba::timer::controller, timers_t, timers_)
@@ -48,16 +52,17 @@ ACCESS_PRIVATE_FIELD(gba::timer::timer, gba::timer::timer_cnt, control_)
 
 ACCESS_PRIVATE_FUN(gba::timer::timer, gba::u32() const noexcept, calculate_counter_delta)
 
+using channels_debugger = gba::static_vector<gba::dma::channel*, gba::dma::channel_count>;
 ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::u32, latch_)
-ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, running_channels_)
-ACCESS_PRIVATE_FIELD(gba::dma::controller, gba::dma::controller::channels_debugger, scheduled_channels_)
+ACCESS_PRIVATE_FIELD(gba::dma::controller, channels_debugger, running_channels_)
+ACCESS_PRIVATE_FIELD(gba::dma::controller, channels_debugger, scheduled_channels_)
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, iwram_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, wram_)
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::vector<gba::u8>, bios_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, iwram_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, wram_)
+ACCESS_PRIVATE_FIELD(gba::cpu::cpu, gba::vector<gba::u8>, bios_)
 
-ACCESS_PRIVATE_FIELD(gba::arm::arm7tdmi, gba::core*, core_)
 ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::vector<gba::u8>, pak_data_)
+ACCESS_PRIVATE_FIELD(gba::cartridge::gamepak, gba::u32, mirror_mask_)
 
 namespace gba::debugger {
 
@@ -75,7 +80,7 @@ void draw_reg(const u32 reg) noexcept
     }
 };
 
-void draw_psr_tooltip(const arm::psr& p) noexcept
+void draw_psr_tooltip(const cpu::psr& p) noexcept
 {
     if(ImGui::IsItemHovered()) {
         ImGui::BeginTooltip();
@@ -88,13 +93,13 @@ void draw_psr_tooltip(const arm::psr& p) noexcept
         ImGui::Text("t: {}", p.t);  // thumb mode flag
         ImGui::Text("mode: {}", [&]() {
             switch(p.mode) {
-                case arm::privilege_mode::usr: return "usr";
-                case arm::privilege_mode::fiq: return "fiq";
-                case arm::privilege_mode::irq: return "irq";
-                case arm::privilege_mode::svc: return "svc";
-                case arm::privilege_mode::abt: return "abt";
-                case arm::privilege_mode::und: return "und";
-                case arm::privilege_mode::sys: return "sys";
+                case cpu::privilege_mode::usr: return "usr";
+                case cpu::privilege_mode::fiq: return "fiq";
+                case cpu::privilege_mode::irq: return "irq";
+                case cpu::privilege_mode::svc: return "svc";
+                case cpu::privilege_mode::abt: return "abt";
+                case cpu::privilege_mode::und: return "und";
+                case cpu::privilege_mode::sys: return "sys";
                 default: return "???";
             }
         }());
@@ -102,37 +107,37 @@ void draw_psr_tooltip(const arm::psr& p) noexcept
     }
 }
 
-void draw_psr(const arm::psr& spsr) noexcept
+void draw_psr(const cpu::psr& spsr) noexcept
 {
     draw_reg(static_cast<u32>(spsr));
     draw_psr_tooltip(spsr);
 };
 
-void draw_regs(arm::arm7tdmi* arm) noexcept
+void draw_regs(cpu::cpu* c) noexcept
 {
     ImGui::TextUnformatted("Registers");
     ImGui::Separator();
 
     ImGui::BeginGroup();
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
-    if(ImGui::BeginTable("#arm_registers_new", 2,
-      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
+    if(ImGui::BeginTable("#cpu_registers_new", 2,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_RowBg,
       ImVec2(0.f, 0.f))) {
 
-        const regs_t& regs = access_private::r_(arm);
-        const arm::spsr_banks& spsr = access_private::spsr_banks_(arm);
+        const regs_t& regs = access_private::r_(c);
+        const cpu::spsr_banks& spsr = access_private::spsr_banks_(c);
 
         ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
         ImGui::TableSetColumnIndex(1);
         ImGui::TextUnformatted([&]() {
-            switch(access_private::cpsr_(arm).mode) {
-                case arm::privilege_mode::sys: return "SYS";
-                case arm::privilege_mode::usr: return "USR";
-                case arm::privilege_mode::fiq: return "FIQ";
-                case arm::privilege_mode::irq: return "IRQ";
-                case arm::privilege_mode::svc: return "SVC";
-                case arm::privilege_mode::abt: return "ABT";
-                case arm::privilege_mode::und: return "UND";
+            switch(access_private::cpsr_(c).mode) {
+                case cpu::privilege_mode::sys: return "SYS";
+                case cpu::privilege_mode::usr: return "USR";
+                case cpu::privilege_mode::fiq: return "FIQ";
+                case cpu::privilege_mode::irq: return "IRQ";
+                case cpu::privilege_mode::svc: return "SVC";
+                case cpu::privilege_mode::abt: return "ABT";
+                case cpu::privilege_mode::und: return "UND";
                 default: return "???";
             }
         }());
@@ -147,19 +152,19 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("CPSR");
-        draw_psr(access_private::cpsr_(arm));
+        draw_psr(access_private::cpsr_(c));
 
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("SPSR");
-        switch(access_private::cpsr_(arm).mode) {
-            case arm::privilege_mode::sys:
-            case arm::privilege_mode::usr: break;
-            case arm::privilege_mode::fiq: draw_psr(spsr[arm::register_bank::fiq]); break;
-            case arm::privilege_mode::irq: draw_psr(spsr[arm::register_bank::irq]); break;
-            case arm::privilege_mode::svc: draw_psr(spsr[arm::register_bank::svc]); break;
-            case arm::privilege_mode::abt: draw_psr(spsr[arm::register_bank::abt]); break;
-            case arm::privilege_mode::und: draw_psr(spsr[arm::register_bank::und]); break;
+        switch(access_private::cpsr_(c).mode) {
+            case cpu::privilege_mode::sys:
+            case cpu::privilege_mode::usr: break;
+            case cpu::privilege_mode::fiq: draw_psr(spsr[cpu::register_bank::fiq]); break;
+            case cpu::privilege_mode::irq: draw_psr(spsr[cpu::register_bank::irq]); break;
+            case cpu::privilege_mode::svc: draw_psr(spsr[cpu::register_bank::svc]); break;
+            case cpu::privilege_mode::abt: draw_psr(spsr[cpu::register_bank::abt]); break;
+            case cpu::privilege_mode::und: draw_psr(spsr[cpu::register_bank::und]); break;
             default: UNREACHABLE();
         }
         ImGui::EndTable();
@@ -168,11 +173,11 @@ void draw_regs(arm::arm7tdmi* arm) noexcept
     ImGui::EndGroup();
 }
 
-void draw_banked_regs(arm::arm7tdmi* arm) noexcept
+void draw_banked_regs(cpu::cpu* c) noexcept
 {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4.f, 4.f));
-    if(ImGui::BeginTable("#arm_registers", 7,
-      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg,
+    if(ImGui::BeginTable("#cpu_registers", 7,
+      ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX | ImGuiTableFlags_RowBg,
       ImVec2(0.f, 0.f))) {
         ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
         ImGui::TableSetColumnIndex(1);
@@ -185,51 +190,50 @@ void draw_banked_regs(arm::arm7tdmi* arm) noexcept
         ImGui::TextUnformatted("UND");
         ImGui::TableNextRow();
 
-        const regs_t& r = access_private::r_(arm);
-        const arm::reg_banks& banks = access_private::reg_banks_(arm);
+        const cpu::reg_banks& banks = access_private::reg_banks_(c);
 
         const auto draw_banked_reg = [&](auto&& reg_selector) {
-            for(u32 b : range(from_enum<u32>(arm::register_bank::und) + 1)) {
-                draw_reg(reg_selector(banks[to_enum<arm::register_bank>(b)].named));
+            for(u32 b : range(from_enum<u32>(cpu::register_bank::und) + 1)) {
+                draw_reg(reg_selector(banks[to_enum<cpu::register_bank>(b)].named));
             }
         };
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R8");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r8; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r8; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R9");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r9; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r9; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R10");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r10; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r10; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R11");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r11; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r11; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R12");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r12; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r12; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R13");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r13; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r13; });
         ImGui::TableNextRow();
 
         ImGui::TableNextColumn(); ImGui::TextUnformatted("R14");
-        draw_banked_reg([&](const arm::banked_regs::regs& regs) { return regs.r14; });
+        draw_banked_reg([&](const cpu::banked_regs::regs& regs) { return regs.r14; });
         ImGui::TableNextRow();
 
-        const arm::spsr_banks& spsr = access_private::spsr_banks_(arm);
+        const cpu::spsr_banks& spsr = access_private::spsr_banks_(c);
         ImGui::TableNextColumn(); ImGui::TextUnformatted("SPSR");
         /* no spsr in usr/sys */ ImGui::TableNextColumn();
-        draw_psr(spsr[arm::register_bank::fiq]);
-        draw_psr(spsr[arm::register_bank::svc]);
-        draw_psr(spsr[arm::register_bank::abt]);
-        draw_psr(spsr[arm::register_bank::irq]);
-        draw_psr(spsr[arm::register_bank::und]);
+        draw_psr(spsr[cpu::register_bank::fiq]);
+        draw_psr(spsr[cpu::register_bank::svc]);
+        draw_psr(spsr[cpu::register_bank::abt]);
+        draw_psr(spsr[cpu::register_bank::irq]);
+        draw_psr(spsr[cpu::register_bank::und]);
 
         ImGui::EndTable();
     }
@@ -267,23 +271,23 @@ void draw_bps(BPContainer&& container, T&& f) noexcept
     }
 }
 
-std::string_view to_string_view(const arm::interrupt_source irq) noexcept
+std::string_view to_string_view(const cpu::interrupt_source irq) noexcept
 {
     switch(irq) {
-        case arm::interrupt_source::vblank: return "vblank";
-        case arm::interrupt_source::hblank: return "hblank";
-        case arm::interrupt_source::vcounter_match: return "vcounter_match";
-        case arm::interrupt_source::timer_0_overflow: return "timer_0_overflow";
-        case arm::interrupt_source::timer_1_overflow: return "timer_1_overflow";
-        case arm::interrupt_source::timer_2_overflow: return "timer_2_overflow";
-        case arm::interrupt_source::timer_3_overflow: return "timer_3_overflow";
-        case arm::interrupt_source::serial_io: return "serial_io";
-        case arm::interrupt_source::dma_0: return "dma_0";
-        case arm::interrupt_source::dma_1: return "dma_1";
-        case arm::interrupt_source::dma_2: return "dma_2";
-        case arm::interrupt_source::dma_3: return "dma_3";
-        case arm::interrupt_source::keypad: return "keypad";
-        case arm::interrupt_source::gamepak: return "gamepak";
+        case cpu::interrupt_source::vblank: return "vblank";
+        case cpu::interrupt_source::hblank: return "hblank";
+        case cpu::interrupt_source::vcounter_match: return "vcounter_match";
+        case cpu::interrupt_source::timer_0_overflow: return "timer_0_overflow";
+        case cpu::interrupt_source::timer_1_overflow: return "timer_1_overflow";
+        case cpu::interrupt_source::timer_2_overflow: return "timer_2_overflow";
+        case cpu::interrupt_source::timer_3_overflow: return "timer_3_overflow";
+        case cpu::interrupt_source::serial_io: return "serial_io";
+        case cpu::interrupt_source::dma_0: return "dma_0";
+        case cpu::interrupt_source::dma_1: return "dma_1";
+        case cpu::interrupt_source::dma_2: return "dma_2";
+        case cpu::interrupt_source::dma_3: return "dma_3";
+        case cpu::interrupt_source::keypad: return "keypad";
+        case cpu::interrupt_source::gamepak: return "gamepak";
         default:
             UNREACHABLE();
     }
@@ -301,13 +305,13 @@ std::string_view to_string_view(const dma::channel::control::address_control con
     }
 }
 
-std::string_view to_string_view(const arm::debugger_access_width width) noexcept
+std::string_view to_string_view(const cpu::debugger_access_width width) noexcept
 {
     switch(width) {
-        case arm::debugger_access_width::byte: return "byte";
-        case arm::debugger_access_width::hword: return "hword";
-        case arm::debugger_access_width::word: return "word";
-        case arm::debugger_access_width::any: return "any";
+        case cpu::debugger_access_width::byte: return "byte";
+        case cpu::debugger_access_width::hword: return "hword";
+        case cpu::debugger_access_width::word: return "word";
+        case cpu::debugger_access_width::any: return "any";
         default:
             UNREACHABLE();
     }
@@ -315,114 +319,137 @@ std::string_view to_string_view(const arm::debugger_access_width width) noexcept
 
 } // namespace
 
+cpu_debugger::cpu_debugger(cartridge::gamepak* gamepak, cpu::cpu* c, breakpoint_database* bp_db) noexcept
+  : gamepak_{gamepak},
+    dma_controller_{&access_private::dma_controller_(c)},
+    timer_controller_{&access_private::timer_controller_(c)},
+    cpu_{c},
+    bp_db_{bp_db} {}
+
 void cpu_debugger::draw() noexcept
 {
     if(ImGui::Begin("CPU")) {
-        if(ImGui::BeginTabBar("#arm_tab")) {
+        if(ImGui::BeginTabBar("#cpu_tab")) {
             if(ImGui::BeginTabItem("ARM")) {
-                draw_regs(arm_); ImGui::SameLine();
-
-                ImGui::BeginGroup();
-                ImGui::TextUnformatted("Pipeline");
-                ImGui::Separator();
-
-                regs_t& r = access_private::r_(arm_);
-                const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
-                    ImGui::Text(access_private::cpsr_(arm_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
-                    if(ImGui::IsItemHovered()) {
-                        ImGui::BeginTooltip();
-                        if(access_private::cpsr_(arm_).t) {
-                            ImGui::TextUnformatted(disassembler::disassemble_thumb(
-                              r[15_u32] - offset * 4_u32,
-                              narrow<u16>(instr)).c_str());
-                        } else {
-                            ImGui::TextUnformatted(disassembler::disassemble_arm(
-                              r[15_u32] - offset * 2_u32,
-                              instr).c_str());
-                        }
-                        ImGui::EndTooltip();
-                    }
-                };
+                draw_regs(cpu_); ImGui::SameLine();
 
                 ImGui::BeginGroup(); {
-                    draw_pipeline_instr("executing", access_private::pipeline_(arm_).executing, 1_u32);
-                    draw_pipeline_instr("decoding", access_private::pipeline_(arm_).decoding, 2_u32);
-                    ImGui::Text("fetch: {}", [&]() {
-                        switch(access_private::pipeline_(arm_).fetch_type) {
-                            case arm::mem_access::non_seq: return "non seq";
-                            case arm::mem_access::seq: return "seq";
-                            default: UNREACHABLE();
-                        }
-                    }());
+                    ImGui::TextUnformatted("Pipeline");
+                    ImGui::Separator();
 
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-
-                    ImGui::Text("postboot: {:X}", access_private::post_boot_(arm_).get());
-                    ImGui::Text("haltcnt: {}", [&]() {
-                        switch(access_private::haltcnt_(arm_)) {
-                            case arm::halt_control::halted: return "halted";
-                            case arm::halt_control::stopped: return "stopped";
-                            case arm::halt_control::running: return "running";
-                            default: UNREACHABLE();
-                        }
-                    }());
-
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-                    ImGui::Spacing();
-
-                    const auto draw_irq_reg = [](const char* name, const u16 reg) {
-                        ImGui::Text("{}: {:04X}", name, reg);
+                    regs_t& r = access_private::r_(cpu_);
+                    const auto draw_pipeline_instr = [&](const char* name, const u32 instr, const u32 offset) {
+                        ImGui::Text(access_private::cpsr_(cpu_).t ? "{}: {:04X}" : "{}: {:08X}", name, instr);
                         if(ImGui::IsItemHovered()) {
                             ImGui::BeginTooltip();
-                            for(u16 idx : range(14_u16)) {
-                                u16 irq = 1_u16 << idx;
-                                bool s = (reg & irq) == irq;
-                                ImGui::Text("{}: {}", to_string_view(to_enum<arm::interrupt_source>(irq)), s);
+                            if(access_private::cpsr_(cpu_).t) {
+                                ImGui::TextUnformatted(disassembler::disassemble_thumb(
+                                        r[15_u32] - offset * 4_u32,
+                                        narrow<u16>(instr)).c_str());
+                            } else {
+                                ImGui::TextUnformatted(disassembler::disassemble_arm(
+                                        r[15_u32] - offset * 2_u32,
+                                        instr).c_str());
                             }
                             ImGui::EndTooltip();
                         }
                     };
 
-                    draw_irq_reg("ie", access_private::ie_(arm_));
-                    draw_irq_reg("if", access_private::if_(arm_));
-                    ImGui::Text("ime: {}", access_private::ime_(arm_));
-                    ImGui::EndGroup();
-                }
+                    ImGui::BeginGroup(); {
+                        ImGui::BeginGroup(); {
+                            draw_pipeline_instr("executing", access_private::pipeline_(cpu_).executing, 1_u32);
+                            draw_pipeline_instr("decoding", access_private::pipeline_(cpu_).decoding, 2_u32);
+                            ImGui::Text("fetch: {}", [&]() {
+                                switch(access_private::pipeline_(cpu_).fetch_type) {
+                                    case cpu::mem_access::non_seq: return "non seq";
+                                    case cpu::mem_access::seq: return "seq";
+                                    default: UNREACHABLE();
+                                }
+                            }());
 
-                ImGui::SameLine(160.f, 0.f);
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
 
-                ImGui::BeginGroup(); {
-                    static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
-                    static constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
-                    static constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
-                    static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+                            ImGui::Text("postboot: {:X}", access_private::post_boot_(cpu_).get());
+                            ImGui::Text("haltcnt: {}", [&]() {
+                                switch(access_private::haltcnt_(cpu_)) {
+                                    case cpu::halt_control::halted: return "halted";
+                                    case cpu::halt_control::stopped: return "stopped";
+                                    case cpu::halt_control::running: return "running";
+                                    default: UNREACHABLE();
+                                }
+                            }());
 
-                    ImGui::TextUnformatted("waitcnt");
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+                            ImGui::Spacing();
+
+                            const auto draw_irq_reg = [](const char* name, const u16 reg) {
+                                ImGui::Text("{}: {:04X}", name, reg);
+                                if(ImGui::IsItemHovered()) {
+                                    ImGui::BeginTooltip();
+                                    for(u16 idx : range(14_u16)) {
+                                        u16 irq = 1_u16 << idx;
+                                        bool s = (reg & irq) == irq;
+                                        ImGui::Text("{}: {}", to_string_view(to_enum<cpu::interrupt_source>(irq)), s);
+                                    }
+                                    ImGui::EndTooltip();
+                                }
+                            };
+
+                            draw_irq_reg("ie", access_private::ie_(cpu_));
+                            draw_irq_reg("if", access_private::if_(cpu_));
+                            ImGui::Text("ime: {}", access_private::ime_(cpu_));
+                            ImGui::EndGroup();
+                        }
+
+                        ImGui::SameLine(160.f, 0.f);
+
+                        ImGui::BeginGroup(); {
+                            static constexpr array<u8, 4> ws_nonseq{4_u8, 3_u8, 2_u8, 8_u8};
+                            static constexpr array<u8, 2> ws0_seq{2_u8, 1_u8};
+                            static constexpr array<u8, 2> ws1_seq{4_u8, 1_u8};
+                            static constexpr array<u8, 2> ws2_seq{8_u8, 1_u8};
+
+                            ImGui::TextUnformatted("waitcnt");
+                            ImGui::Separator();
+                            ImGui::Text("sram   {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).sram], access_private::waitcnt_(cpu_).sram);
+                            ImGui::Text("ws0 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws0_nonseq], access_private::waitcnt_(cpu_).ws0_nonseq);
+                            ImGui::Text("ws0  s {} ({})", ws0_seq[access_private::waitcnt_(cpu_).ws0_seq], access_private::waitcnt_(cpu_).ws0_seq);
+                            ImGui::Text("ws1 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws1_nonseq], access_private::waitcnt_(cpu_).ws1_nonseq);
+                            ImGui::Text("ws1  s {} ({})", ws1_seq[access_private::waitcnt_(cpu_).ws1_seq], access_private::waitcnt_(cpu_).ws1_seq);
+                            ImGui::Text("ws2 ns {} ({})", ws_nonseq[access_private::waitcnt_(cpu_).ws2_nonseq], access_private::waitcnt_(cpu_).ws2_nonseq);
+                            ImGui::Text("ws2  s {} ({})", ws2_seq[access_private::waitcnt_(cpu_).ws2_seq], access_private::waitcnt_(cpu_).ws2_seq);
+                            ImGui::Text("phi    {}", access_private::waitcnt_(cpu_).phi);
+                            ImGui::Text("prefetch {}", access_private::waitcnt_(cpu_).prefetch_buffer_enable);
+                            ImGui::EndGroup();
+                        }
+                        ImGui::EndGroup();
+                    }
+
+                    ImGui::Spacing();
+                    ImGui::TextUnformatted("Prefetch Buffer");
                     ImGui::Separator();
-                    ImGui::Text("sram {} ({})", ws_nonseq[access_private::waitcnt_(arm_).sram], access_private::waitcnt_(arm_).sram);
-                    ImGui::Text("ws0_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws0_nonseq], access_private::waitcnt_(arm_).ws0_nonseq);
-                    ImGui::Text("ws0_seq {} ({})", ws0_seq[access_private::waitcnt_(arm_).ws0_seq], access_private::waitcnt_(arm_).ws0_seq);
-                    ImGui::Text("ws1_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws1_nonseq], access_private::waitcnt_(arm_).ws1_nonseq);
-                    ImGui::Text("ws1_seq {} ({})", ws1_seq[access_private::waitcnt_(arm_).ws1_seq], access_private::waitcnt_(arm_).ws1_seq);
-                    ImGui::Text("ws2_nonseq {} ({})", ws_nonseq[access_private::waitcnt_(arm_).ws2_nonseq], access_private::waitcnt_(arm_).ws2_nonseq);
-                    ImGui::Text("ws2_seq {} ({})", ws2_seq[access_private::waitcnt_(arm_).ws2_seq], access_private::waitcnt_(arm_).ws2_seq);
-                    ImGui::Text("phi {}", access_private::waitcnt_(arm_).phi);
-                    ImGui::Text("prefetch {}", access_private::waitcnt_(arm_).prefetch_buffer_enable);
+
+                    auto& prefetch = access_private::prefetch_buffer_(cpu_);
+                    ImGui::Text("active: {}", prefetch.active);
+                    ImGui::Text("begin:  {:08X}", prefetch.begin);
+                    ImGui::Text("end:    {:08X}", prefetch.end);
+                    ImGui::Text("size:   {}/{} ({} byte instr)", prefetch.size,
+                      prefetch.capacity, prefetch.addr_increment);
+                    ImGui::Text("cycles: {}/{}", prefetch.cycles_left, prefetch.cycles_needed);
+
                     ImGui::EndGroup();
                 }
-                ImGui::EndGroup();
-
                 static bool show_banked_registers = false;
                 ImGui::Checkbox("Show banked registers", &show_banked_registers);
                 if(show_banked_registers) {
-                    draw_banked_regs(arm_);
+                    draw_banked_regs(cpu_);
                 }
 
-                auto& w16 = access_private::wait_16(arm_);
-                auto& w32 = access_private::wait_32(arm_);
+                auto& stall16 = access_private::stall_16_(cpu_);
+                auto& stall32 = access_private::stall_32_(cpu_);
                 static bool show_wait_table = false;
                 ImGui::Checkbox("Show wait table", &show_wait_table);
 
@@ -443,15 +470,15 @@ void cpu_debugger::draw() noexcept
                                     case 0x02: return "ewram";
                                     case 0x03: return "iwram";
                                     case 0x04: return "io";
-                                    case 0x05: return "palram";
+                                    case 0x05: return "palette ram";
                                     case 0x06: return "vram";
                                     case 0x07: return "oam";
-                                    case 0x08: return "pak0_l";
-                                    case 0x09: return "pak0_u";
-                                    case 0x0A: return "pak1_l";
-                                    case 0x0B: return "pak1_u";
-                                    case 0x0C: return "pak2_l";
-                                    case 0x0D: return "pak2_u";
+                                    case 0x08: return "pak0_1";
+                                    case 0x09: return "pak0_2";
+                                    case 0x0A: return "pak1_1";
+                                    case 0x0B: return "pak1_2";
+                                    case 0x0C: return "pak2_1";
+                                    case 0x0D: return "pak2_2";
                                     case 0x0E: return "sram_1";
                                     case 0x0F: return "sram_2";
                                     default:
@@ -467,7 +494,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("16n");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w16[page]);
+                        ImGui::Text("{}", stall16[from_enum<u32>(cpu::mem_access::non_seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -475,7 +502,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("16s");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w16[page + 16]);
+                        ImGui::Text("{}", stall16[from_enum<u32>(cpu::mem_access::seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -483,7 +510,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("32n");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w32[page]);
+                        ImGui::Text("{}", stall32[from_enum<u32>(cpu::mem_access::non_seq)][page]);
                     }
 
                     ImGui::TableNextRow();
@@ -491,7 +518,7 @@ void cpu_debugger::draw() noexcept
                     ImGui::Text("32s");
                     for(u32::type page : range(0x10)) {
                         ImGui::TableNextColumn();
-                        ImGui::Text("{}", w32[page + 16]);
+                        ImGui::Text("{}", stall32[from_enum<u32>(cpu::mem_access::seq)][page]);
                     }
 
                     ImGui::EndTable();
@@ -527,7 +554,7 @@ void cpu_debugger::draw() noexcept
             }
 
             if(ImGui::BeginTabItem("DMAs")) {
-                const auto fmt_channels = [](gba::dma::controller::channels_debugger& channels) -> std::string {
+                const auto fmt_channels = [](channels_debugger& channels) -> std::string {
                     if(channels.empty()) { return "none"; }
 
                     std::stringstream s;
@@ -548,7 +575,8 @@ void cpu_debugger::draw() noexcept
                 ImGui::Spacing();
                 ImGui::Spacing();
 
-                for(dma::channel& channel : dma_controller_->channels) {
+                for(const u32 i : range(dma::channel_count)) {
+                    dma::channel& channel = (*dma_controller_)[i];
                     ImGui::Text("DMA {}", channel.id);
                     ImGui::Separator();
                     ImGui::BeginGroup(); {
@@ -768,7 +796,7 @@ void cpu_debugger::draw_access_breakpoints() noexcept
             };
             access_breakpoint breakpoint;
             breakpoint.hit_type = static_cast<breakpoint_hit_type>(hit_type + 1);
-            breakpoint.access_width = static_cast<arm::debugger_access_width>(access_width);
+            breakpoint.access_width = static_cast<cpu::debugger_access_width>(access_width);
             breakpoint.access_type = access_types[static_cast<u32::type>(access_type)];
 
             const u32 addr_min = static_cast<u32::type>(std::strtoul(address_lo_buf.data(), nullptr, 16));
@@ -810,28 +838,28 @@ void cpu_debugger::draw_disassembly() noexcept
 {
     if(ImGui::BeginChild("#armdisassemblychild")) {
         vector<u8>* memory;
-        const u32 pc = access_private::r_(arm_)[15_u32];
+        const u32 pc = access_private::r_(cpu_)[15_u32];
         u32 offset;
-        u32 mask = rom_mirror_mask_;
+        u32 mask = access_private::mirror_mask_(gamepak_);
         if(pc < 0x0000'3FFF_u32) {
-            memory = &access_private::bios_(arm_);
+            memory = &access_private::bios_(cpu_);
             mask = 0x0000'3FFF_u32;
         } else if(pc < 0x0300'0000_u32) {
-            memory = &access_private::wram_(arm_);
+            memory = &access_private::wram_(cpu_);
             offset = 0x0200'0000_u32;
             mask = 0x0003'FFFF_u32;
         } else if(pc < 0x0400'0000_u32) {
-            memory = &access_private::iwram_(arm_);
+            memory = &access_private::iwram_(cpu_);
             offset = 0x0300'0000_u32;
             mask = 0x0000'7FFF_u32;
         } else if(pc < 0x0A00'0000_u32) {
-            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            memory = &access_private::pak_data_(gamepak_);
             offset = 0x0800'0000_u32;
         } else if(pc < 0x0C00'0000_u32) {
-            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            memory = &access_private::pak_data_(gamepak_);
             offset = 0x0A00'0000_u32;
         } else if(pc < 0x0E00'0000_u32) {
-            memory = &access_private::pak_data_(access_private::core_(arm_)->pak);
+            memory = &access_private::pak_data_(gamepak_);
             offset = 0x0C00'0000_u32;
         } else {
             // probably something is broken at this point
@@ -843,7 +871,7 @@ void cpu_debugger::draw_disassembly() noexcept
 
         const u32 pc_physical_address = pc & mask;
 
-        const u32 instr_width = access_private::cpsr_(arm_).t ? 2_u32 : 4_u32;
+        const u32 instr_width = access_private::cpsr_(cpu_).t ? 2_u32 : 4_u32;
         usize instr_idx = pc_physical_address / instr_width;
         if(instr_idx < 9_u32) {
             instr_idx = 0_u32;
@@ -856,7 +884,7 @@ void cpu_debugger::draw_disassembly() noexcept
             const u32 physical_address = instr_width * narrow<u32>(instr_idx);
             const u32 virtual_address = physical_address + offset;
 
-            const bool is_thumb = access_private::cpsr_(arm_).t;
+            const bool is_thumb = access_private::cpsr_(cpu_).t;
             const bool is_pc = virtual_address == pc_physical_address + offset - (2_u32 * instr_width);
             const u32 instr = is_thumb
               ? memcpy<u16>(*memory, physical_address)

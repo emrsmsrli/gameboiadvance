@@ -8,12 +8,13 @@
 #include <gba_debugger/ppu_debugger.h>
 
 #include <access_private.h>
-#include <SFML/Graphics/Sprite.hpp>
 #include <imgui.h>
 #include <imgui-SFML.h>
+#include <SFML/Graphics/Sprite.hpp>
 
 #include <gba/helper/range.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/preferences.h>
 
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, palette_ram_)
 ACCESS_PRIVATE_FIELD(gba::ppu::engine, gba::vector<gba::u8>, vram_)
@@ -104,8 +105,8 @@ float matrix_elem_to_float(const i16 e) noexcept
 
 } // namespace
 
-ppu_debugger::ppu_debugger(ppu::engine* engine)
-  : ppu_engine{engine},
+ppu_debugger::ppu_debugger(ppu::engine* engine, preferences* p)
+  : prefs_{p}, ppu_engine_{engine},
     win_types_{ppu::screen_height * ppu::screen_width}
 {
     screen_buffer_.create(ppu::screen_width, ppu::screen_height);
@@ -132,7 +133,7 @@ ppu_debugger::ppu_debugger(ppu::engine* engine)
 void ppu_debugger::draw() noexcept
 {
     if(ImGui::Begin("Framebuffer", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        static int draw_scale = 2;
+        int& draw_scale = prefs_->ppu_framebuffer_render_scale;
         ImGui::SetNextItemWidth(150.f);
         ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
@@ -155,8 +156,7 @@ void ppu_debugger::draw() noexcept
 
     if(ImGui::Begin("PPU")) {
         if(ImGui::BeginTabBar("#pputabs")) {
-            const auto& dispcnt = access_private::dispcnt_(ppu_engine);
-            const auto& palette = access_private::palette_ram_(ppu_engine);
+            const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
 
             if(ImGui::BeginTabItem("Registers")) {
                 if(!ImGui::BeginChild("#ppuregschild")) {
@@ -164,15 +164,15 @@ void ppu_debugger::draw() noexcept
                     return;
                 }
 
-                ImGui::Text("vcount: {}", access_private::vcount_(ppu_engine));
+                ImGui::Text("vcount: {}", access_private::vcount_(ppu_engine_));
                 ImGui::SameLine(0.f, 50.f);
-                ImGui::Text("greenswap: {}", access_private::green_swap_(ppu_engine));
+                ImGui::Text("greenswap: {}", access_private::green_swap_(ppu_engine_));
 
                 ImGui::Spacing();
                 ImGui::Spacing();
                 ImGui::Spacing();
 
-                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(10.f, 10.f));
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2{10.f, 10.f});
                 if(ImGui::BeginTable("#regtables", 2, ImGuiTableFlags_BordersInner)) {
                     ImGui::TableNextRow();
                     ImGui::TableSetColumnIndex(0);
@@ -200,7 +200,7 @@ void ppu_debugger::draw() noexcept
 
                     ImGui::TableNextColumn();
 
-                    const auto& dispstat = access_private::dispstat_(ppu_engine);
+                    const auto& dispstat = access_private::dispstat_(ppu_engine_);
                     ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "DISPSTAT");
                     ImGui::Spacing();
                     ImGui::Text("vblank: {}\n"
@@ -245,10 +245,10 @@ void ppu_debugger::draw() noexcept
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    draw_bg_regs("BG0", access_private::bg0_(ppu_engine)); ImGui::TableNextColumn();
-                    draw_bg_regs("BG1", access_private::bg1_(ppu_engine)); ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    draw_bg_regs("BG2", access_private::bg2_(ppu_engine)); ImGui::TableNextColumn();
-                    draw_bg_regs("BG3", access_private::bg3_(ppu_engine));
+                    draw_bg_regs("BG0", access_private::bg0_(ppu_engine_)); ImGui::TableNextColumn();
+                    draw_bg_regs("BG1", access_private::bg1_(ppu_engine_)); ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_bg_regs("BG2", access_private::bg2_(ppu_engine_)); ImGui::TableNextColumn();
+                    draw_bg_regs("BG3", access_private::bg3_(ppu_engine_));
 
                     const auto draw_win_regs = [](const char* name, const ppu::window& win) {
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
@@ -258,8 +258,8 @@ void ppu_debugger::draw() noexcept
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    draw_win_regs("WIN0", access_private::win0_(ppu_engine)); ImGui::TableNextColumn();
-                    draw_win_regs("WIN1", access_private::win1_(ppu_engine));
+                    draw_win_regs("WIN0", access_private::win0_(ppu_engine_)); ImGui::TableNextColumn();
+                    draw_win_regs("WIN1", access_private::win1_(ppu_engine_));
 
                     const auto draw_win_enable_regs = [](const char* name, const ppu::win_enable_bits& e) {
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
@@ -269,11 +269,11 @@ void ppu_debugger::draw() noexcept
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    draw_win_enable_regs("WININ_WIN0", access_private::win_in_(ppu_engine).win0); ImGui::TableNextColumn();
-                    draw_win_enable_regs("WININ_WIN1", access_private::win_in_(ppu_engine).win1); ImGui::TableNextRow(); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WININ_WIN0", access_private::win_in_(ppu_engine_).win0); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WININ_WIN1", access_private::win_in_(ppu_engine_).win1); ImGui::TableNextRow(); ImGui::TableNextColumn();
 
-                    draw_win_enable_regs("WINOUT_OUT", access_private::win_out_(ppu_engine).outside); ImGui::TableNextColumn();
-                    draw_win_enable_regs("WINOUT_OBJ", access_private::win_out_(ppu_engine).obj);
+                    draw_win_enable_regs("WINOUT_OUT", access_private::win_out_(ppu_engine_).outside); ImGui::TableNextColumn();
+                    draw_win_enable_regs("WINOUT_OBJ", access_private::win_out_(ppu_engine_).obj);
 
                     const auto draw_mosaic_regs = [](const char* name, const ppu::mosaic& m) {
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
@@ -283,11 +283,11 @@ void ppu_debugger::draw() noexcept
                     };
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    draw_mosaic_regs("MOSAIC_BG", access_private::mosaic_bg_(ppu_engine)); ImGui::TableNextColumn();
-                    draw_mosaic_regs("MOSAIC_OBJ", access_private::mosaic_obj_(ppu_engine));
+                    draw_mosaic_regs("MOSAIC_BG", access_private::mosaic_bg_(ppu_engine_)); ImGui::TableNextColumn();
+                    draw_mosaic_regs("MOSAIC_OBJ", access_private::mosaic_obj_(ppu_engine_));
 
                     ImGui::TableNextRow(); ImGui::TableNextColumn();
-                    auto& bldcnt = access_private::bldcnt_(ppu_engine);
+                    auto& bldcnt = access_private::bldcnt_(ppu_engine_);
                     const auto draw_bldcnt_target_regs = [](const char* name, const ppu::bldcnt::target& t) {
                         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "%s", name);
                         ImGui::Spacing();
@@ -312,7 +312,7 @@ void ppu_debugger::draw() noexcept
                     }
 
                     ImGui::TableNextColumn();
-                    auto& bldset = access_private::blend_settings_(ppu_engine);
+                    auto& bldset = access_private::blend_settings_(ppu_engine_);
                     ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled), "BLEND SETTINGS");
                     ImGui::Spacing();
                     ImGui::Text("eva {:02X}\nevb {:02X}\nevy {:02X}",
@@ -342,23 +342,23 @@ void ppu_debugger::draw() noexcept
             };
 
             draw_tab("BG0", dispcnt.bg_enabled[0_usize], [&]() {
-                draw_regular_bg_map(access_private::bg0_(ppu_engine));
+                draw_regular_bg_map(access_private::bg0_(ppu_engine_));
             });
 
             draw_tab("BG1", dispcnt.bg_enabled[1_usize], [&]() {
-                draw_regular_bg_map(access_private::bg1_(ppu_engine));
+                draw_regular_bg_map(access_private::bg1_(ppu_engine_));
             });
 
             draw_tab("BG2", dispcnt.bg_enabled[2_usize] && dispcnt.bg_mode < 6_u32, [&]() {
                 switch(dispcnt.bg_mode.get()) {
                     case 0:
-                        draw_regular_bg_map(to_regular(access_private::bg2_(ppu_engine)));
+                        draw_regular_bg_map(to_regular(access_private::bg2_(ppu_engine_)));
                         break;
                     case 1: case 2:
-                        draw_affine_bg_map(access_private::bg2_(ppu_engine));
+                        draw_affine_bg_map(access_private::bg2_(ppu_engine_));
                         break;
                     case 3: case 4: case 5:
-                        draw_bitmap_bg(access_private::bg2_(ppu_engine), dispcnt.bg_mode);
+                        draw_bitmap_bg(access_private::bg2_(ppu_engine_), dispcnt.bg_mode);
                         break;
                     default:
                         UNREACHABLE();
@@ -368,13 +368,13 @@ void ppu_debugger::draw() noexcept
             draw_tab("BG3", dispcnt.bg_enabled[3_usize] && dispcnt.bg_mode == 0_u32 || dispcnt.bg_mode == 2_u32, [&]() {
                 switch(dispcnt.bg_mode.get()) {
                     case 0:
-                        draw_regular_bg_map(to_regular(access_private::bg3_(ppu_engine)));
+                        draw_regular_bg_map(to_regular(access_private::bg3_(ppu_engine_)));
                         break;
                     case 2:
-                        draw_affine_bg_map(access_private::bg3_(ppu_engine));
+                        draw_affine_bg_map(access_private::bg3_(ppu_engine_));
                         break;
                     default:
-                        UNREACHABLE();
+                        break;
                 }
             });
 
@@ -398,45 +398,8 @@ void ppu_debugger::draw() noexcept
             });
 
             if(ImGui::BeginTabItem("Palette View")) {
-                const auto draw_palette = [&](const char* name, usize type_offset /*1 for obj*/) {
-                    ImGui::BeginGroup();
-                    ImGui::AlignTextToFramePadding();
-                    ImGui::TextUnformatted(name);
-                    for(u32 palette_idx : range(16_u32)) {
-                        for(u32 color_idx : range(16_u32)) {
-                            const usize address = type_offset * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
-                            const u16 bgr_color = memcpy<u16>(palette, address);
-                            const ppu::color ppu_color{bgr_color};
-                            const sf::Color sf_color = to_sf_color(ppu_color);
-
-                            ImGui::ColorButton("", sf_color,
-                              ImGuiColorEditFlags_NoBorder
-                              | ImGuiColorEditFlags_NoAlpha
-                              | ImGuiColorEditFlags_NoDragDrop
-                              | ImGuiColorEditFlags_NoTooltip, ImVec2(25, 25));
-                            if(ImGui::IsItemHovered()) {
-                                ImGui::BeginTooltip();
-                                ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
-                                ImGui::SameLine();
-                                ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
-                                  address + 0x0500'0000_u32,
-                                  bgr_color,
-                                  (bgr_color & ppu::color::r_mask),
-                                  (bgr_color & ppu::color::g_mask) >> 5_u16,
-                                  (bgr_color & ppu::color::b_mask) >> 10_u16);
-                                ImGui::EndTooltip();
-                            }
-
-                            ImGui::SameLine(0, 4);
-                        }
-                        ImGui::NewLine();
-                    }
-                    ImGui::EndGroup();
-                };
-
-                draw_palette("BG", 0_usize); ImGui::SameLine();
-                draw_palette("OBJ", 1_usize);
-
+                draw_palette(palette_type::bg); ImGui::SameLine();
+                draw_palette(palette_type::obj);
                 ImGui::EndTabItem();
             }
 
@@ -449,18 +412,18 @@ void ppu_debugger::draw() noexcept
 
 void ppu_debugger::on_scanline(u8 screen_y, const ppu::scanline_buffer& scanline) noexcept
 {
-    auto& win_buffer = access_private::win_buffer_(ppu_engine);
+    auto& win_buffer = access_private::win_buffer_(ppu_engine_);
     for(u32 x : range(ppu::screen_width)) {
         screen_buffer_.setPixel(x.get(), screen_y.get(), to_sf_color(scanline[x]));
 
         win_types_[ppu::screen_width * screen_y + x] = [&]() {
-            if(win_buffer[x] == &access_private::win_out_(ppu_engine).outside) {
+            if(win_buffer[x] == &access_private::win_out_(ppu_engine_).outside) {
                 return win_type::out;
             }
-            if(win_buffer[x] == &access_private::win_in_(ppu_engine).win0) {
+            if(win_buffer[x] == &access_private::win_in_(ppu_engine_).win0) {
                 return win_type::w0;
             }
-            if(win_buffer[x] == &access_private::win_in_(ppu_engine).win1) {
+            if(win_buffer[x] == &access_private::win_in_(ppu_engine_).win1) {
                 return win_type::w1;
             }
             return win_type::obj;
@@ -475,20 +438,18 @@ void ppu_debugger::on_update_texture() noexcept
 
 void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
 {
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
+
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
     sf::Image& buffer = bg_buffers_[bg.id];
     sf::Texture& texture = bg_textures_[bg.id];
 
     const usize tile_base = bg.cnt.char_base_block * 16_kb;
     const usize map_entry_base = bg.cnt.screen_entry_base_block * 2_kb;
 
-    static array<bool, 4> enable_visible_area{true, true, true, true};
-    static array<bool, 4> enable_visible_border{true, true, true, true};
-    static array<bool, 4> enable_window_area{true, true, true, true};
-    ImGui::Checkbox("Enable visible area mask", &enable_visible_area[bg.id]);
-    if(enable_visible_area[bg.id]) { ImGui::SameLine(); ImGui::Checkbox("Enable visible area border", &enable_visible_border[bg.id]); }
-    if(enable_visible_area[bg.id]) { ImGui::SameLine(); ImGui::Checkbox("Enable window mask", &enable_window_area[bg.id]); }
+    ImGui::Checkbox("Enable visible area mask", &bg_prefs.enable_visible_area);
+    if(bg_prefs.enable_visible_area) { ImGui::SameLine(); ImGui::Checkbox("Enable visible area border", &bg_prefs.enable_visible_area_border); }
 
     static constexpr array map_block_sizes{
       ppu::dimension<u8>{1_u8, 1_u8},
@@ -517,7 +478,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -527,18 +488,18 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 7 - px.get() : px.get()),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, entry.palette_idx())));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idxs & 0xF_u8, entry.palette_idx())));
                         buffer.setPixel(
                           tx.get() * ppu::tile_dot_count + (entry.hflipped() ? 6 - px.get() : px.get() + 1),
                           ty.get() * ppu::tile_dot_count + (entry.vflipped() ? 7 - py.get() : py.get()),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, entry.palette_idx())));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idxs >> 4_u8, entry.palette_idx())));
                     }
                 }
             }
         }
     }
 
-    static int draw_scale = 1;
+    int& draw_scale = bg_prefs.render_scale;
     ImGui::SetNextItemWidth(150.f);
     ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
@@ -552,7 +513,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
 
     // draw the whole map in half alpha
     const ImVec2 img_start = ImGui::GetCursorScreenPos();
-    ImGui::Image(bg_sprite, !enable_visible_area[bg.id] ? sf::Color::White : sf::Color{0xFFFFFF7F});
+    ImGui::Image(bg_sprite, !bg_prefs.enable_visible_area ? sf::Color::White : sf::Color{0xFFFFFF7F});
     const ImVec2 img_end = ImGui::GetCursorScreenPos();
 
     if(ImGui::IsItemHovered()) {
@@ -584,7 +545,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
         ImGui::EndTooltip();
     }
 
-    if(!enable_visible_area[bg.id]) {
+    if(!bg_prefs.enable_visible_area) {
         ImGui::EndChild();
         return;
     }
@@ -592,6 +553,7 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     // draw the actual visible area
     const u32::type xoffset = bg.hoffset.get() % map_total_dot_dimensions.x;
     const u32::type yoffset = bg.voffset.get() % map_total_dot_dimensions.y;
+    const i32::type border_offset = bg_prefs.enable_visible_area_border ? -1 : 0;
 
     sf::IntRect first_part(
       xoffset, yoffset,
@@ -609,11 +571,12 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     const auto draw_visible_area = [&](const sf::IntRect& area) {
         if(area.width == 0 || area.height == 0) { return; }
 
-        ImGui::SetCursorScreenPos(ImVec2(
-          img_start.x + area.left * draw_scale,
-          img_start.y + area.top * draw_scale));
+        ImGui::SetCursorScreenPos(ImVec2{
+          img_start.x + border_offset + area.left * draw_scale,
+          img_start.y + border_offset + area.top * draw_scale
+        });
         bg_sprite.setTextureRect(area);
-        ImGui::Image(bg_sprite, sf::Color::White, enable_visible_border[bg.id] ? sf::Color::White : sf::Color::Transparent);
+        ImGui::Image(bg_sprite, sf::Color::White, bg_prefs.enable_visible_area_border ? sf::Color::White : sf::Color::Transparent);
         ImGui::SetCursorScreenPos(img_end);
     };
 
@@ -622,20 +585,15 @@ void ppu_debugger::draw_regular_bg_map(const ppu::bg_regular& bg) noexcept
     draw_visible_area(third_part);
     draw_visible_area(fourth_part);
 
-    if(!enable_window_area[bg.id]) {
-        ImGui::EndChild();
-        return;
-    }
-
-    // todo draw the window tint
-
     ImGui::EndChild();
 }
 
 void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 {
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
+
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
     sf::Image& buffer = bg_buffers_[bg.id];
     sf::Texture& texture = bg_textures_[bg.id];
 
@@ -659,17 +617,18 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
                     buffer.setPixel(
                       tx.get() * ppu::tile_dot_count + px.get(),
                       ty.get() * ppu::tile_dot_count + py.get(),
-                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
+                      to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idx, 0_u8)));
                 }
             }
         }
     }
 
-    static int draw_scale = 1;
+    int& draw_scale = bg_prefs.render_scale;
     ImGui::SetNextItemWidth(150.f);
     ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
     if(!ImGui::BeginChild("#bgtexture", ImVec2{}, false, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
         return;
     }
 
@@ -713,11 +672,16 @@ void ppu_debugger::draw_affine_bg_map(const ppu::bg_affine& bg) noexcept
 
 void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noexcept
 {
-    const sf::Color backdrop = to_sf_color(call_private::palette_color_opaque(ppu_engine, 0_u8, 0_u8));
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    ppu_bg_preferences& bg_prefs = prefs_->ppu_bg_prefs[bg.id];
+
+    const sf::Color backdrop = to_sf_color(call_private::palette_color_opaque(ppu_engine_, 0_u8, 0_u8));
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
     auto& buffer = bg_buffers_[bg.id];
     auto& texture = bg_textures_[bg.id];
+
+    ImGui::SetNextItemWidth(150.f);
+    ImGui::SliderInt("render scale", &bg_prefs.render_scale, 1, 4);
 
     const auto draw_page = [&](u32 w, u32 h, u8 page, bool depth8bit) {
         const u32::type yoffset = page.get() * (ppu::screen_height + 2);
@@ -732,7 +696,8 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             } else {
                 for(u32 x : range(w)) {
                     buffer.setPixel(x.get(), yoffset + y.get(),
-                      to_sf_color(call_private::palette_color_opaque(ppu_engine,
+                      to_sf_color(call_private::palette_color_opaque(
+                        ppu_engine_,
                         memcpy<u8>(vram, page * 40_kb + (y * w + x)), 0_u8)));
                 }
             }
@@ -753,9 +718,14 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
         }
 
         sf::Sprite spr{texture, sf::IntRect(0, yoffset, ppu::screen_width, ppu::screen_height)};
-        spr.setScale(2, 2);
+        spr.setScale(bg_prefs.render_scale, bg_prefs.render_scale);
         return spr;
     };
+
+    if(!ImGui::BeginChild("#bitmapbg", ImVec2{}, false, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
+        return;
+    }
 
     switch(mode.get()) {
         case 3: {
@@ -774,7 +744,9 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             ImGui::Image(p1);
             ImGui::EndGroup();
 
-            ImGui::SameLine();
+            if(bg_prefs.render_scale < 3) {
+                ImGui::SameLine();
+            }
 
             ImGui::BeginGroup();
             ImGui::Text("Page 1");
@@ -793,7 +765,9 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
             ImGui::Image(p1);
             ImGui::EndGroup();
 
-            ImGui::SameLine();
+            if(bg_prefs.render_scale < 3) {
+                ImGui::SameLine();
+            }
 
             ImGui::BeginGroup();
             ImGui::Text("Page 1");
@@ -804,12 +778,14 @@ void ppu_debugger::draw_bitmap_bg(const ppu::bg_affine& bg, const u32 mode) noex
         default:
             UNREACHABLE();
     }
+
+    ImGui::EndChild();
 }
 
 void ppu_debugger::draw_bg_tiles() noexcept
 {
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
 
     static bool depth8bit = false;
     static int palette_idx = 0_u8;
@@ -820,7 +796,7 @@ void ppu_debugger::draw_bg_tiles() noexcept
         ImGui::SliderInt("Palette idx", &palette_idx, 0, 15);
     }
 
-    static int draw_scale = 3;
+    int& draw_scale = prefs_->ppu_bg_tiles_render_scale;
     ImGui::SetNextItemWidth(150.f);
     ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
@@ -834,7 +810,7 @@ void ppu_debugger::draw_bg_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 0_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idx, 0_u8)));
                     }
                 }
             } else {
@@ -844,11 +820,13 @@ void ppu_debugger::draw_bg_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx))));
+                          to_sf_color(call_private::palette_color_opaque(
+                            ppu_engine_, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx))));
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get() + 1,
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx))));
+                          to_sf_color(call_private::palette_color_opaque(
+                            ppu_engine_, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx))));
                     }
                 }
             }
@@ -891,8 +869,8 @@ void ppu_debugger::draw_bg_tiles() noexcept
 
 void ppu_debugger::draw_obj_tiles() noexcept
 {
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
 
     static bool depth8bit = false;
     static int palette_idx = 0_u8;
@@ -903,7 +881,7 @@ void ppu_debugger::draw_obj_tiles() noexcept
         ImGui::SliderInt("Palette idx", &palette_idx, 0, 15);
     }
 
-    static int draw_scale = 3;
+    int& draw_scale = prefs_->ppu_obj_tiles_render_scale;
     ImGui::SetNextItemWidth(150.f);
     ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
@@ -918,7 +896,7 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 16_u8)));
+                          to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idx, 16_u8)));
                     }
                 }
             } else {
@@ -928,11 +906,13 @@ void ppu_debugger::draw_obj_tiles() noexcept
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get(),
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx + 16_u8))));
+                          to_sf_color(call_private::palette_color_opaque(
+                            ppu_engine_, color_idxs & 0xF_u8, static_cast<u8::type>(palette_idx + 16_u8))));
                         tiles_buffer_.setPixel(
                           tx.get() * ppu::tile_dot_count + px.get() + 1,
                           ty.get() * ppu::tile_dot_count + py.get(),
-                          to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx + 16_u8))));
+                          to_sf_color(call_private::palette_color_opaque(
+                            ppu_engine_, color_idxs >> 4_u8, static_cast<u8::type>(palette_idx + 16_u8))));
                     }
                 }
             }
@@ -975,12 +955,12 @@ void ppu_debugger::draw_obj_tiles() noexcept
 
 void ppu_debugger::draw_obj() noexcept
 {
-    const auto& vram = access_private::vram_(ppu_engine);
-    const auto& dispcnt = access_private::dispcnt_(ppu_engine);
+    const auto& vram = access_private::vram_(ppu_engine_);
+    const auto& dispcnt = access_private::dispcnt_(ppu_engine_);
     const bool mapping_1d = dispcnt.obj_mapping_1d;
 
-    const view<ppu::obj> obj_view{access_private::oam_(ppu_engine)};
-    const view<ppu::obj_affine> obj_affine_view{access_private::oam_(ppu_engine)};
+    const view<ppu::obj> obj_view{access_private::oam_(ppu_engine_)};
+    const view<ppu::obj_affine> obj_affine_view{access_private::oam_(ppu_engine_)};
 
     for(u32 obj_y : range(16_u32)) {
         for(u32 obj_x : range(8_u32)) {
@@ -1028,7 +1008,7 @@ void ppu_debugger::draw_obj() noexcept
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idx, 16_u8)));
+                                      to_sf_color(call_private::palette_color_opaque(ppu_engine_, color_idx, 16_u8)));
                                 }
                             }
                         } else {
@@ -1042,11 +1022,13 @@ void ppu_debugger::draw_obj() noexcept
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get(),
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs & 0xF_u8, palette_idx)));
+                                      to_sf_color(call_private::palette_color_opaque(
+                                        ppu_engine_, color_idxs & 0xF_u8, palette_idx)));
                                     buffer.setPixel(
                                       tx.get() * ppu::tile_dot_count + px.get() + 1,
                                       ty.get() * ppu::tile_dot_count + py.get(),
-                                      to_sf_color(call_private::palette_color_opaque(ppu_engine, color_idxs >> 4_u8, palette_idx)));
+                                      to_sf_color(call_private::palette_color_opaque(
+                                        ppu_engine_, color_idxs >> 4_u8, palette_idx)));
                                 }
                             }
                         }
@@ -1098,7 +1080,7 @@ void ppu_debugger::draw_obj() noexcept
 
             if(float s = float(dimension.h.get()) / dimension.v.get(); s < 1.f) {
                 ImGui::SameLine(0.f, 0.f);
-                ImGui::Dummy(ImVec2((1.f - s) * 64.f, 0.f));
+                ImGui::Dummy(ImVec2{(1.f - s) * 64.f, 0.f});
             }
 
             ImGui::SameLine(0.f, 10.f);
@@ -1110,31 +1092,35 @@ void ppu_debugger::draw_obj() noexcept
 
 void ppu_debugger::draw_win_buffer() noexcept
 {
-    static ImVec4 out_color(1.f, 1.f, 1.f, 1.f);
-    static ImVec4 w0_color(1.f, 0.f, 0.f, 1.f);
-    static ImVec4 w1_color(0.f, 0.f, 1.f, 1.f);
-    static ImVec4 obj_color(0.f, 0.f, 0.f, 1.f);
+    ImGui::ColorEdit3("OUT", prefs_->ppu_winout_color.data(), ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("WIN0", prefs_->ppu_win0_color.data(), ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("WIN1", prefs_->ppu_win1_color.data(), ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
+    ImGui::ColorEdit3("OBJ", prefs_->ppu_winobj_color.data(), ImGuiColorEditFlags_NoInputs);
 
-    ImGui::ColorEdit3("OUT", &out_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
-    ImGui::ColorEdit3("WIN0", &w0_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
-    ImGui::ColorEdit3("WIN1", &w1_color.x, ImGuiColorEditFlags_NoInputs); ImGui::SameLine();
-    ImGui::ColorEdit3("OBJ", &obj_color.x, ImGuiColorEditFlags_NoInputs);
+    constexpr auto to_sf_color = [](array<float, 4>& f) {
+        return sf::Color{
+            static_cast<sf::Uint8>(f[0_u32] * 255.f),
+            static_cast<sf::Uint8>(f[1_u32] * 255.f),
+            static_cast<sf::Uint8>(f[2_u32] * 255.f),
+            static_cast<sf::Uint8>(f[3_u32] * 255.f)
+        };
+    };
 
     for(u32 y : range(ppu::screen_height)) {
         for(u32 x : range(ppu::screen_width)) {
             const u32 idx = ppu::screen_width * y + x;
             switch(win_types_[idx]) {
                 case win_type::out:
-                    win_buffer_.setPixel(x.get(), y.get(), out_color);
+                    win_buffer_.setPixel(x.get(), y.get(), to_sf_color(prefs_->ppu_winout_color));
                     break;
                 case win_type::w0:
-                    win_buffer_.setPixel(x.get(), y.get(), w0_color);
+                    win_buffer_.setPixel(x.get(), y.get(), to_sf_color(prefs_->ppu_win0_color));
                     break;
                 case win_type::w1:
-                    win_buffer_.setPixel(x.get(), y.get(), w1_color);
+                    win_buffer_.setPixel(x.get(), y.get(), to_sf_color(prefs_->ppu_win1_color));
                     break;
                 case win_type::obj:
-                    win_buffer_.setPixel(x.get(), y.get(), obj_color);
+                    win_buffer_.setPixel(x.get(), y.get(), to_sf_color(prefs_->ppu_winobj_color));
                     break;
             }
         }
@@ -1142,13 +1128,67 @@ void ppu_debugger::draw_win_buffer() noexcept
 
     win_texture_.update(win_buffer_);
 
-    static int draw_scale = 3;
+    int& draw_scale = prefs_->ppu_win_render_scale;
     ImGui::SetNextItemWidth(150.f);
     ImGui::SliderInt("render scale", &draw_scale, 1, 4);
 
     sf::Sprite win_sprite{win_texture_};
     win_sprite.setScale(draw_scale, draw_scale);
     ImGui::Image(win_sprite);
+}
+
+void ppu_debugger::draw_palette(const palette_type type) noexcept
+{
+    constexpr u32::type num_palette_cols = 16_u32;
+    constexpr float color_button_size = 25.f;
+    const auto& palette = access_private::palette_ram_(ppu_engine_);
+
+    ImGui::BeginGroup();
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted(type == palette_type::bg ? "BG" : "OBJ");
+
+    const ImVec2 cursor_start = ImGui::GetCursorPos();
+    const ImVec2 border_start = ImGui::GetCursorScreenPos();
+    const ImVec2 border_end{
+        border_start.x + num_palette_cols * color_button_size,
+        border_start.y + num_palette_cols * color_button_size
+    };
+
+    for(u32 palette_idx : range(num_palette_cols)) {
+        for(u32 color_idx : range(num_palette_cols)) {
+            const usize address = from_enum<u32>(type) * 512_u32 + palette_idx * 32_u32 + color_idx * 2_u32;
+            const u16 bgr_color = memcpy<u16>(palette, address);
+            const ppu::color ppu_color{bgr_color};
+            const sf::Color sf_color = to_sf_color(ppu_color);
+
+            ImGui::ColorButton("", sf_color,
+              ImGuiColorEditFlags_NoBorder
+                | ImGuiColorEditFlags_NoAlpha
+                | ImGuiColorEditFlags_NoDragDrop
+                | ImGuiColorEditFlags_NoTooltip, ImVec2{color_button_size, color_button_size});
+
+            if(ImGui::IsItemHovered()) {
+                ImGui::BeginTooltip();
+                ImGui::ColorButton("##preview", sf_color, ImGuiColorEditFlags_NoTooltip, ImVec2{75.f, 75.f});
+                ImGui::SameLine();
+                ImGui::Text("address: {:08X}\nvalue: {:04X}\nR: {:02X}\nG: {:02X}\nB: {:02X}",
+                  address + 0x0500'0000_u32,
+                  bgr_color,
+                  (bgr_color & ppu::color::r_mask),
+                  (bgr_color & ppu::color::g_mask) >> 5_u16,
+                  (bgr_color & ppu::color::b_mask) >> 10_u16);
+                ImGui::EndTooltip();
+            }
+
+            ImGui::SameLine(0, 0);
+        }
+        ImGui::NewLine();
+        ImGui::SetCursorPosY(cursor_start.y + (palette_idx + 1_u32).get() * color_button_size);
+    }
+
+    ImDrawList* win_draw_list = ImGui::GetWindowDrawList();
+    win_draw_list->AddRect(border_start, border_end, 0xFFFFFFFF_u32);
+    ImGui::EndGroup();
 }
 
 } // namespace gba::debugger

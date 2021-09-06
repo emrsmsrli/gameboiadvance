@@ -8,14 +8,14 @@
 #include <gba/apu/apu.h>
 
 #include <gba/core/scheduler.h>
-#include <gba/arm/timer.h>
+#include <gba/cpu/timer.h>
 
 namespace gba::apu {
 
 namespace {
 
 constexpr u8 frame_sequencer_max = 8_u8;
-constexpr u64 frame_sequencer_cycles = arm::clock_speed / 512_u64;  // runs at 512hz
+constexpr u32 frame_sequencer_cycles = cpu::clock_speed / 512_u32;  // runs at 512hz
 
 constexpr array<i16, 4> psg_volume_tab{1_i16, 2_i16, 4_i16, 0_i16};
 constexpr array<i16, 2> dma_volume_tab{2_i16, 4_i16};
@@ -41,7 +41,7 @@ engine::engine(timer::timer* timer1, timer::timer* timer2, scheduler* scheduler)
     resampler_.set_src_sample_rate(soundbias_.sample_rate());
 }
 
-void engine::tick_sequencer(const u64 late_cycles) noexcept
+void engine::tick_sequencer(const u32 late_cycles) noexcept
 {
     scheduler_->ADD_HW_EVENT(frame_sequencer_cycles - late_cycles, apu::engine::tick_sequencer);
 
@@ -73,11 +73,11 @@ void engine::tick_sequencer(const u64 late_cycles) noexcept
     frame_sequencer_ = (frame_sequencer_ + 1_u8) % frame_sequencer_max;
 }
 
-void engine::tick_mixer(const u64 late_cycles) noexcept
+void engine::tick_mixer(const u32 late_cycles) noexcept
 {
     resampler_.write_sample(stereo_sample<float>{
-      generate_sample(terminal::left).get() / float(0x200),
-      generate_sample(terminal::right).get() / float(0x200)
+      static_cast<float>(generate_sample(terminal::left).get()) / static_cast<float>(0x200),
+      static_cast<float>(generate_sample(terminal::right).get()) / static_cast<float>(0x200)
     });
 
     scheduler_->ADD_HW_EVENT(soundbias_.sample_interval() - late_cycles, apu::engine::tick_mixer);

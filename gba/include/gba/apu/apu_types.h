@@ -8,18 +8,18 @@
 #ifndef GAMEBOIADVANCE_APU_TYPES_H
 #define GAMEBOIADVANCE_APU_TYPES_H
 
+#include <gba/cpu/dma_controller.h>
 #include <gba/core/container.h>
-#include <gba/core/scheduler.h>
 #include <gba/core/math.h>
-#include <gba/arm/dma_controller.h>
+#include <gba/core/scheduler.h>
 #include <gba/helper/range.h>
 
 namespace gba::apu {
 
 struct terminal {
-    static constexpr inline u32 left = 0_u32;
-    static constexpr inline u32 right = 1_u32;
-    static constexpr inline u32::type count = 2_u32;
+    static inline constexpr u32 left = 0_u32;
+    static inline constexpr u32 right = 1_u32;
+    static inline constexpr u32::type count = 2_u32;
 };
 
 template<typename T>
@@ -229,7 +229,7 @@ public:
 
     explicit pulse_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
 
     void write(register_index index, u8 data);
@@ -282,7 +282,7 @@ public:
 
     explicit wave_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] i8 get_output() const noexcept;
 
     void write(register_index index, u8 data) noexcept;
@@ -325,7 +325,7 @@ public:
 
     explicit noise_channel(scheduler* scheduler) noexcept;
 
-    void generate_output_sample(u64 late_cycles) noexcept;
+    void generate_output_sample(u32 late_cycles) noexcept;
     [[nodiscard]] FORCEINLINE i8 get_output() const noexcept { return output; }
 
     void write(register_index index, u8 data) noexcept;

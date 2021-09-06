@@ -5,8 +5,7 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/arm/timer.h>
-#include <gba/arm/arm7tdmi.h>
+#include <gba/cpu/timer.h>
 
 namespace gba::timer {
 
@@ -75,9 +74,9 @@ void timer::write(const register_type reg, const u8 data) noexcept
                 if(control_.cascaded) {
                     cascade_instance->on_overflow.add_delegate({connect_arg<&timer::tick_internal>, this});
                 } else {
-                    u64 delay = scheduler_->now() & start_delay_masks[control_.prescalar];
+                    u32 delay = narrow<u32>(scheduler_->now() & start_delay_masks[control_.prescalar]);
                     if(!was_enabled) {
-                        delay -= 2_u64;
+                        delay -= 2_u32;
                     }
 
                     schedule_overflow(delay);
@@ -90,7 +89,7 @@ void timer::write(const register_type reg, const u8 data) noexcept
     }
 }
 
-void timer::schedule_overflow(const u64 late_cycles) noexcept
+void timer::schedule_overflow(const u32 late_cycles) noexcept
 {
     last_scheduled_timestamp_ = scheduler_->now() - late_cycles;
     handle_ = scheduler_->ADD_HW_EVENT_NAMED(
@@ -98,7 +97,7 @@ void timer::schedule_overflow(const u64 late_cycles) noexcept
       timer::overflow, fmt::format("timer::overflow ({})", id_));
 }
 
-void timer::overflow(const u64 late_cycles) noexcept
+void timer::overflow(const u32 late_cycles) noexcept
 {
     overflow_internal();
     schedule_overflow(late_cycles);
@@ -109,8 +108,8 @@ void timer::overflow_internal() noexcept
     counter_ = reload_;
 
     if(control_.irq_enabled) {
-        irq_handle_.request_interrupt(to_enum<arm::interrupt_source>(
-          from_enum<u32>(arm::interrupt_source::timer_0_overflow) << id_));
+        irq_handle_.request_interrupt(to_enum<cpu::interrupt_source>(
+          from_enum<u32>(cpu::interrupt_source::timer_0_overflow) << id_));
     }
 
     on_overflow(this);
@@ -130,4 +129,4 @@ u32 timer::calculate_counter_delta() const noexcept
     return narrow<u32>(scheduler_->now() - last_scheduled_timestamp_) >> prescalar_shifts[control_.prescalar];
 }
 
-} // namespace gba::arm
+} // namespace gba::timer

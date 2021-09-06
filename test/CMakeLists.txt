@@ -6,6 +6,7 @@ add_executable(${PROJECT_NAME}
         src/integer.cpp
         src/math.cpp
         src/rtc.cpp
+        src/archive.cpp
         src/main.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include/)

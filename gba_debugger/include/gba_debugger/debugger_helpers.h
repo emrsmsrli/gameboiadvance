@@ -8,13 +8,10 @@
 #ifndef GAMEBOIADVANCE_DEBUGGER_HELPERS_H
 #define GAMEBOIADVANCE_DEBUGGER_HELPERS_H
 
-#include <string>
 #include <optional>
 
 #include <fmt/format.h>
 #include <imgui.h>
-
-#include <gba/helper/macros.h>
 
 namespace ImGui {
 
@@ -25,24 +22,6 @@ void Text(const S& format_str, Args&&... args)
 }
 
 } // namespace ImGui
-
-namespace gba::debugger {
-
-template<typename T>
-FORCEINLINE std::string fmt_hex(const T val) noexcept
-{
-    if constexpr(sizeof(T) == 8) {
-        return fmt::format("{:08X}", val);
-    } else if constexpr(sizeof(T) == 4) {
-        return fmt::format("{:04X}", val);
-    } else if constexpr(sizeof(T) == 2) {
-        return fmt::format("{:02X}", val);
-    } else {
-        return fmt::format("{:01X}", val);
-    }
-}
-
-} // namespace gba::debugger
 
 template<typename T>
 struct fmt::formatter<std::optional<T>> : formatter<T> {

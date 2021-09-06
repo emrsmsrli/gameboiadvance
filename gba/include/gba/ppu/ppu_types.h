@@ -144,6 +144,7 @@ struct bgcnt : T {
 
     u8 priority;
     u8 char_base_block;
+    u8 _unused_2;
     bool mosaic_enabled = false;
     bool color_depth_8bit = false;
     u8 screen_entry_base_block;
@@ -153,6 +154,7 @@ struct bgcnt : T {
     {
         priority = data & 0b11_u8;
         char_base_block = (data >> 2_u8) & 0b11_u8;
+        _unused_2 = (data >> 4_u8) & 0b11_u8;
         mosaic_enabled = bit::test(data, 6_u8);
         color_depth_8bit = bit::test(data, 7_u8);
     }
@@ -160,7 +162,7 @@ struct bgcnt : T {
     void write_upper(const u8 data) noexcept
     {
         screen_entry_base_block = data & 0x1F_u8;
-        screen_size = (data >> 6_u8) & 0b11_u8;
+        screen_size = data >> 6_u8;
         if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
             T::wraparound = bit::test(data, 5_u8);
         }
@@ -170,6 +172,7 @@ struct bgcnt : T {
     {
         return priority
           | char_base_block << 2_u8
+          | _unused_2 << 4_u8
           | bit::from_bool<u8>(mosaic_enabled) << 6_u8
           | bit::from_bool<u8>(color_depth_8bit) << 7_u8;
     }
@@ -206,7 +209,7 @@ struct window {
     coord top_left;
     coord bottom_right;
 
-    explicit window(u32 i) : id{i} {}
+    explicit window(const u32 i) : id{i} {}
 };
 
 struct win_enable_bits {
@@ -229,6 +232,8 @@ struct win_out {
 
 struct mosaic : dimension<u8> {
     dimension<u8> internal;
+
+    mosaic() noexcept : dimension{1_u8, 1_u8} {}
 
     FORCEINLINE void reset() noexcept { internal = dimension{0_u8, 0_u8}; }
     FORCEINLINE void update_internal_v() noexcept

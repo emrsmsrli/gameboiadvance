@@ -11,8 +11,8 @@
 // https://github.com/foonathan/type_safe/blob/master/include/type_safe/integer.hpp
 
 #include <cstdint>
-#include <type_traits>
 #include <limits>
+#include <type_traits>
 
 #include <fmt/core.h>
 

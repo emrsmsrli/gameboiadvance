@@ -8,24 +8,17 @@
 #ifndef GAMEBOIADVANCE_ARM7TDMI_H
 #define GAMEBOIADVANCE_ARM7TDMI_H
 
-#include <algorithm>
-
-#include <gba/arm/dma_controller.h>
-#include <gba/arm/timer.h>
-#include <gba/arm/irq_controller_handle.h>
-#include <gba/core/scheduler.h>
+#include <gba/cpu/bus_interface.h>
+#include <gba/cpu/irq_controller_handle.h>
 #include <gba/core/container.h>
-#include <gba/core/math.h>
 #include <gba/core/fwd.h>
-#include <gba/helper/lookup_table.h>
-#include <gba/helper/function_ptr.h>
+#include <gba/core/math.h>
+#include <gba/core/scheduler.h>
 #include <gba/helper/bitflags.h>
+#include <gba/helper/function_ptr.h>
+#include <gba/helper/range.h>
 
-namespace gba::arm {
-
-#if WITH_DEBUGGER
-enum class debugger_access_width : u32::type { byte, hword, word, any };
-#endif // WITH_DEBUGGER
+namespace gba::cpu {
 
 enum class register_bank : u32::type {
     none, irq, svc, fiq, abt, und
@@ -139,33 +132,7 @@ struct spsr_banks {
     }
 };
 
-struct waitstate_control {
-    u8 sram;
-    u8 ws0_nonseq;
-    u8 ws0_seq;
-    u8 ws1_nonseq;
-    u8 ws1_seq;
-    u8 ws2_nonseq;
-    u8 ws2_seq;
-    u8 phi;
-    bool prefetch_buffer_enable = false;
-};
-
-enum class halt_control {
-    halted,
-    stopped,
-    running,
-};
-
 enum class instruction_mode { arm, thumb };
-enum class mem_access : u32::type {
-    none = 0,
-    non_seq = 1,
-    seq = 2,
-    pak_prefetch = 4, // todo implement gamepak fetch with this
-    dma = 8,
-    dry_run = 16
-};
 
 struct pipeline {
     mem_access fetch_type{mem_access::non_seq};
@@ -174,21 +141,11 @@ struct pipeline {
 };
 
 class arm7tdmi {
-    friend dma::controller;
+    friend class decoder_table_generator;
 
-    core* core_;
-
-    vector<u8> bios_{16_kb};
-    vector<u8> wram_{256_kb};
-    vector<u8> iwram_{32_kb};
-
-    /*
-     * The BIOS memory is protected against reading,
-     * the GBA allows to read opcodes or data only if the program counter is
-     * located inside of the BIOS area. If the program counter is not in the BIOS area,
-     * reading will return the most recent successfully fetched BIOS opcode.
-     */
-    u32 bios_last_read_;
+protected:
+    bus_interface* bus_;
+    scheduler* scheduler_;
 
     array<u32, 16> r_{};
     reg_banks reg_banks_{};
@@ -196,8 +153,6 @@ class arm7tdmi {
     psr cpsr_;
     spsr_banks spsr_banks_{};
 
-    u8 post_boot_;
-    halt_control haltcnt_{halt_control::running};
     u16 ie_;
     u16 if_;
     bool ime_ = false;
@@ -207,27 +162,14 @@ class arm7tdmi {
 
     pipeline pipeline_;
 
-    waitstate_control waitcnt_;
-    array<u8, 32> wait_16{ // cycle counts for 16bit r/w, nonseq and seq access
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 3_u8, 1_u8, 1_u8, 1_u8, 1_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
-    };
-    array<u8, 32> wait_32{ // cycle counts for 32bit r/w, nonseq and seq access
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8,
-      1_u8, 1_u8, 6_u8, 1_u8, 1_u8, 2_u8, 2_u8, 1_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 0_u8, 1_u8
-    };
-
 public:
 #if WITH_DEBUGGER
     delegate<bool(u32)> on_instruction_execute;
-    delegate<void(u32, debugger_access_width)> on_io_read;
-    delegate<void(u32, u32, debugger_access_width)> on_io_write;
 #endif // WITH_DEBUGGER
 
-    explicit arm7tdmi(core* core) noexcept : arm7tdmi(core, {}) {}
-    arm7tdmi(core* core, vector<u8> bios) noexcept;
+    arm7tdmi(bus_interface* bus, scheduler* scheduler) noexcept;
 
-    void tick() noexcept;
+    void execute_instruction() noexcept;
 
     FORCEINLINE void request_interrupt(const interrupt_source irq) noexcept
     {
@@ -239,73 +181,85 @@ public:
 
 private:
     [[nodiscard]] u32 read_32_aligned(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u32 read_32(u32 addr, mem_access access) noexcept;
-    void write_32(u32 addr, u32 data, mem_access access) noexcept;
-
     [[nodiscard]] u32 read_16_signed(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_16_aligned(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u16 read_16(u32 addr, mem_access access) noexcept;
-    void write_16(u32 addr, u16 data, mem_access access) noexcept;
-
     [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
-    [[nodiscard]] u8 read_8(u32 addr, mem_access access) noexcept;
-    void write_8(u32 addr, u8 data, mem_access access) noexcept;
 
-    [[nodiscard]] u32 read_bios(u32 addr) noexcept;
-    [[nodiscard]] u32 read_unused(u32 addr, mem_access access) noexcept;
-
-    [[nodiscard]] u8 read_io(u32 addr, mem_access access) noexcept;
-    void write_io(u32 addr, u8 data) noexcept;
-
-    void update_waitstate_table() noexcept;
-
-    [[nodiscard]] FORCEINLINE bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
-    void schedule_update_irq_signal() noexcept;
-    void update_irq_signal(u64 /*late_cycles*/) noexcept;
+    void update_irq_signal(u64 /*late_cycles*/) noexcept { irq_signal_ = scheduled_irq_signal_; }
     void process_interrupts() noexcept;
-    void tick_internal() noexcept;
-    void tick_components(u64 cycles) noexcept;
 
     // ARM instructions
-    void data_processing_imm_shifted_reg(u32 instr) noexcept;
-    void data_processing_reg_shifted_reg(u32 instr) noexcept;
-    void data_processing_imm(u32 instr) noexcept;
-    void data_processing(u32 instr, u32 first_op, u32 second_op, bool carry) noexcept;
+    enum class arm_alu_opcode { and_, eor, sub, rsb, add, adc, sbc, rsc, tst, teq, cmp, cmn, orr, mov, bic, mvn };
+    enum class psr_transfer_opcode { mrs, msr };
+    enum class halfword_data_transfer_opcode { strh = 1, ldrd = 2, strd = 3, ldrh = 1, ldrsb = 2, ldrsh = 3 };
+
     void branch_exchange(u32 instr) noexcept;
-    void halfword_data_transfer_reg(u32 instr) noexcept;
-    void halfword_data_transfer_imm(u32 instr) noexcept;
-    void halfword_data_transfer(u32 instr, u32 offset) noexcept;
-    void psr_transfer_reg(u32 instr) noexcept;
-    void psr_transfer_imm(u32 instr) noexcept;
-    void psr_transfer_msr(u32 instr, u32 operand, bool use_spsr) noexcept;
-    void multiply(u32 instr) noexcept;
-    void multiply_long(u32 instr) noexcept;
-    void single_data_swap(u32 instr) noexcept;
-    void single_data_transfer(u32 instr) noexcept;
-    void undefined(u32 instr) noexcept;
-    void block_data_transfer(u32 instr) noexcept;
+    template<bool WithLink>
     void branch_with_link(u32 instr) noexcept;
+    template<bool HasImmediateOp2, arm_alu_opcode OpCode, bool ShouldSetCond, u32::type Op2>
+    void data_processing(u32 instr) noexcept;
+    template<bool HasImmediateSrc, bool UseSPSR, psr_transfer_opcode OpCode>
+    void psr_transfer(u32 instr) noexcept;
+    template<bool ShouldAccumulate, bool ShouldSetCond>
+    void multiply(u32 instr) noexcept;
+    template<bool IsSigned, bool ShouldAccumulate, bool ShouldSetCond>
+    void multiply_long(u32 instr) noexcept;
+    template<bool HasImmediateOffset, bool HasPreIndexing, bool ShouldAddToBase,
+      bool IsByteTransfer, bool ShouldWriteback, bool IsLoad>
+    void single_data_transfer(u32 instr) noexcept;
+    template<bool HasPreIndexing, bool ShouldAddToBase, bool HasImmediateOffset,
+      bool ShouldWriteback, bool IsLoad, halfword_data_transfer_opcode OpCode>
+    void halfword_data_transfer(u32 instr) noexcept;
+    template<bool HasPreIndexing, bool ShouldAddToBase, bool LoadPSR_ForceUser, bool ShouldWriteback, bool IsLoad>
+    void block_data_transfer(u32 instr) noexcept;
+    template<bool IsByteTransfer>
+    void single_data_swap(u32 instr) noexcept;
     void swi_arm(u32 instr) noexcept;
+    void undefined(u32 instr) noexcept;
 
     // THUMB instructions
+    enum class move_shifted_reg_opcode { lsl, lsr, asr };
+    enum class imm_op_opcode { mov, cmp, add, sub };
+    enum class thumb_alu_opcode { and_, eor, lsl, lsr, asr, adc, sbc, ror, tst, neg, cmp, cmn, orr, mul, bic, mvn };
+    enum class hireg_bx_opcode { add, cmp, mov, bx };
+    enum class ld_str_reg_opcode { str, strb, ldr, ldrb };
+    enum class ld_str_sign_extended_byte_hword_opcode { strh, ldsb, ldrh, ldsh };
+    enum class ld_str_imm_opcode { str, ldr, strb, ldrb };
+
+    template<move_shifted_reg_opcode OpCode>
     void move_shifted_reg(u16 instr) noexcept;
+    template<bool HasImmediateOperand, bool IsSub, u16::type Operand>
     void add_subtract(u16 instr) noexcept;
+    template<imm_op_opcode OpCode, u16::type Rd>
     void mov_cmp_add_sub_imm(u16 instr) noexcept;
+    template<thumb_alu_opcode OpCode>
     void alu(u16 instr) noexcept;
+    template<hireg_bx_opcode OpCode>
     void hireg_bx(u16 instr) noexcept;
     void pc_rel_load(u16 instr) noexcept;
+    template<ld_str_reg_opcode OpCode>
     void ld_str_reg(u16 instr) noexcept;
+    template<ld_str_sign_extended_byte_hword_opcode OpCode>
     void ld_str_sign_extended_byte_hword(u16 instr) noexcept;
+    template<ld_str_imm_opcode OpCode>
     void ld_str_imm(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_hword(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_sp_relative(u16 instr) noexcept;
+    template<bool UseSP>
     void ld_addr(u16 instr) noexcept;
+    template<bool ShouldSubtract>
     void add_offset_to_sp(u16 instr) noexcept;
+    template<bool IsPOP, bool UsePC_LR>
     void push_pop(u16 instr) noexcept;
+    template<bool IsLoad>
     void ld_str_multiple(u16 instr) noexcept;
+    template<u32::type Condition>
     void branch_cond(u16 instr) noexcept;
     void swi_thumb(u16 instr) noexcept;
     void branch(u16 instr) noexcept;
+    template<bool IsSecondIntruction>
     void long_branch_link(u16 instr) noexcept;
 
     // decoder helpers
@@ -326,6 +280,7 @@ private:
         return regs;
     }
 
+protected:
     [[nodiscard]] FORCEINLINE psr& cpsr() noexcept { return cpsr_; }
     [[nodiscard]] FORCEINLINE psr& spsr() noexcept { return spsr_banks_[bank_from_privilege_mode(cpsr().mode)]; }
 
@@ -336,19 +291,23 @@ private:
     [[nodiscard]] FORCEINLINE u32& pc() noexcept { return r_[15_u32]; }
     [[nodiscard]] FORCEINLINE u32 pc() const noexcept { return r_[15_u32]; }
 
-    void switch_mode(privilege_mode mode) noexcept;
+    [[nodiscard]] FORCEINLINE bool interrupt_available() const noexcept { return (if_ & ie_) != 0_u32; }
 
+    void switch_mode(privilege_mode mode) noexcept;
+    void schedule_update_irq_signal() noexcept;
+
+private:
     template<instruction_mode Mode>
     void pipeline_flush() noexcept
     {
         if constexpr(Mode == instruction_mode::arm) {
-            pipeline_.executing = read_32(pc(), mem_access::non_seq);
-            pipeline_.decoding = read_32(pc() + 4_u32, mem_access::seq);
+            pipeline_.executing = bus_->read_32(pc(), mem_access::non_seq);
+            pipeline_.decoding = bus_->read_32(pc() + 4_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
             pc() += 8_u32;
         } else {
-            pipeline_.executing = read_16(pc(), mem_access::non_seq);
-            pipeline_.decoding = read_16(pc() + 2_u32, mem_access::seq);
+            pipeline_.executing = bus_->read_16(pc(), mem_access::non_seq);
+            pipeline_.decoding = bus_->read_16(pc() + 2_u32, mem_access::seq);
             pipeline_.fetch_type = mem_access::seq;
             pc() += 4_u32;
         }
@@ -374,61 +333,20 @@ private:
     {
         u32 mask = 0xFFFF'FF00_u32;
 
-        tick_internal();
+        bus_->idle();
         for(u32 i = 0_u32; i < 3_u32; ++i, mask <<= 8_u32) {
             const u32 result = rs & mask;
             if(rs_predicate(result, mask)) {
                 break;
             }
-            tick_internal();
+            bus_->idle();
         }
     }
-
-    static constexpr lookup_table<function_ptr<arm7tdmi, void(u32)>, 12_u32, 17_u32> arm_table_{
-      {"000xxxxxxxx0", function_ptr{&arm7tdmi::data_processing_imm_shifted_reg}},
-      {"000xxxxx0xx1", function_ptr{&arm7tdmi::data_processing_reg_shifted_reg}},
-      {"000xx0xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_reg}},
-      {"000xx1xx1xx1", function_ptr{&arm7tdmi::halfword_data_transfer_imm}},
-      {"00001xxx1001", function_ptr{&arm7tdmi::multiply_long}},
-      {"000000xx1001", function_ptr{&arm7tdmi::multiply}},
-      {"00010xx00000", function_ptr{&arm7tdmi::psr_transfer_reg}},
-      {"00010x001001", function_ptr{&arm7tdmi::single_data_swap}},
-      {"000100100001", function_ptr{&arm7tdmi::branch_exchange}},
-      {"001xxxxxxxxx", function_ptr{&arm7tdmi::data_processing_imm}},
-      {"00110x10xxxx", function_ptr{&arm7tdmi::psr_transfer_imm}},
-      {"010xxxxxxxxx", function_ptr{&arm7tdmi::single_data_transfer}},
-      {"011xxxxxxxx0", function_ptr{&arm7tdmi::single_data_transfer}},
-      {"011xxxxxxxx1", function_ptr{&arm7tdmi::undefined}},
-      {"100xxxxxxxxx", function_ptr{&arm7tdmi::block_data_transfer}},
-      {"101xxxxxxxxx", function_ptr{&arm7tdmi::branch_with_link}},
-      {"1111xxxxxxxx", function_ptr{&arm7tdmi::swi_arm}},
-    };
-
-    static constexpr lookup_table<function_ptr<arm7tdmi, void(u16)>, 10_u32, 19_u32> thumb_table_{
-      {"000xxxxxxx", function_ptr{&arm7tdmi::move_shifted_reg}},
-      {"00011xxxxx", function_ptr{&arm7tdmi::add_subtract}},
-      {"001xxxxxxx", function_ptr{&arm7tdmi::mov_cmp_add_sub_imm}},
-      {"010000xxxx", function_ptr{&arm7tdmi::alu}},
-      {"010001xxxx", function_ptr{&arm7tdmi::hireg_bx}},
-      {"01001xxxxx", function_ptr{&arm7tdmi::pc_rel_load}},
-      {"0101xx0xxx", function_ptr{&arm7tdmi::ld_str_reg}},
-      {"0101xx1xxx", function_ptr{&arm7tdmi::ld_str_sign_extended_byte_hword}},
-      {"011xxxxxxx", function_ptr{&arm7tdmi::ld_str_imm}},
-      {"1000xxxxxx", function_ptr{&arm7tdmi::ld_str_hword}},
-      {"1001xxxxxx", function_ptr{&arm7tdmi::ld_str_sp_relative}},
-      {"1010xxxxxx", function_ptr{&arm7tdmi::ld_addr}},
-      {"1011x10xxx", function_ptr{&arm7tdmi::push_pop}},
-      {"10110000xx", function_ptr{&arm7tdmi::add_offset_to_sp}},
-      {"1100xxxxxx", function_ptr{&arm7tdmi::ld_str_multiple}},
-      {"1101xxxxxx", function_ptr{&arm7tdmi::branch_cond}},
-      {"11011111xx", function_ptr{&arm7tdmi::swi_thumb}},
-      {"11100xxxxx", function_ptr{&arm7tdmi::branch}},
-      {"1111xxxxxx", function_ptr{&arm7tdmi::long_branch_link}},
-    };
 };
 
-} // namespace gba::arm
+} // namespace gba::cpu
 
-ENABLE_BITFLAG_OPS(gba::arm::mem_access);
+#include <gba/cpu/arm7tdmi_decoder_arm.inl>
+#include <gba/cpu/arm7tdmi_decoder_thumb.inl>
 
 #endif //GAMEBOIADVANCE_ARM7TDMI_H

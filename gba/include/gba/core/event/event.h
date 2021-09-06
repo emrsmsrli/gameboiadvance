@@ -10,8 +10,8 @@
 
 #include <algorithm>
 
-#include <gba/core/event/delegate.h>
 #include <gba/core/container.h>
+#include <gba/core/event/delegate.h>
 
 namespace gba {
 

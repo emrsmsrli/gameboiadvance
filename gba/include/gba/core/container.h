@@ -8,10 +8,10 @@
 #ifndef GAMEBOIADVANCE_CONTAINER_H
 #define GAMEBOIADVANCE_CONTAINER_H
 
-#include <vector>
 #include <cstring>  // std::memcpy
-#include <utility>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 #include <gba/core/integer.h>
 
@@ -87,6 +87,8 @@ public:
     vector() = default;
     explicit vector(const usize size)
       : data_(size.get()) {}
+    vector(const usize size, const T& init)
+      : data_(size.get(), init) {}
 
     [[nodiscard]] T& operator[](const usize idx) noexcept { return data_[idx.get()]; }
     [[nodiscard]] const T& operator[](const usize idx) const noexcept { return data_[idx.get()]; }
@@ -223,12 +225,13 @@ public:
     constexpr const_iterator cend() const noexcept { return ptr(size_); }
 
 private:
-    void destroy_range([[maybe_unused]] T* b, [[maybe_unused]] T* e)
+    void destroy_range([[maybe_unused]] T* first, [[maybe_unused]] T* last)
     {
         if constexpr(!std::is_trivially_destructible_v<T>) {
-            while(b != e) {
-                b->~T();
-                ++b; // NOLINT
+            ASSERT(first <= last);
+            while(first != last) {
+                first->~T();
+                ++first; // NOLINT
             }
         }
     }
@@ -248,7 +251,7 @@ public:
     using const_iterator = const_pointer;
 
     template<typename Container>
-    constexpr view(const Container& container) noexcept
+    constexpr explicit view(const Container& container) noexcept
       : entries_{reinterpret_cast<const T*>(container.data())},
         size_{container.size() / sizeof(T)}
     {
@@ -256,6 +259,10 @@ public:
           "source container element type must be u8");
         ASSERT((container.size() % sizeof(T)) == 0_usize); // alignment check
     }
+
+    constexpr view(const T* data, const usize size)
+      : entries_{data},
+        size_{size} {}
 
     [[nodiscard]] constexpr const T& operator[](const usize idx) const noexcept { return *ptr(idx); }
     [[nodiscard]] constexpr const T* ptr(const usize idx) const noexcept { return entries_ + idx.get(); }

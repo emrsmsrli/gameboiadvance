@@ -10,10 +10,10 @@
 #include <imgui.h>
 #include <imgui_memory_editor/imgui_memory_editor.h>
 
-#include <gba_debugger/disassembler.h>
-#include <gba_debugger/disassembly_entry.h>
 #include <gba/helper/filesystem.h>
 #include <gba/helper/variant_visit.h>
+#include <gba_debugger/disassembler.h>
+#include <gba_debugger/disassembly_entry.h>
 
 namespace gba::debugger {
 
@@ -36,11 +36,11 @@ void disassembly_view::draw_with_mode(bool thumb_mode) noexcept
 
                             ImGui::BeginChild("#disassembly_child");
                             const u32::type instr_size = thumb_mode ? 2_u32 : 4_u32;
-                            ImGuiListClipper clipper(static_cast<int>(entry.data->size().get() / instr_size));
+                            ImGuiListClipper clipper(static_cast<int>(entry.data.size().get() / instr_size));
                             while(clipper.Step()) {
                                 for(auto i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
                                     const u32 address = static_cast<u32::type>(instr_size * i);
-                                    const u32 instr = thumb_mode ? memcpy<u16>(*entry.data, address) : memcpy<u32>(*entry.data, address);
+                                    const u32 instr = thumb_mode ? memcpy<u16>(entry.data, address) : memcpy<u32>(entry.data, address);
 
                                     disassembly_entry disassembly_entry{bp_db_, entry.base_addr + address, instr, thumb_mode, false};
                                     disassembly_entry.draw();
@@ -108,21 +108,25 @@ void memory_view::draw() noexcept
     memory_editor.ReadOnly = true;
 
     if(ImGui::Begin("Memory")) {
-        const bool dump = ImGui::Button("Dump current tab");
         if(ImGui::BeginTabBar("#memory_tab")) {
+            const bool dump = ImGui::TabItemButton("Dump", ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_NoTooltip);
+            if(ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Dumps the current tab");
+            }
             for(const memory_view_entry& entry : entries_) {
                 if(ImGui::BeginTabItem(entry.name.data())) {
                     if(dump) {
                         static const fs::path dump_path = fs::current_path() / "dumps";
                         if(fs::exists(dump_path) || fs::create_directories(dump_path)) {
-                            fs::write_file(dump_path / fmt::format("{}.bin", entry.name), *entry.data);
-                            LOG_TRACE(debugger, "dumping {} to {}", entry.name, dump_path.string());
+                            fs::write_file(dump_path / fmt::format("{}.bin", entry.name), entry.data);
+                            LOG_INFO(debugger, "dumping {} to {}", entry.name, dump_path.string());
                         } else {
                             LOG_ERROR(debugger, "could not create dump path {}", dump_path.string());
                         }
                     }
 
-                    memory_editor.DrawContents(entry.data->data(), entry.data->size().get(), entry.base_addr.get());
+                    memory_editor.DrawContents(
+                      const_cast<u8*>(entry.data.data()), entry.data.size().get(), entry.base_addr.get()); // NOLINT
                     ImGui::EndTabItem();
                 }
             }

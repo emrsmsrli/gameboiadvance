@@ -8,14 +8,15 @@
 #ifndef GAMEBOIADVANCE_DMA_CONTROLLER_H
 #define GAMEBOIADVANCE_DMA_CONTROLLER_H
 
-#include <gba/core/fwd.h>
 #include <gba/core/container.h>
+#include <gba/core/fwd.h>
 #include <gba/core/math.h>
 #include <gba/core/scheduler.h>
+#include <gba/cpu/irq_controller_handle.h>
 
 namespace gba::dma {
 
-constexpr auto channel_count_ = 4_u32;
+constexpr auto channel_count = 4_u32;
 
 enum class occasion : u32::type { vblank, hblank, video, fifo_a, fifo_b };
 
@@ -57,14 +58,14 @@ struct channel : data {
     data internal;
     u32 latch;
 
-    arm::mem_access next_access_type;
+    cpu::mem_access next_access_type;
 
-    channel(const u32 i) noexcept
+    explicit channel(const u32 i) noexcept
       : id{i} {}
 
-    void write_dst(const u8 n, const u8 data) noexcept;
-    void write_src(const u8 n, const u8 data) noexcept;
-    void write_count(const u8 n, const u8 data) noexcept;
+    void write_dst(u8 n, u8 data) noexcept;
+    void write_src(u8 n, u8 data) noexcept;
+    void write_count(u8 n, u8 data) noexcept;
 
     [[nodiscard]] u8 read_cnt_l() const noexcept;
     [[nodiscard]] u8 read_cnt_h() const noexcept;
@@ -72,34 +73,36 @@ struct channel : data {
 
 // todo When accessing OAM (7000000h) or OBJ VRAM (6010000h) by HBlank Timing, then the "H-Blank Interval Free" bit in DISPCNT register must be set.
 class controller {
-    arm::arm7tdmi* arm_;
+    cpu::bus_interface* bus_;
+    cpu::irq_controller_handle irq_;
     scheduler* scheduler_;
 
-    static_vector<channel*, channel_count_> running_channels_;
-    static_vector<channel*, channel_count_> scheduled_channels_;
+    static_vector<channel*, channel_count> running_channels_;
+    static_vector<channel*, channel_count> scheduled_channels_;
 
-public:
-#if WITH_DEBUGGER
-    using channels_debugger = static_vector<channel*, channel_count_>;
-#endif // WITH_DEBUGGER
-
-    array<channel, channel_count_> channels{
+    array<channel, channel_count> channels_{
       channel{0_u32},
       channel{1_u32},
       channel{2_u32},
       channel{3_u32},
     };
 
-    controller(arm::arm7tdmi* arm, scheduler* scheduler) noexcept
-      : arm_{arm}, scheduler_{scheduler} {}
+public:
+    controller(cpu::bus_interface* bus, cpu::irq_controller_handle irq, scheduler* scheduler) noexcept
+      : bus_{bus}, irq_{irq}, scheduler_{scheduler} {}
 
     void write_cnt_l(usize idx, u8 data) noexcept;
     void write_cnt_h(usize idx, u8 data) noexcept;
 
+    [[nodiscard]] FORCEINLINE bool is_running() const noexcept { return is_running_; }
+    [[nodiscard]] FORCEINLINE bool should_start_running() const noexcept { return !running_channels_.empty(); }
     void run_channels() noexcept;
     void request(occasion occasion) noexcept;
 
     [[nodiscard]] u32 latch() const noexcept { return latch_; }
+
+    channel& operator[](const usize idx) noexcept { return channels_[idx]; }
+    const channel& operator[](const usize idx) const noexcept { return channels_[idx]; }
 
 private:
     u32 latch_;
@@ -107,8 +110,8 @@ private:
 
     static void latch(channel& channel, bool for_repeat, bool for_fifo) noexcept;
 
-    void on_channel_start(const u64 /*late_cycles*/) noexcept;
-    void schedule(channel& channel, const channel::control::timing timing) noexcept;
+    void on_channel_start(u64 /*late_cycles*/) noexcept;
+    void schedule(channel& channel, channel::control::timing timing) noexcept;
 };
 
 class controller_handle {
@@ -120,7 +123,7 @@ public:
     void request_dma(const occasion dma_occasion) noexcept { controller_->request(dma_occasion); }
     void disable_video_transfer() noexcept
     {
-        auto& channel = controller_->channels[3_usize];
+        auto& channel = (*controller_)[3_usize];
         if(channel.cnt.enabled && channel.cnt.when == channel::control::timing::special) {
             channel.cnt.enabled = false;
         }

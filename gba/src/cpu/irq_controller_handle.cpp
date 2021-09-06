@@ -5,14 +5,15 @@
  * Refer to the included LICENSE file.
  */
 
-#include <gba/arm/irq_controller_handle.h>
-#include <gba/arm/arm7tdmi.h>
+#include <gba/cpu/irq_controller_handle.h>
 
-namespace gba::arm {
+#include <gba/cpu/arm7tdmi.h>
+
+namespace gba::cpu {
 
 void irq_controller_handle::request_interrupt(const interrupt_source irq) noexcept
 {
     arm_->request_interrupt(irq);
 }
 
-} // namespace gba::arm
+} // namespace gba::cpu

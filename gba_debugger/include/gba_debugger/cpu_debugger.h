@@ -8,8 +8,8 @@
 #ifndef GAMEBOIADVANCE_CPU_DEBUGGER_H
 #define GAMEBOIADVANCE_CPU_DEBUGGER_H
 
-#include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
+#include <gba/core/fwd.h>
 
 namespace gba::debugger {
 
@@ -20,22 +20,16 @@ public:
     enum class execution_request { none, instruction, scanline, frame };
 
 private:
+    cartridge::gamepak* gamepak_;
     dma::controller* dma_controller_;
     timer::controller* timer_controller_;
-    arm::arm7tdmi* arm_;
+    cpu::cpu* cpu_;
     breakpoint_database* bp_db_;
-    u32 rom_mirror_mask_;
 
 public:
     event<execution_request> on_execution_requested;
 
-    cpu_debugger(timer::controller* timer_controller, dma::controller* dma_controller,
-      arm::arm7tdmi* arm, breakpoint_database* bp_db, const u32 rom_mirror_mask) noexcept
-      : dma_controller_{dma_controller},
-        timer_controller_{timer_controller},
-        arm_{arm},
-        bp_db_{bp_db},
-        rom_mirror_mask_{rom_mirror_mask} {}
+    cpu_debugger(cartridge::gamepak* gamepak, cpu::cpu* c, breakpoint_database* bp_db) noexcept;
 
     void draw() noexcept;
 

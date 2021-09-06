@@ -9,8 +9,8 @@
 #define GAMEBOIADVANCE_SCHEDULER_H
 
 #include <algorithm>
-#include <functional> // std::greater
-#include <type_traits> // std::forward
+#include <functional>   // std::greater
+#include <type_traits>  // std::forward
 
 #if WITH_DEBUGGER
   #include <string>
@@ -35,7 +35,7 @@ public:
     struct hw_event {
         using handle = u64;
 
-        delegate<void(u64 /*late_cycles*/)> callback;
+        delegate<void(u32 /*late_cycles*/)> callback;
         u64 timestamp;
         handle h;
 
@@ -60,14 +60,14 @@ public:
     }
 
 #if WITH_DEBUGGER
-    hw_event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback, std::string name)
+    hw_event::handle add_hw_event(const u32 delay, const delegate<void(u32)> callback, std::string name)
     {
         heap_.push_back(hw_event{callback, now_ + delay, ++next_event_handle, std::move(name)});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
         return next_event_handle;
     }
 #else
-    hw_event::handle add_hw_event(const u64 delay, const delegate<void(u64)> callback)
+    hw_event::handle add_hw_event(const u32 delay, const delegate<void(u32)> callback)
     {
         heap_.push_back(hw_event{callback, now_ + delay, ++next_event_handle});
         std::push_heap(heap_.begin(), heap_.end(), predicate{});
@@ -96,7 +96,7 @@ public:
         }
     }
 
-    void add_cycles(const u64 cycles) noexcept
+    void add_cycles(const u32 cycles) noexcept
     {
         now_ += cycles;
         if(const u64 next_event = timestamp_of_next_event(); UNLIKELY(next_event <= now_)) {
@@ -112,14 +112,14 @@ public:
                 heap_.pop_back();
 
                 // call with how much cycles the event has been late
-                callback(now_ - timestamp);
+                callback(narrow<u32>(now_ - timestamp));
             }
         }
     }
 
     [[nodiscard]] u64 now() const noexcept { return now_; }
     [[nodiscard]] u64 timestamp_of_next_event() const noexcept { ASSERT(!heap_.empty()); return heap_.front().timestamp; }
-    [[nodiscard]] u64 remaining_cycles_to_next_event() const noexcept { return timestamp_of_next_event() - now(); }
+    [[nodiscard]] u32 remaining_cycles_to_next_event() const noexcept { return narrow<u32>(timestamp_of_next_event() - now()); }
 };
 
 } // namespace gba

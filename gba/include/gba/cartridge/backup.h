@@ -17,7 +17,7 @@ namespace gba::cartridge {
 
 class backup {
     fs::path path_;
-    vector<u8> data_;
+    fs::mmap mmap_;
     usize size_;
 
 protected:
@@ -27,29 +27,39 @@ public:
     enum class type { none, detect, eeprom_undetected, eeprom_4, eeprom_64, sram, flash_64, flash_128 };
 
     virtual ~backup() = default;
-    backup(const backup&) = default;
+    backup(const backup&) = delete;
     backup(backup&&) = default;
-    backup& operator=(const backup&) = default;
+    backup& operator=(const backup&) = delete;
     backup& operator=(backup&&) = default;
 
     explicit backup(fs::path pak_path, const usize size) noexcept
       : path_{std::move(pak_path)},
         size_{size}
     {
+        path_ = path_.parent_path() / "backups" / path_.filename();
         path_.replace_extension(".sav");
-        if(fs::exists(path_) && fs::file_size(path_) == size) {
-            data_ = fs::read_file(path_);
+
+        std::error_code err;
+        if(fs::exists(path_)) {
+            mmap_ = fs::mmap{path_,err};
         } else {
-            data_.resize(size_);
-            std::fill(data_.begin(), data_.end(), 0xFF_u8);
+            fs::create_directories(path_.parent_path());
+
+            vector<u8> dummy(size_, 0xFF_u8);
+            fs::write_file(path_, dummy);
+            mmap_ = fs::mmap{path_,err};
+        }
+
+        if(err) {
+            LOG_ERROR(backup, "could not create an mmap: {}", err.message());
+            // we shouldn't continue at this point
+            PANIC();
         }
     }
 
-    void write_to_file() const noexcept { fs::write_file(path_, data_); }
-
     [[nodiscard]] usize size() const noexcept { return size_; }
-    [[nodiscard]] vector<u8>& data() noexcept { return data_; }
-    [[nodiscard]] const vector<u8>& data() const noexcept { return data_; }
+    [[nodiscard]] fs::mmap& data() noexcept { return mmap_; }
+    [[nodiscard]] const fs::mmap& data() const noexcept { return mmap_; }
 
     virtual void write(u32 address, u8 value) noexcept = 0;
     [[nodiscard]] virtual u8 read(u32 address) const noexcept = 0;
@@ -101,7 +111,17 @@ public:
 
 private:
     void reset_buffer() const noexcept { buffer_ = 0_u64; transmission_count_ = 0_u8; }
-    void on_settle(u64 /*late_cycles*/) noexcept { settled_response_ = 1_u8; }
+    void on_settle(u64 /*late_cycles*/) noexcept
+    {
+        settled_response_ = 1_u8;
+
+        std::error_code err;
+        data().flush(err);
+
+        if(err) {
+            LOG_ERROR(eeprom, "could not flush file: {}", err.message());
+        }
+    }
 };
 
 class backup_sram : public backup {

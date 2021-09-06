@@ -7,12 +7,12 @@
 
 #include <gba_debugger/disassembler.h>
 
-#include <string_view>
 #include <sstream>
+#include <string_view>
 
 #include <gba/core/math.h>
 #include <gba/helper/function_ptr.h>
-#include <gba/helper/lookup_table.h>
+#include <gba_debugger/lookup_table.h>
 
 namespace gba::debugger {
 

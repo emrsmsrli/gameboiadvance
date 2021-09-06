@@ -13,14 +13,14 @@
 
 #include <gba/cartridge/backup.h>
 #include <gba/cartridge/rtc.h>
-#include <gba/core/fwd.h>
 #include <gba/core/event/event.h>
+#include <gba/core/fwd.h>
 #include <gba/helper/filesystem.h>
 
 namespace gba::cartridge {
 
 class gamepak {
-    friend arm::arm7tdmi;
+    friend core;
 
     fs::path path_;
     vector<u8> pak_data_;
@@ -43,14 +43,17 @@ class gamepak {
     u32 mirror_mask_;
 
 public:
+#if WITH_DEBUGGER
+    event<> on_eeprom_width_detected_event;
+#endif // WITH_DEBUGGER
+
     static constexpr u32 default_mirror_mask = 0x01FF'FFFF_u32;
 
     event<const fs::path&> on_load;
 
     void load(const fs::path& path);
-    void write_backup() const noexcept { return backup_->write_to_file(); }
 
-    void set_irq_controller_handle(const arm::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
+    void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
     void set_scheduler(scheduler* s) noexcept { backup_->set_scheduler(s); }
 
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }

@@ -7,12 +7,13 @@
 
 #include <gba_debugger/apu_debugger.h>
 
+#include <access_private.h>
 #include <imgui.h>
 #include <implot.h>
-#include <access_private.h>
 
 #include <gba/apu/apu.h>
 #include <gba_debugger/debugger_helpers.h>
+#include <gba_debugger/preferences.h>
 
 ACCESS_PRIVATE_FIELD(gba::apu::engine, bool, power_on_)
 ACCESS_PRIVATE_FIELD(gba::apu::engine, gba::apu::pulse_channel, channel_1_)
@@ -145,8 +146,9 @@ void draw_pulse(const apu::pulse_channel& ch, const bool no_sweep) noexcept
 
 } // namespace
 
-apu_debugger::apu_debugger(apu::engine* apu_engine) noexcept
-  : apu_engine_{apu_engine}
+apu_debugger::apu_debugger(apu::engine* apu_engine, preferences* prefs) noexcept
+  : prefs_{prefs},
+    apu_engine_{apu_engine}
 {
     ram_viewer_.Cols = 8;
     ram_viewer_.OptMidColsCount = 4;
@@ -208,11 +210,10 @@ void apu_debugger::draw() noexcept
             struct channel_draw_opts {
                 const char* name;
                 const vector<apu::stereo_sample<float>>& buffer;
-                bool should_draw = false;
             };
 
             static array channel_draw_options{
-              channel_draw_opts{"Buffer", access_private::buffer_(sound_buffer), true},
+              channel_draw_opts{"Buffer", access_private::buffer_(sound_buffer)},
               channel_draw_opts{"Channel1", sound_buffer_1_},
               channel_draw_opts{"Channel2", sound_buffer_2_},
               channel_draw_opts{"Channel3", sound_buffer_3_},
@@ -223,15 +224,15 @@ void apu_debugger::draw() noexcept
 
             ImGui::Spacing();
             if(ImGui::Button("Select all")) {
-                for(channel_draw_opts& opt : channel_draw_options) {
-                    opt.should_draw = true;
-                }
+                prefs_->apu_enabled_channel_graphs = 0b1111111;
             }
+
             ImGui::SameLine();
-            for(channel_draw_opts& opt : channel_draw_options) {
-                ImGui::Checkbox("", &opt.should_draw);
+            enumerate(channel_draw_options, [&](usize idx, channel_draw_opts& opt) {
+                bool enabled = bit::test(u32(prefs_->apu_enabled_channel_graphs), narrow<u8>(idx));
+                ImGui::Checkbox("", &enabled);
                 if(ImGui::IsItemClicked()) { // hack
-                    opt.should_draw = !opt.should_draw;
+                    prefs_->apu_enabled_channel_graphs ^= 1 << idx.get();
                 }
                 if(ImGui::IsItemHovered()) {
                     ImGui::BeginTooltip();
@@ -239,7 +240,7 @@ void apu_debugger::draw() noexcept
                     ImGui::EndTooltip();
                 }
                 ImGui::SameLine();
-            }
+            });
             ImGui::NewLine();
 
             const float draw_width = ImGui::GetWindowContentRegionWidth() / 2.f - 2.f;
@@ -250,11 +251,12 @@ void apu_debugger::draw() noexcept
                     if(ImPlot::BeginPlot(terminal == apu::terminal::right ? "Right" : "Left",
                       nullptr, nullptr, ImVec2{draw_width, 250.f},
                       ImPlotFlags_NoMenus, ImPlotAxisFlags_RangeFit, ImPlotAxisFlags_Lock)) {
-                        for(channel_draw_opts& opt : channel_draw_options) {
-                            if(opt.should_draw) {
+                        enumerate(channel_draw_options, [&](usize idx, channel_draw_opts& opt) {
+                            const bool enabled = bit::test(u32(prefs_->apu_enabled_channel_graphs), narrow<u8>(idx));
+                            if(enabled) {
                                 draw_channel_buffer(opt.name, opt.buffer, sound_buffer_capacity, sound_buffer_write_idx, terminal);
                             }
-                        }
+                        });
                         ImPlot::EndPlot();
                     }
 
@@ -476,29 +478,33 @@ void apu_debugger::on_sample_written(usize idx) noexcept
     const auto& ctrl = access_private::control_(apu_engine_);
     static constexpr array<i16, 2> dma_volume_tab = {2_i16, 4_i16};
 
+    const auto normalize = [](auto output, u32::type max) noexcept {
+        return static_cast<float>(output.get()) / static_cast<float>(max);
+    };
+
     sound_buffer_1_[idx] = {
-      ch1.output.get() / float(0x80),
-      ch1.output.get() / float(0x80),
+      normalize(ch1.get_output(), 0x80),
+      normalize(ch1.get_output(), 0x80)
     };
     sound_buffer_2_[idx] = {
-      ch2.output.get() / float(0x80),
-      ch2.output.get() / float(0x80),
+      normalize(ch2.get_output(), 0x80),
+      normalize(ch2.get_output(), 0x80)
     };
     sound_buffer_3_[idx] = {
-      ch3.output.get() / float(0x80),
-      ch3.output.get() / float(0x80),
+      normalize(ch3.get_output(), 0x80),
+      normalize(ch3.get_output(), 0x80)
     };
     sound_buffer_4_[idx] = {
-      ch4.output.get() / float(0x80),
-      ch4.output.get() / float(0x80),
+      normalize(ch4.get_output(), 0x80),
+      normalize(ch4.get_output(), 0x80)
     };
     sound_buffer_fifo_a_[idx] = {
-      (make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)]).get() / float(0x200),
-      (make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)]).get() / float(0x200),
+      normalize(make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)], 0x200),
+      normalize(make_signed(f_a.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_a.full_volume)], 0x200),
     };
     sound_buffer_fifo_b_[idx] = {
-      (make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)]).get() / float(0x200),
-      (make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)]).get() / float(0x200),
+      normalize(make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)], 0x200),
+      normalize(make_signed(f_b.latch()) * dma_volume_tab[bit::from_bool(ctrl.fifo_b.full_volume)], 0x200),
     };
 }
 
