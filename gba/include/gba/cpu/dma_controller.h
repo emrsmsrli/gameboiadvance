@@ -86,6 +86,9 @@ class controller {
       channel{3_u32},
     };
 
+    u32 latch_;
+    bool is_running_ = false;
+
 public:
     controller(cpu::bus_interface* bus, cpu::irq_controller_handle irq, scheduler* scheduler) noexcept
       : bus_{bus}, irq_{irq}, scheduler_{scheduler} {}
@@ -104,9 +107,6 @@ public:
     const channel& operator[](const usize idx) const noexcept { return channels_[idx]; }
 
 private:
-    u32 latch_;
-    bool is_running_ = false;
-
     static void latch(channel& channel, bool for_repeat, bool for_fifo) noexcept;
 
     void on_channel_start(u64 /*late_cycles*/) noexcept;
