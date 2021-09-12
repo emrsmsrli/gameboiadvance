@@ -153,8 +153,6 @@ window::window(core* core) noexcept
     apu_debugger_{&access_private::apu_engine_(core), &prefs_},
     keypad_debugger_{&access_private::keypad_(core)}
 {
-    window_.setFramerateLimit(60);
-
     cartridge::gamepak& pak = access_private::gamepak_(core);
     ppu::engine& ppu_engine = access_private::ppu_engine_(core);
     apu::engine& apu_engine = access_private::apu_engine_(core);
@@ -206,7 +204,7 @@ window::window(core* core) noexcept
 
     window_.resetGLStates();
     window_.setVerticalSyncEnabled(false);
-    window_.setFramerateLimit(60);
+    window_.setFramerateLimit(0);
     ImGui::SFML::Init(window_, true);
 
     ImGuiSettingsHandler debugger_settings_handler;
@@ -325,7 +323,7 @@ bool window::draw() noexcept
     ImGui::End();
 
     if(ImGui::Begin("Debugger", nullptr, ImGuiWindowFlags_MenuBar)) {
-        static int framerate_idx = 2;
+        static int framerate_idx = 0;
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Settings")) {
                 ImGui::PushItemWidth(150.f);
