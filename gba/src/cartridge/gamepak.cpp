@@ -7,6 +7,7 @@
 
 #include <gba/cartridge/gamepak.h>
 #include <gba/cartridge/gamepak_db.h>
+#include <gba/helper/gzip.h>
 
 namespace gba::cartridge {
 
@@ -54,6 +55,16 @@ std::unique_ptr<backup> make_backup_from_type(const backup::type type, const fs:
 void gamepak::load(const fs::path& path)
 {
     pak_data_ = fs::read_file(path);
+    if(path.extension() == ".gz") {
+        std::optional<vector<u8>> decompressed = gzip::decompress(pak_data_);
+        if(decompressed.has_value()) {
+            pak_data_ = std::move(decompressed.value());
+        } else {
+            LOG_CRITICAL(gamepak, "could not decompress rom file");
+            PANIC();
+        }
+    }
+
     path_ = path;
     loaded_ = true;
 
