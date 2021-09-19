@@ -90,7 +90,7 @@ private:
     [[nodiscard]] u8 read_8(u32 addr, cpu::mem_access access) noexcept final { return read<u8>(addr, access); }
     void write_8(u32 addr, u8 data, cpu::mem_access access) noexcept final { write<u8>(addr, data, access); }
 
-    [[nodiscard]] u8 read_io(u32 addr, cpu::mem_access access) noexcept;
+    [[nodiscard]] u8 read_io(u32 addr) noexcept;
     void write_io(u32 addr, u8 data) noexcept;
 
     void idle() noexcept final { tick_components(1_u32); }

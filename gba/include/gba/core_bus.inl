@@ -137,7 +137,7 @@ T core::read(u32 addr, cpu::mem_access access) noexcept
         case cpu::memory_page::io: {
             u32 io_val;
             for(u32 idx = 0_u32; idx < sizeof(T); ++idx) {
-                io_val |= widen<u32>(read_io(addr + idx, access)) << (8_u32 * idx);
+                io_val |= widen<u32>(read_io(addr + idx)) << (8_u32 * idx);
             }
             return narrow<T>(io_val);
         }

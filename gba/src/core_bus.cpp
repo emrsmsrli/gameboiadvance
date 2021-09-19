@@ -9,7 +9,7 @@
 
 namespace gba {
 
-u8 core::read_io(const u32 addr, const cpu::mem_access access) noexcept
+u8 core::read_io(const u32 addr) noexcept
 {
     auto& timer_controller = cpu_.timer_controller_;
     auto& dma_controller = cpu_.dma_controller_;
