@@ -54,10 +54,10 @@ struct array {
 
     [[nodiscard]] constexpr usize size() const noexcept { return N; }
 
-    T& front() noexcept { return at(0_usize); }
-    const T& front() const noexcept { return at(0_usize); }
-    T& back() noexcept { return at(size() - 1_usize); }
-    const T& back() const noexcept { return at(size() - 1_usize); }
+    [[nodiscard]] T& front() noexcept { return at(0_usize); }
+    [[nodiscard]] const T& front() const noexcept { return at(0_usize); }
+    [[nodiscard]] T& back() noexcept { return at(size() - 1_usize); }
+    [[nodiscard]] const T& back() const noexcept { return at(size() - 1_usize); }
 
     constexpr auto begin() noexcept { return std::begin(_data); }
     constexpr auto end() noexcept { return std::end(_data); }
@@ -67,7 +67,7 @@ struct array {
     constexpr auto cend() const noexcept { return std::cend(_data); }
 };
 
-template<class First, class... Rest>
+template<typename First, typename... Rest>
 array(First, Rest...) -> array<typename detail::array_enforce_same<First, Rest...>::type, 1 + sizeof...(Rest)>;
 
 template<typename T>
@@ -107,10 +107,10 @@ public:
     [[nodiscard]] bool empty() const noexcept { return data_.empty(); }
     [[nodiscard]] usize size() const noexcept { return data_.size(); }
 
-    T& front() noexcept { return at(0_usize); }
-    const T& front() const noexcept { return at(0_usize); }
-    T& back() noexcept { return at(size() - 1_usize); }
-    const T& back() const noexcept { return at(size() - 1_usize); }
+    [[nodiscard]] T& front() noexcept { return at(0_usize); }
+    [[nodiscard]] const T& front() const noexcept { return at(0_usize); }
+    [[nodiscard]] T& back() noexcept { return at(size() - 1_usize); }
+    [[nodiscard]] const T& back() const noexcept { return at(size() - 1_usize); }
 
     iterator erase(iterator pos) { return data_.erase(pos); }
     iterator erase(const_iterator pos) { return data_.erase(pos); }
@@ -271,8 +271,8 @@ public:
 
     [[nodiscard]] constexpr usize size() const noexcept { return size_; }
 
-    constexpr const T& front() const noexcept { return at(0_usize); }
-    constexpr const T& back() const noexcept { return at(size() - 1_usize); }
+    [[nodiscard]] constexpr const T& front() const noexcept { return at(0_usize); }
+    [[nodiscard]] constexpr const T& back() const noexcept { return at(size() - 1_usize); }
 
     constexpr const_iterator begin() const noexcept { return ptr(0_usize); }
     constexpr const_iterator end() const noexcept { return ptr(size_); }
