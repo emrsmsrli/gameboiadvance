@@ -116,6 +116,9 @@ public:
 
     void tick() noexcept;
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     template<typename T>
     [[nodiscard]] FORCEINLINE u8& stall_cycles(const mem_access access, const memory_page page) noexcept

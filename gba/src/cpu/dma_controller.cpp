@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include <gba/archive.h>
 #include <gba/cpu/bus_interface.h>
 #include <gba/helper/range.h>
 
@@ -77,6 +78,52 @@ u8 channel::read_cnt_h() const noexcept
       | from_enum<u8>(cnt.size) << 2_u8
       | bit::from_bool<u8>(cnt.repeat) << 1_u8
       | bit::extract(from_enum<u8>(cnt.src_control), 1_u8);
+}
+
+void channel::serialize(archive& archive) const noexcept
+{
+    archive.serialize(last_event_handle);
+    archive.serialize(src);
+    archive.serialize(dst);
+    archive.serialize(count);
+    archive.serialize(internal.src);
+    archive.serialize(internal.dst);
+    archive.serialize(internal.count);
+    archive.serialize(cnt.dst_control);
+    archive.serialize(cnt.src_control);
+    archive.serialize(cnt.when);
+    archive.serialize(cnt.repeat);
+    archive.serialize(cnt.size);
+    archive.serialize(cnt.drq);
+    archive.serialize(cnt.irq);
+    archive.serialize(cnt.enabled);
+    archive.serialize(latch);
+}
+
+void channel::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(last_event_handle);
+    archive.deserialize(src);
+    archive.deserialize(dst);
+    archive.deserialize(count);
+    archive.deserialize(internal.src);
+    archive.deserialize(internal.dst);
+    archive.deserialize(internal.count);
+    archive.deserialize(cnt.dst_control);
+    archive.deserialize(cnt.src_control);
+    archive.deserialize(cnt.when);
+    archive.deserialize(cnt.repeat);
+    archive.deserialize(cnt.size);
+    archive.deserialize(cnt.drq);
+    archive.deserialize(cnt.irq);
+    archive.deserialize(cnt.enabled);
+    archive.deserialize(latch);
+}
+
+controller::controller(cpu::bus_interface* bus, cpu::irq_controller_handle irq, scheduler* scheduler) noexcept
+  : bus_{bus}, irq_{irq}, scheduler_{scheduler}
+{
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(controller::on_channel_start), "dma::start");
 }
 
 void controller::write_cnt_l(const usize idx, const u8 data) noexcept
@@ -271,7 +318,7 @@ void controller::latch(channel& channel, const bool for_repeat, const bool for_f
     }
 }
 
-void controller::on_channel_start(const u64 /*late_cycles*/) noexcept
+void controller::on_channel_start(const u32 /*late_cycles*/) noexcept
 {
     channel* ch = scheduled_channels_.front();
     scheduled_channels_.erase(scheduled_channels_.begin());
@@ -283,11 +330,36 @@ void controller::schedule(channel& channel, const channel::control::timing timin
 {
     if(channel.cnt.enabled && channel.cnt.when == timing && UNLIKELY(channel.cnt.src_control != channel::control::address_control::inc_reload)) {
         if(std::find(running_channels_.begin(), running_channels_.end(), &channel) == running_channels_.end()) {
-            channel.last_event_handle = scheduler_->ADD_HW_EVENT_NAMED(2_u32, controller::on_channel_start,
-              fmt::format("dma::controller::on_channel_start ({})", channel.id));
+            channel.last_event_handle = scheduler_->add_hw_event(2_u32, MAKE_HW_EVENT(controller::on_channel_start));
             scheduled_channels_.push_back(&channel);
         }
     }
+}
+
+void controller::serialize(archive& archive) const noexcept
+{
+    vector<u32> schedules_indices{scheduled_channels_.size()};
+    std::transform(scheduled_channels_.begin(), scheduled_channels_.end(), schedules_indices.begin(), [](const channel* c) {
+        return c->id;
+    });
+    archive.serialize(schedules_indices);
+    for(const channel& c : channels_) {
+        archive.serialize(c);
+    }
+    archive.serialize(latch_);
+}
+
+void controller::deserialize(const archive& archive) noexcept
+{
+    scheduled_channels_.clear();
+    const vector<u32> schedules_indices = archive.deserialize<vector<u32>>();
+    std::transform(schedules_indices.begin(), schedules_indices.end(), std::back_inserter(scheduled_channels_), [&](const u32 idx) {
+        return &channels_[idx];
+    });
+    for(channel& c : channels_) {
+        archive.deserialize(c);
+    }
+    archive.deserialize(latch_);
 }
 
 } // namespace gba::dma

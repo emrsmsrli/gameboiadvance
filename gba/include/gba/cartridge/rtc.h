@@ -31,6 +31,9 @@ public:
 
     [[nodiscard]] bool read_allowed() const noexcept { return read_allowed_; }
 
+    virtual void serialize(archive& archive) const noexcept;
+    virtual void deserialize(const archive& archive) noexcept;
+
 protected:
     [[nodiscard]] u8 directions() const noexcept { return directions_; }
 
@@ -106,6 +109,9 @@ public:
 #endif // WITH_DEBUGGER
 
     void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { irq_ = irq; }
+
+    void serialize(archive& archive) const noexcept final;
+    void deserialize(const archive& archive) noexcept final;
 
 protected:
     [[nodiscard]] u8 read_pin_states() const noexcept final;

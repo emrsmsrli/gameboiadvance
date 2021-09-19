@@ -59,6 +59,9 @@ public:
 
     [[nodiscard]] FORCEINLINE u32 id() const noexcept { return id_; }
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     [[nodiscard]] u32 calculate_counter_delta() const noexcept;
 
@@ -72,21 +75,13 @@ class controller {
     array<timer, 4> timers_;
 
 public:
-    controller(scheduler* scheduler, cpu::irq_controller_handle irq) noexcept
-      : timers_{
-          timer{0_u32, scheduler, irq},
-          timer{1_u32, scheduler, irq},
-          timer{2_u32, scheduler, irq},
-          timer{3_u32, scheduler, irq}
-        }
-    {
-        for(u32 id : range(1_u32, 4_u32)) {
-            timers_[id].cascade_instance = &timers_[id - 1_u32];
-        }
-    }
+    controller(scheduler* scheduler, cpu::irq_controller_handle irq) noexcept;
 
     [[nodiscard]] timer& operator[](usize idx) noexcept { return timers_[idx]; }
     [[nodiscard]] const timer& operator[](usize idx) const noexcept { return timers_[idx]; }
+
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
 };
 
 } // namespace gba::arm

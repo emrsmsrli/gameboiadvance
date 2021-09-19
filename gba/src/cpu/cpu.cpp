@@ -7,6 +7,8 @@
 
 #include <gba/cpu/cpu.h>
 
+#include <gba/archive.h>
+
 namespace gba::cpu {
 
 namespace {
@@ -199,6 +201,107 @@ void cpu::update_waitstate_table() noexcept
     stall_cycles<u32>(mem_access::seq, memory_page::pak_ws1_upper) = 2_u8 * (1_u8 + ws1_seq[waitcnt_.ws1_seq]);
     stall_cycles<u32>(mem_access::seq, memory_page::pak_ws2_lower) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
     stall_cycles<u32>(mem_access::seq, memory_page::pak_ws2_upper) = 2_u8 * (1_u8 + ws2_seq[waitcnt_.ws2_seq]);
+}
+
+void cpu::serialize(archive& archive) const noexcept
+{
+    archive.serialize(r_);
+    for(auto& bank : reg_banks_.reg_banks) {
+        archive.serialize(bank.r);
+    }
+    archive.serialize(static_cast<u32>(cpsr_));
+    for(auto& bank : spsr_banks_.banks) {
+        archive.serialize(static_cast<u32>(bank));
+    }
+    archive.serialize(ie_);
+    archive.serialize(if_);
+    archive.serialize(ime_);
+    archive.serialize(irq_signal_);
+    archive.serialize(scheduled_irq_signal_);
+    archive.serialize(irq_signal_delay_handle_);
+
+    archive.serialize(pipeline_.decoding);
+    archive.serialize(pipeline_.executing);
+    archive.serialize(pipeline_.fetch_type);
+
+    archive.serialize(wram_);
+    archive.serialize(iwram_);
+    archive.serialize(timer_controller_);
+    archive.serialize(dma_controller_);
+    archive.serialize(bios_last_read_);
+    archive.serialize(post_boot_);
+
+    archive.serialize(prefetch_buffer_.begin);
+    archive.serialize(prefetch_buffer_.end);
+    archive.serialize(prefetch_buffer_.size);
+    archive.serialize(prefetch_buffer_.capacity);
+    archive.serialize(prefetch_buffer_.cycles_left);
+    archive.serialize(prefetch_buffer_.cycles_needed);
+    archive.serialize(prefetch_buffer_.addr_increment);
+    archive.serialize(prefetch_buffer_.active);
+
+    archive.serialize(waitcnt_.sram);
+    archive.serialize(waitcnt_.ws0_nonseq);
+    archive.serialize(waitcnt_.ws0_seq);
+    archive.serialize(waitcnt_.ws1_nonseq);
+    archive.serialize(waitcnt_.ws1_seq);
+    archive.serialize(waitcnt_.ws2_nonseq);
+    archive.serialize(waitcnt_.ws2_seq);
+    archive.serialize(waitcnt_.phi);
+    archive.serialize(waitcnt_.prefetch_buffer_enable);
+    archive.serialize(haltcnt_);
+}
+
+void cpu::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(r_);
+    for(auto& bank : reg_banks_.reg_banks) {
+        archive.deserialize(bank.r);
+    }
+
+    cpsr_ = archive.deserialize<u32>();
+    for(auto& bank : spsr_banks_.banks) {
+        bank = archive.deserialize<u32>();
+    }
+    archive.deserialize(ie_);
+    archive.deserialize(if_);
+    archive.deserialize(ime_);
+    archive.deserialize(irq_signal_);
+    archive.deserialize(scheduled_irq_signal_);
+    archive.deserialize(irq_signal_delay_handle_);
+
+    archive.deserialize(pipeline_.decoding);
+    archive.deserialize(pipeline_.executing);
+    archive.deserialize(pipeline_.fetch_type);
+
+    archive.deserialize(wram_);
+    archive.deserialize(iwram_);
+    archive.deserialize(timer_controller_);
+    archive.deserialize(dma_controller_);
+    archive.deserialize(bios_last_read_);
+    archive.deserialize(post_boot_);
+
+    archive.deserialize(prefetch_buffer_.begin);
+    archive.deserialize(prefetch_buffer_.end);
+    archive.deserialize(prefetch_buffer_.size);
+    archive.deserialize(prefetch_buffer_.capacity);
+    archive.deserialize(prefetch_buffer_.cycles_left);
+    archive.deserialize(prefetch_buffer_.cycles_needed);
+    archive.deserialize(prefetch_buffer_.addr_increment);
+    archive.deserialize(prefetch_buffer_.active);
+
+    archive.deserialize(waitcnt_.sram);
+    archive.deserialize(waitcnt_.ws0_nonseq);
+    archive.deserialize(waitcnt_.ws0_seq);
+    archive.deserialize(waitcnt_.ws1_nonseq);
+    archive.deserialize(waitcnt_.ws1_seq);
+    archive.deserialize(waitcnt_.ws2_nonseq);
+    archive.deserialize(waitcnt_.ws2_seq);
+    archive.deserialize(waitcnt_.phi);
+    archive.deserialize(waitcnt_.prefetch_buffer_enable);
+    archive.deserialize(haltcnt_);
+
+    update_waitstate_table();
 }
 
 } // namespace gba::cpu

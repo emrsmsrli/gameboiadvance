@@ -6,6 +6,8 @@
  */
 
 #include <gba/cartridge/gamepak.h>
+
+#include <gba/archive.h>
 #include <gba/cartridge/gamepak_db.h>
 #include <gba/helper/gzip.h>
 
@@ -170,6 +172,28 @@ void gamepak::on_eeprom_bus_width_detected(const backup::type eeprom_type) noexc
 #if WITH_DEBUGGER
     on_eeprom_width_detected_event();
 #endif // WITH_DEBUGGER
+}
+
+void gamepak::serialize(archive& archive) const noexcept
+{
+    if(has_rtc_) {
+        archive.serialize(rtc_);
+    }
+
+    if(backup_) {
+        backup_->serialize(archive);
+    }
+}
+
+void gamepak::deserialize(const archive& archive) noexcept
+{
+    if(has_rtc_) {
+        archive.deserialize(rtc_);
+    }
+
+    if(backup_) {
+        backup_->deserialize(archive);
+    }
 }
 
 } // namespace gba::cartridge

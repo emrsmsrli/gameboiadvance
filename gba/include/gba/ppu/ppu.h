@@ -75,6 +75,9 @@ public:
 
     void check_vcounter_irq() noexcept;
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     enum class palette_8bpp_target { bg = 0_u32, obj = 16_u32 };
 

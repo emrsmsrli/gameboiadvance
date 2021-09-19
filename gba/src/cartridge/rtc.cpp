@@ -11,6 +11,8 @@
 #include <chrono>
 #include <ctime>
 
+#include <gba/archive.h>
+
 namespace gba::cartridge {
 
 namespace {
@@ -64,6 +66,20 @@ void gpio::write(const u32 address, const u8 value) noexcept
         default:
             break;
     }
+}
+
+void gpio::serialize(archive& archive) const noexcept
+{
+    archive.serialize(pin_states_);
+    archive.serialize(directions_);
+    archive.serialize(read_allowed_);
+}
+
+void gpio::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(pin_states_);
+    archive.deserialize(directions_);
+    archive.deserialize(read_allowed_);
 }
 
 u8 rtc::read_pin_states() const noexcept
@@ -256,6 +272,38 @@ void rtc::write_register() noexcept
         default:
             break;
     }
+}
+
+void rtc::serialize(archive& archive) const noexcept
+{
+    gpio::serialize(archive);
+    archive.serialize(internal_regs_);
+    archive.serialize(control_);
+    archive.serialize(state_);
+    archive.serialize(current_cmd_.cmd_type);
+    archive.serialize(current_cmd_.is_access_read);
+    archive.serialize(current_byte_);
+    archive.serialize(current_bit_);
+    archive.serialize(bit_buffer_);
+    archive.serialize(ports_.cs);
+    archive.serialize(ports_.sio);
+    archive.serialize(ports_.sck);
+}
+
+void rtc::deserialize(const archive& archive) noexcept
+{
+    gpio::deserialize(archive);
+    archive.deserialize(internal_regs_);
+    archive.deserialize(control_);
+    archive.deserialize(state_);
+    archive.deserialize(current_cmd_.cmd_type);
+    archive.deserialize(current_cmd_.is_access_read);
+    archive.deserialize(current_byte_);
+    archive.deserialize(current_bit_);
+    archive.deserialize(bit_buffer_);
+    archive.deserialize(ports_.cs);
+    archive.deserialize(ports_.sio);
+    archive.deserialize(ports_.sck);
 }
 
 } // namespace gba::cartridge

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 
+#include <gba/archive.h>
 #include <gba/core/scheduler.h>
 #include <gba/helper/range.h>
 
@@ -29,7 +30,10 @@ constexpr u8 video_dma_end_line = 162_u8;
 engine::engine(scheduler* scheduler) noexcept
   : scheduler_{scheduler}
 {
-    scheduler_->ADD_HW_EVENT(cycles_hdraw, ppu::engine::on_hblank);
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(ppu::engine::on_hblank), "ppu::hblank");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(ppu::engine::on_hdraw), "ppu::hdraw");
+
+    scheduler_->add_hw_event(cycles_hdraw, MAKE_HW_EVENT(ppu::engine::on_hblank));
 }
 
 void engine::check_vcounter_irq() noexcept
@@ -45,7 +49,7 @@ void engine::check_vcounter_irq() noexcept
 
 void engine::on_hdraw(const u32 late_cycles) noexcept
 {
-    scheduler_->ADD_HW_EVENT(cycles_hdraw - late_cycles, ppu::engine::on_hblank);
+    scheduler_->add_hw_event(cycles_hdraw - late_cycles, MAKE_HW_EVENT(ppu::engine::on_hblank));
     dispstat_.hblank = false;
 
     vcount_ = (vcount_ + 1_u8) % total_lines;
@@ -75,7 +79,7 @@ void engine::on_hdraw(const u32 late_cycles) noexcept
 
 void engine::on_hblank(const u32 late_cycles) noexcept
 {
-    scheduler_->ADD_HW_EVENT(cycles_hblank - late_cycles, ppu::engine::on_hdraw);
+    scheduler_->add_hw_event(cycles_hblank - late_cycles, MAKE_HW_EVENT(ppu::engine::on_hdraw));
     dispstat_.hblank = true;
 
     if(dispstat_.hblank_irq_enabled) {
@@ -188,6 +192,180 @@ void engine::render_scanline() noexcept
     }
 
     event_on_scanline(vcount_, final_buffer_);
+}
+
+void engine::serialize(archive& archive) const noexcept
+{
+    archive.serialize(palette_ram_);
+    archive.serialize(vram_);
+    archive.serialize(oam_);
+
+    archive.serialize(dispcnt_.read_lower());
+    archive.serialize(dispcnt_.read_upper());
+    archive.serialize(dispstat_.read_lower());
+    archive.serialize(dispstat_.read_upper());
+    archive.serialize(vcount_);
+
+    archive.serialize(bg0_.cnt.read_lower());
+    archive.serialize(bg0_.cnt.read_upper());
+    archive.serialize(bg0_.hoffset);
+    archive.serialize(bg0_.voffset);
+
+    archive.serialize(bg1_.cnt.read_lower());
+    archive.serialize(bg1_.cnt.read_upper());
+    archive.serialize(bg1_.hoffset);
+    archive.serialize(bg1_.voffset);
+
+    archive.serialize(bg2_.cnt.read_lower());
+    archive.serialize(bg2_.cnt.read_upper());
+    archive.serialize(bg2_.hoffset);
+    archive.serialize(bg2_.voffset);
+    archive.serialize(bg2_.x_ref.ref);
+    archive.serialize(bg2_.y_ref.ref);
+    archive.serialize(bg2_.x_ref.internal);
+    archive.serialize(bg2_.y_ref.internal);
+    archive.serialize(bg2_.pa);
+    archive.serialize(bg2_.pb);
+    archive.serialize(bg2_.pc);
+    archive.serialize(bg2_.pd);
+
+    archive.serialize(bg3_.cnt.read_lower());
+    archive.serialize(bg3_.cnt.read_upper());
+    archive.serialize(bg3_.hoffset);
+    archive.serialize(bg3_.voffset);
+    archive.serialize(bg3_.x_ref.ref);
+    archive.serialize(bg3_.y_ref.ref);
+    archive.serialize(bg3_.x_ref.internal);
+    archive.serialize(bg3_.y_ref.internal);
+    archive.serialize(bg3_.pa);
+    archive.serialize(bg3_.pb);
+    archive.serialize(bg3_.pc);
+    archive.serialize(bg3_.pd);
+
+    archive.serialize(win0_.top_left.x);
+    archive.serialize(win0_.top_left.y);
+    archive.serialize(win0_.bottom_right.x);
+    archive.serialize(win0_.bottom_right.y);
+    archive.serialize(win1_.top_left.x);
+    archive.serialize(win1_.top_left.y);
+    archive.serialize(win1_.bottom_right.x);
+    archive.serialize(win1_.bottom_right.y);
+
+    archive.serialize(win_in_.win0.read());
+    archive.serialize(win_in_.win1.read());
+    archive.serialize(win_out_.obj.read());
+    archive.serialize(win_out_.outside.read());
+    archive.serialize(win_can_draw_flags_);
+
+    archive.serialize(green_swap_);
+    archive.serialize(mosaic_bg_.v);
+    archive.serialize(mosaic_bg_.h);
+    archive.serialize(mosaic_bg_.internal.v);
+    archive.serialize(mosaic_bg_.internal.h);
+    archive.serialize(mosaic_obj_.v);
+    archive.serialize(mosaic_obj_.h);
+    archive.serialize(mosaic_obj_.internal.v);
+    archive.serialize(mosaic_obj_.internal.h);
+    archive.serialize(bldcnt_.first.read());
+    archive.serialize(bldcnt_.second.read());
+    archive.serialize(bldcnt_.type);
+    archive.serialize(blend_settings_.eva);
+    archive.serialize(blend_settings_.evb);
+    archive.serialize(blend_settings_.evy);
+
+    archive.serialize(obj_buffer_);
+    archive.serialize(final_buffer_);
+    for(const scanline_buffer& buf : bg_buffers_) {
+        archive.serialize(buf);
+    }
+}
+
+void engine::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(palette_ram_);
+    archive.deserialize(vram_);
+    archive.deserialize(oam_);
+
+    dispcnt_.write_lower(archive.deserialize<u8>());
+    dispcnt_.write_upper(archive.deserialize<u8>());
+    dispstat_.write_lower(archive.deserialize<u8>());
+    dispstat_.write_upper(archive.deserialize<u8>());
+    archive.deserialize(vcount_);
+
+    bg0_.cnt.write_lower(archive.deserialize<u8>());
+    bg0_.cnt.write_upper(archive.deserialize<u8>());
+    archive.deserialize(bg0_.hoffset);
+    archive.deserialize(bg0_.voffset);
+
+    bg1_.cnt.write_lower(archive.deserialize<u8>());
+    bg1_.cnt.write_upper(archive.deserialize<u8>());
+    archive.deserialize(bg1_.hoffset);
+    archive.deserialize(bg1_.voffset);
+
+    bg2_.cnt.write_lower(archive.deserialize<u8>());
+    bg2_.cnt.write_upper(archive.deserialize<u8>());
+    archive.deserialize(bg2_.hoffset);
+    archive.deserialize(bg2_.voffset);
+    archive.deserialize(bg2_.x_ref.ref);
+    archive.deserialize(bg2_.y_ref.ref);
+    archive.deserialize(bg2_.x_ref.internal);
+    archive.deserialize(bg2_.y_ref.internal);
+    archive.deserialize(bg2_.pa);
+    archive.deserialize(bg2_.pb);
+    archive.deserialize(bg2_.pc);
+    archive.deserialize(bg2_.pd);
+
+    bg3_.cnt.write_lower(archive.deserialize<u8>());
+    bg3_.cnt.write_upper(archive.deserialize<u8>());
+    archive.deserialize(bg3_.hoffset);
+    archive.deserialize(bg3_.voffset);
+    archive.deserialize(bg3_.x_ref.ref);
+    archive.deserialize(bg3_.y_ref.ref);
+    archive.deserialize(bg3_.x_ref.internal);
+    archive.deserialize(bg3_.y_ref.internal);
+    archive.deserialize(bg3_.pa);
+    archive.deserialize(bg3_.pb);
+    archive.deserialize(bg3_.pc);
+    archive.deserialize(bg3_.pd);
+
+    archive.deserialize(win0_.top_left.x);
+    archive.deserialize(win0_.top_left.y);
+    archive.deserialize(win0_.bottom_right.x);
+    archive.deserialize(win0_.bottom_right.y);
+    archive.deserialize(win1_.top_left.x);
+    archive.deserialize(win1_.top_left.y);
+    archive.deserialize(win1_.bottom_right.x);
+    archive.deserialize(win1_.bottom_right.y);
+
+    win_in_.win0.write(archive.deserialize<u8>());
+    win_in_.win1.write(archive.deserialize<u8>());
+    win_out_.obj.write(archive.deserialize<u8>());
+    win_out_.outside.write(archive.deserialize<u8>());
+    archive.deserialize(win_can_draw_flags_);
+
+    archive.deserialize(green_swap_);
+    archive.deserialize(mosaic_bg_.v);
+    archive.deserialize(mosaic_bg_.h);
+    archive.deserialize(mosaic_bg_.internal.v);
+    archive.deserialize(mosaic_bg_.internal.h);
+    archive.deserialize(mosaic_obj_.v);
+    archive.deserialize(mosaic_obj_.h);
+    archive.deserialize(mosaic_obj_.internal.v);
+    archive.deserialize(mosaic_obj_.internal.h);
+    bldcnt_.first.write(archive.deserialize<u8>());
+    bldcnt_.second.write(archive.deserialize<u8>());
+    archive.deserialize(bldcnt_.type);
+    archive.deserialize(blend_settings_.eva);
+    archive.deserialize(blend_settings_.evb);
+    archive.deserialize(blend_settings_.evy);
+
+    archive.deserialize(obj_buffer_);
+    archive.deserialize(final_buffer_);
+    for(scanline_buffer& buf : bg_buffers_) {
+        archive.deserialize(buf);
+    }
+
+    generate_window_buffer();
 }
 
 } // namespace gba::ppu

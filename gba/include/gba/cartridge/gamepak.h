@@ -61,6 +61,9 @@ public:
 
     void on_eeprom_bus_width_detected(backup::type eeprom_type) noexcept;
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     void detect_backup_type() noexcept;
 };

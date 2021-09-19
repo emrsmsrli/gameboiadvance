@@ -41,6 +41,20 @@ struct stereo_sample {
     {
         return {left * factor, right * factor};
     }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(left);
+        archive.serialize(right);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(left);
+        archive.deserialize(right);
+    }
 };
 
 struct soundbias {
@@ -149,6 +163,28 @@ struct sweep {
     bool enabled = false;
 
     [[nodiscard]] FORCEINLINE u8 read() const noexcept { return shift_count | from_enum<u8>(direction) << 3_u8 | period << 4_u8; }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(timer);
+        archive.serialize(shadow);
+        archive.serialize(period);
+        archive.serialize(direction);
+        archive.serialize(shift_count);
+        archive.serialize(enabled);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(timer);
+        archive.deserialize(shadow);
+        archive.deserialize(period);
+        archive.deserialize(direction);
+        archive.deserialize(shift_count);
+        archive.deserialize(enabled);
+    }
 };
 
 struct wave_data {
@@ -156,6 +192,20 @@ struct wave_data {
     u8 sound_length;
 
     [[nodiscard]] FORCEINLINE u8 read() const noexcept { return duty << 6_u8; }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(duty);
+        archive.serialize(sound_length);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(duty);
+        archive.deserialize(sound_length);
+    }
 };
 
 struct envelope {
@@ -173,17 +223,52 @@ struct envelope {
     {
         return period | from_enum<u8>(direction) << 3_u8 | initial_volume << 4_u8;
     }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(timer);
+        archive.serialize(period);
+        archive.serialize(direction);
+        archive.serialize(initial_volume);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(timer);
+        archive.deserialize(period);
+        archive.deserialize(direction);
+        archive.deserialize(initial_volume);
+    }
 };
 
 struct frequency_control {
     bool use_counter = false;
 
     [[nodiscard]] FORCEINLINE u8 read() const noexcept { return bit::from_bool<u8>(use_counter) << 6_u8; }
+
+    template<typename Ar> void serialize(Ar& archive) const noexcept { archive.serialize(use_counter); }
+    template<typename Ar> void deserialize(const Ar& archive) noexcept { archive.deserialize(use_counter); }
 };
 
 struct frequency_data {
     u16 sample_rate;
     frequency_control freq_control;
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(sample_rate);
+        archive.serialize(freq_control);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(sample_rate);
+        archive.deserialize(freq_control);
+    }
 };
 
 struct polynomial_counter {
@@ -196,6 +281,22 @@ struct polynomial_counter {
         return dividing_ratio
           | bit::from_bool<u8>(has_7_bit_counter_width) << 3_u8
           | shift_clock_frequency << 4_u8;
+    }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(shift_clock_frequency);
+        archive.serialize(has_7_bit_counter_width);
+        archive.serialize(dividing_ratio);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(shift_clock_frequency);
+        archive.deserialize(has_7_bit_counter_width);
+        archive.deserialize(dividing_ratio);
     }
 };
 
@@ -246,6 +347,9 @@ public:
 
     u16 sweep_calculation() noexcept;
     void adjust_output_volume() noexcept;
+
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
 };
 
 struct wave_channel {
@@ -295,6 +399,9 @@ public:
 
     void write_wave_ram(const u32 address, const u8 data) noexcept { wave_ram[wave_bank ^ 1_u8][address] = data; }
     [[nodiscard]] u8 read_wave_ram(const u32 address) const noexcept { return wave_ram[wave_bank ^ 1_u8][address]; }
+
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
 };
 
 struct noise_channel {
@@ -341,6 +448,9 @@ public:
         const u8 divisor = polynomial_cnt.dividing_ratio;
         return ((divisor == 0_u8 ? 8_u8 : divisor * 16_u32) << polynomial_cnt.shift_clock_frequency) * 4_u32;
     }
+
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
 };
 
 class fifo {
@@ -397,6 +507,26 @@ public:
                 dma.request_dma(dma_occasion_);
             }
         }
+    }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(latch_);
+        archive.serialize(data_);
+        archive.serialize(read_idx_);
+        archive.serialize(write_idx_);
+        archive.serialize(size_);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(latch_);
+        archive.deserialize(data_);
+        archive.deserialize(read_idx_);
+        archive.deserialize(write_idx_);
+        archive.deserialize(size_);
     }
 };
 

@@ -69,6 +69,9 @@ struct channel : data {
 
     [[nodiscard]] u8 read_cnt_l() const noexcept;
     [[nodiscard]] u8 read_cnt_h() const noexcept;
+
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
 };
 
 class controller {
@@ -90,8 +93,7 @@ class controller {
     bool is_running_ = false;
 
 public:
-    controller(cpu::bus_interface* bus, cpu::irq_controller_handle irq, scheduler* scheduler) noexcept
-      : bus_{bus}, irq_{irq}, scheduler_{scheduler} {}
+    controller(cpu::bus_interface* bus, cpu::irq_controller_handle irq, scheduler* scheduler) noexcept;
 
     void write_cnt_l(usize idx, u8 data) noexcept;
     void write_cnt_h(usize idx, u8 data) noexcept;
@@ -106,10 +108,13 @@ public:
     channel& operator[](const usize idx) noexcept { return channels_[idx]; }
     const channel& operator[](const usize idx) const noexcept { return channels_[idx]; }
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     static void latch(channel& channel, bool for_repeat, bool for_fifo) noexcept;
 
-    void on_channel_start(u64 /*late_cycles*/) noexcept;
+    void on_channel_start(u32 /*late_cycles*/) noexcept;
     void schedule(channel& channel, channel::control::timing timing) noexcept;
 };
 

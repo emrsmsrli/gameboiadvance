@@ -83,6 +83,21 @@ public:
         previous_samples_[1_u32] = previous_samples_[0_u32];
         previous_samples_[0_u32] = sample;
     }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(previous_samples_);
+        archive.serialize(this->resample_phase_);
+
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(previous_samples_);
+        archive.deserialize(this->resample_phase_);
+    }
 };
 
 } // namespace gba::apu

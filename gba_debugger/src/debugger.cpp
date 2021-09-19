@@ -155,7 +155,6 @@ window::window(core* core) noexcept
 {
     cartridge::gamepak& pak = access_private::gamepak_(core);
     ppu::engine& ppu_engine = access_private::ppu_engine_(core);
-    apu::engine& apu_engine = access_private::apu_engine_(core);
 
     using namespace std::string_view_literals;
     disassembly_view_.add_entry<memory_view_entry>("ROM"sv, view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
@@ -204,7 +203,7 @@ window::window(core* core) noexcept
 
     window_.resetGLStates();
     window_.setVerticalSyncEnabled(false);
-    window_.setFramerateLimit(0);
+    window_.setFramerateLimit(60);
     ImGui::SFML::Init(window_, true);
 
     ImGuiSettingsHandler debugger_settings_handler;
@@ -231,8 +230,8 @@ window::window(core* core) noexcept
     core_->sound_buffer_overflow_event().add_delegate({connect_arg<&window::on_audio_buffer_full>, this});
     cpu_->on_instruction_execute.connect<&window::on_instruction_execute>(this);
 
-    apu_engine.set_dst_sample_rate(audio_device_.frequency());
-    apu_engine.set_buffer_capacity(audio_device_.sample_count());
+    core_->set_dst_sample_rate(audio_device_.frequency());
+    core_->set_sound_buffer_capacity(audio_device_.sample_count());
     apu_debugger_.set_buffer_capacity(audio_device_.sample_count());
     cpu_debugger_.on_execution_requested.add_delegate({connect_arg<&window::on_execution_requested>, this});
 }
@@ -264,6 +263,14 @@ bool window::draw() noexcept
                     break;
             }
         } else if(window_event_.type == sf::Event::KeyReleased) {
+            const auto save_load_state = [&](const state_slot slot) {
+                if(window_event_.key.control) {
+                    core_->load_state(slot);
+                } else {
+                    core_->save_state(slot);
+                }
+            };
+
             switch(window_event_.key.code) {
                 case sf::Keyboard::W: if(tick_allowed_) { core_->release_key(keypad::key::up); } break;
                 case sf::Keyboard::A: if(tick_allowed_) { core_->release_key(keypad::key::left); } break;
@@ -275,7 +282,13 @@ bool window::draw() noexcept
                 case sf::Keyboard::N: if(tick_allowed_) { core_->release_key(keypad::key::start); } break;
                 case sf::Keyboard::T: if(tick_allowed_) { core_->release_key(keypad::key::left_shoulder); } break;
                 case sf::Keyboard::U: if(tick_allowed_) { core_->release_key(keypad::key::right_shoulder); } break;
+                case sf::Keyboard::R: reset_core(); break;
                 case sf::Keyboard::F9: tick_allowed_ = !tick_allowed_; break;
+                case sf::Keyboard::F1: save_load_state(state_slot::slot1); break;
+                case sf::Keyboard::F2: save_load_state(state_slot::slot2); break;
+                case sf::Keyboard::F3: save_load_state(state_slot::slot3); break;
+                case sf::Keyboard::F4: save_load_state(state_slot::slot4); break;
+                case sf::Keyboard::F5: save_load_state(state_slot::slot5); break;
                 default:
                     break;
             }
@@ -315,17 +328,44 @@ bool window::draw() noexcept
 
         ImGui::Spacing();
         ImGui::Spacing();
+
+        const hw_event_registry& registry = hw_event_registry::get();
         for(const scheduler::hw_event& event : events) {
-            ImGui::Text("{}, timestamp: {} ({})", event.name, event.timestamp, event.timestamp - scheduler_->now());
+            const hw_event_registry::entry* entry = registry.find_by_callback(event.callback);
+            ImGui::Text("{}, timestamp: {} ({})", entry ? entry->name : "????",
+              event.timestamp, event.timestamp - scheduler_->now());
         }
     }
 
     ImGui::End();
 
     if(ImGui::Begin("Debugger", nullptr, ImGuiWindowFlags_MenuBar)) {
-        static int framerate_idx = 0;
+        static int framerate_idx = 2;
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("Settings")) {
+                const auto draw_state_menu = [](const char* name, const char* shortcut, auto&& on_select) {
+                    if (ImGui::BeginMenu(name)) {
+                        for(const state_slot slot : range(state_slot::max)) {
+                            const u32 slot_idx = from_enum<u32>(slot);
+                            if(slot_idx == 0_u32) { continue; }
+
+                            const std::string menu_label = fmt::format("Slot {}", slot_idx);
+                            const std::string menu_shortcut = fmt::format("{}{}", shortcut, slot_idx);
+                            if(ImGui::MenuItem(menu_label.c_str(), menu_shortcut.c_str())) {
+                                on_select(slot);
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+                };
+
+                draw_state_menu("Save state", "F", [&](const state_slot slot) {
+                    core_->save_state(slot);
+                });
+                draw_state_menu("Load state", "CTRL+F", [&](const state_slot slot) {
+                    core_->load_state(slot);
+                });
+
                 ImGui::PushItemWidth(150.f);
 
                 ImGui::Checkbox("Audio Enable", &prefs_.apu_audio_enabled);
@@ -526,6 +566,16 @@ void window::on_eeprom_bus_width_detected() noexcept
       },
       0x0DFF'FF00_u32
     });
+}
+
+void window::reset_core() noexcept
+{
+    core_->reset(prefs_.debugger_bios_skip);
+    std::fill(frame_time_history_.begin(),  frame_time_history_.end(), 0.f);
+    total_instructions_ = 0_usize;
+    total_frames_ = 0_usize;
+    total_frame_time_ = 0.f;
+    last_executed_addr_ = 0_u32;
 }
 
 } // namespace gba::debugger

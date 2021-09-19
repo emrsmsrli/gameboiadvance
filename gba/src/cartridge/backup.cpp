@@ -7,6 +7,7 @@
 
 #include <gba/cartridge/backup.h>
 
+#include <gba/archive.h>
 #include <gba/core/math.h>
 #include <gba/core/scheduler.h>
 #include <gba/helper/bitflags.h>
@@ -46,6 +47,25 @@ void backup::set_size(const usize size) noexcept
             PANIC();
         }
     }
+}
+
+void backup::serialize(archive& archive) const noexcept
+{
+    const vector<u8> data = fs::read_file(path_);
+    archive.serialize(data);
+    archive.serialize(size_);
+}
+
+void backup::deserialize(const archive& archive) noexcept
+{
+    std::error_code err; // discarded
+    mmap_.unmap(err);
+
+    const auto data = archive.deserialize<vector<u8>>();
+    fs::write_file(path_, data);
+    archive.deserialize(size_);
+
+    mmap_.map(err);
 }
 
 void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
@@ -106,7 +126,7 @@ void backup_eeprom::write(const u32 /*address*/, u8 value) noexcept
                 LOG_TRACE(eeprom, "new state: waiting_finish_bit after transmitting");
 
                 settled_response_ = 0_u8;
-                scheduler_->ADD_HW_EVENT(eeprom_settle_cycles, backup_eeprom::on_settle);
+                scheduler_->add_hw_event(eeprom_settle_cycles, MAKE_HW_EVENT(backup_eeprom::on_settle));
             }
             break;
         }
@@ -165,6 +185,35 @@ void backup_eeprom::set_size(const usize size) noexcept
 {
     backup::set_size(size);
     bus_width_ = size == 8_kb ? 14_u8 : 6_u8;
+}
+
+void backup_eeprom::serialize(archive& archive) const noexcept
+{
+    backup::serialize(archive);
+    archive.serialize(buffer_);
+    archive.serialize(address_);
+    archive.serialize(bus_width_);
+    archive.serialize(settled_response_);
+    archive.serialize(transmission_count_);
+    archive.serialize(state_);
+    archive.serialize(cmd_);
+}
+
+void backup_eeprom::deserialize(const archive& archive) noexcept
+{
+    backup::deserialize(archive);
+    archive.deserialize(buffer_);
+    archive.deserialize(address_);
+    archive.deserialize(bus_width_);
+    archive.deserialize(settled_response_);
+    archive.deserialize(transmission_count_);
+    archive.deserialize(state_);
+    archive.deserialize(cmd_);
+}
+
+void backup_eeprom::register_settle_event() noexcept
+{
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(backup_eeprom::on_settle),"eeprom::settle");
 }
 
 void backup_sram::write(const u32 address, const u8 value) noexcept
@@ -256,6 +305,22 @@ u8 backup_flash::read(u32 address) const noexcept
     }
 
     return data()[physical_addr(address)];
+}
+
+void backup_flash::serialize(archive& archive) const noexcept
+{
+    backup::serialize(archive);
+    archive.serialize(current_bank_);
+    archive.serialize(state_);
+    archive.serialize(current_cmds_);
+}
+
+void backup_flash::deserialize(const archive& archive) noexcept
+{
+    backup::deserialize(archive);
+    archive.deserialize(current_bank_);
+    archive.deserialize(state_);
+    archive.deserialize(current_cmds_);
 }
 
 } // namespace gba::cartridge

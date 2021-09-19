@@ -7,6 +7,8 @@
 
 #include <gba/cpu/timer.h>
 
+#include <gba/archive.h>
+
 namespace gba::timer {
 
 namespace {
@@ -92,9 +94,9 @@ void timer::write(const register_type reg, const u8 data) noexcept
 void timer::schedule_overflow(const u32 late_cycles) noexcept
 {
     last_scheduled_timestamp_ = scheduler_->now() - late_cycles;
-    handle_ = scheduler_->ADD_HW_EVENT_NAMED(
+    handle_ = scheduler_->add_hw_event(
       ((overflow_value - counter_) << prescalar_shifts[control_.prescalar]) - late_cycles,
-      timer::overflow, fmt::format("timer::overflow ({})", id_));
+      MAKE_HW_EVENT(timer::overflow));
 }
 
 void timer::overflow(const u32 late_cycles) noexcept
@@ -127,6 +129,62 @@ void timer::tick_internal() noexcept
 u32 timer::calculate_counter_delta() const noexcept
 {
     return narrow<u32>(scheduler_->now() - last_scheduled_timestamp_) >> prescalar_shifts[control_.prescalar];
+}
+
+void timer::serialize(archive& archive) const noexcept
+{
+    archive.serialize(handle_);
+    archive.serialize(last_scheduled_timestamp_);
+    archive.serialize(counter_);
+    archive.serialize(reload_);
+    archive.serialize(control_.prescalar);
+    archive.serialize(control_.enabled);
+    archive.serialize(control_.cascaded);
+    archive.serialize(control_.irq_enabled);
+}
+
+void timer::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(handle_);
+    archive.deserialize(last_scheduled_timestamp_);
+    archive.deserialize(counter_);
+    archive.deserialize(reload_);
+    archive.deserialize(control_.prescalar);
+    archive.deserialize(control_.enabled);
+    archive.deserialize(control_.cascaded);
+    archive.deserialize(control_.irq_enabled);
+}
+
+controller::controller(scheduler* scheduler, cpu::irq_controller_handle irq) noexcept
+  : timers_{
+      timer{0_u32, scheduler, irq},
+      timer{1_u32, scheduler, irq},
+      timer{2_u32, scheduler, irq},
+      timer{3_u32, scheduler, irq}
+    }
+{
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(timer::overflow, timers_.ptr(0_usize)), "timer0::overflow");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(timer::overflow, timers_.ptr(1_usize)), "timer1::overflow");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(timer::overflow, timers_.ptr(2_usize)), "timer2::overflow");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(timer::overflow, timers_.ptr(3_usize)), "timer3::overflow");
+
+    for(u32 id : range(1_u32, 4_u32)) {
+        timers_[id].cascade_instance = &timers_[id - 1_u32];
+    }
+}
+
+void controller::serialize(archive& archive) const noexcept
+{
+    for(const timer& t : timers_) {
+        archive.serialize(t);
+    }
+}
+
+void controller::deserialize(const archive& archive) noexcept
+{
+    for(timer& t : timers_) {
+        archive.deserialize(t);
+    }
 }
 
 } // namespace gba::timer

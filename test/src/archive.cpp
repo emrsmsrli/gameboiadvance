@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include <gba/archive.h>
+#include <gba/helper/range.h>
 #include <test_prelude.h>
 
 using namespace gba;
@@ -31,7 +32,21 @@ struct dummy {
     }
 
     bool operator==(const dummy& other) const noexcept { return u == other.u && b == other.b; }
+    bool operator!=(const dummy& other) const noexcept { return !(*this == other); }
 };
+
+template<typename T1, typename T2>
+bool verify_same(T1&& t1, T2&& t2) noexcept
+{
+    if(t1.size() != t2.size()) { return false; }
+
+    for(usize idx : range(t1.size())) {
+        if(t1[idx] != t2[idx]) {
+            return false;
+        }
+    }
+    return true;
+}
 
 } // namespace
 
@@ -42,16 +57,10 @@ TEST_CASE("state archive serialize")
     SUBCASE("integer") {
         static constexpr i32 i = 12;
         archive.serialize(i);
-#if DEBUG
-        static constexpr array<u8, 5> verification{
-            from_enum<u8>(archive::state_type::integer), 0x0c_u8, 0x00_u8, 0x00_u8, 0x00_u8
-        };
-#else
-        static constexpr array<u8, 4> verification{0x0c_u8, 0x00_u8, 0x00_u8, 0x00_u8};
-#endif // DEBUG
 
-        REQUIRE(archive.data().size() == verification.size());
-        REQUIRE(std::equal(archive.data().begin(), archive.data().end(), verification.begin(), verification.end()));
+        static constexpr array<u8, 4> verification{0x0c_u8, 0x00_u8, 0x00_u8, 0x00_u8};
+
+        REQUIRE(verify_same(archive.data(), verification));
     }
 
     SUBCASE("array") {
@@ -61,42 +70,22 @@ TEST_CASE("state archive serialize")
         };
 
         archive.serialize(dummies);
-#if DEBUG
-        static constexpr array<u8, 15> verification{
-            from_enum<u8>(archive::state_type::array),
-            from_enum<u8>(archive::state_type::integer), 0x11_u8, 0x00_u8, 0x11_u8, 0x00_u8,
-            from_enum<u8>(archive::state_type::integer), 0xFF_u8,
-            from_enum<u8>(archive::state_type::integer), 0x55_u8, 0x44_u8, 0x33_u8, 0x22_u8,
-            from_enum<u8>(archive::state_type::integer), 0xDD_u8
-        };
-#else
+
         static constexpr array<u8, 10> verification{
             0x11_u8, 0x00_u8, 0x11_u8, 0x00_u8, 0xFF_u8,
             0x55_u8, 0x44_u8, 0x33_u8, 0x22_u8, 0xDD_u8
         };
-#endif // DEBUG
 
-        REQUIRE(archive.data().size() == verification.size());
-        REQUIRE(std::equal(archive.data().begin(), archive.data().end(), verification.begin(), verification.end()));
+        REQUIRE(verify_same(archive.data(), verification));
     }
 
     SUBCASE("array of bytes") {
         static constexpr array<u8, 4> dummies{0x11_u8, 0xFD_u8, 0x45_u8, 0x98_u8};
         archive.serialize(dummies);
-#if DEBUG
-        static constexpr array<u8, 9> verification{
-            from_enum<u8>(archive::state_type::array),
-            from_enum<u8>(archive::state_type::integer), 0x11_u8,
-            from_enum<u8>(archive::state_type::integer), 0xFD_u8,
-            from_enum<u8>(archive::state_type::integer), 0x45_u8,
-            from_enum<u8>(archive::state_type::integer), 0x98_u8
-        };
-#else
-        static constexpr array<u8, 4> verification = dummies;
-#endif // DEBUG
 
-        REQUIRE(archive.data().size() == verification.size());
-        REQUIRE(std::equal(archive.data().begin(), archive.data().end(), verification.begin(), verification.end()));
+        static constexpr array<u8, 4> verification = dummies;
+
+        REQUIRE(verify_same(archive.data(), verification));
     }
 
     SUBCASE("vector") {
@@ -105,25 +94,14 @@ TEST_CASE("state archive serialize")
         dummies.push_back(dummy{0x22334455_u32, 0xDD_u8});
 
         archive.serialize(dummies);
-#if DEBUG
-        static constexpr array<u8, 24> verification{
-          from_enum<u8>(archive::state_type::vector),
-          from_enum<u8>(archive::state_type::integer), 0x02_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8,
-          from_enum<u8>(archive::state_type::integer), 0x11_u8, 0x00_u8, 0x11_u8, 0x00_u8,
-          from_enum<u8>(archive::state_type::integer), 0xFF_u8,
-          from_enum<u8>(archive::state_type::integer), 0x55_u8, 0x44_u8, 0x33_u8, 0x22_u8,
-          from_enum<u8>(archive::state_type::integer), 0xDD_u8
-        };
-#else
+
         static constexpr array<u8, 18> verification{
             0x02_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8,
             0x11_u8, 0x00_u8, 0x11_u8, 0x00_u8, 0xFF_u8,
             0x55_u8, 0x44_u8, 0x33_u8, 0x22_u8, 0xDD_u8
         };
-#endif // DEBUG
 
-          REQUIRE(archive.data().size() == verification.size());
-          REQUIRE(std::equal(archive.data().begin(), archive.data().end(), verification.begin(), verification.end()));
+        REQUIRE(verify_same(archive.data(), verification));
     }
 
     SUBCASE("vector of bytes") {
@@ -134,16 +112,7 @@ TEST_CASE("state archive serialize")
         dummies.push_back(0x98_u8);
 
         archive.serialize(dummies);
-#if DEBUG
-        static constexpr array<u8, 18> verification{
-          from_enum<u8>(archive::state_type::vector),
-          from_enum<u8>(archive::state_type::integer), 0x04_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8,
-          from_enum<u8>(archive::state_type::integer), 0x11_u8,
-          from_enum<u8>(archive::state_type::integer), 0xFD_u8,
-          from_enum<u8>(archive::state_type::integer), 0x45_u8,
-          from_enum<u8>(archive::state_type::integer), 0x98_u8
-        };
-#else
+
         static constexpr array<u8, 12> verification{
             0x04_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8, 0x00_u8,
             0x11_u8,
@@ -151,10 +120,8 @@ TEST_CASE("state archive serialize")
             0x45_u8,
             0x98_u8
         };
-#endif // DEBUG
 
-          REQUIRE(archive.data().size() == verification.size());
-          REQUIRE(std::equal(archive.data().begin(), archive.data().end(), verification.begin(), verification.end()));
+        REQUIRE(verify_same(archive.data(), verification));
     }
 }
 
@@ -180,7 +147,7 @@ TEST_CASE("state archive deserialize")
 
         array<dummy, 2> other_dummies;
         archive.deserialize(other_dummies);
-        REQUIRE(std::equal(dummies.begin(), dummies.end(), other_dummies.begin(), other_dummies.end()));
+        REQUIRE(verify_same(dummies, other_dummies));
     }
 
     SUBCASE("vector") {
@@ -191,7 +158,6 @@ TEST_CASE("state archive deserialize")
 
         vector<dummy> other_dummies;
         archive.deserialize(other_dummies);
-        REQUIRE(dummies.size() == other_dummies.size());
-        REQUIRE(std::equal(dummies.begin(), dummies.end(), other_dummies.begin(), other_dummies.end()));
+        REQUIRE(verify_same(dummies, other_dummies));
     }
 }

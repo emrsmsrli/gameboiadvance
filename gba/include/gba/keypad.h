@@ -58,6 +58,24 @@ struct keypad {
                 UNREACHABLE();
         }
     }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(keyinput_);
+        archive.serialize(keycnt_.select);
+        archive.serialize(keycnt_.enabled);
+        archive.serialize(keycnt_.cond_strategy);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(keyinput_);
+        archive.deserialize(keycnt_.select);
+        archive.deserialize(keycnt_.enabled);
+        archive.deserialize(keycnt_.cond_strategy);
+    }
 };
 
 } // namespace gba::keypad

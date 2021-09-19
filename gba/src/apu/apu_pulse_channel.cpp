@@ -7,6 +7,8 @@
 
 #include <gba/apu/apu_types.h>
 
+#include <gba/archive.h>
+
 namespace gba::apu {
 
 namespace {
@@ -23,7 +25,7 @@ constexpr array<i32, 32> wave_duty{
 pulse_channel::pulse_channel(scheduler* scheduler) noexcept
   : scheduler_{scheduler}
 {
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate(), MAKE_HW_EVENT(pulse_channel::generate_output_sample));
 }
 
 void pulse_channel::generate_output_sample(const u32 late_cycles) noexcept
@@ -32,7 +34,7 @@ void pulse_channel::generate_output_sample(const u32 late_cycles) noexcept
     adjust_waveform_duty_index();
     adjust_output_volume();
 
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate() - late_cycles, MAKE_HW_EVENT(pulse_channel::generate_output_sample));
 }
 
 i8 pulse_channel::get_output() const noexcept
@@ -102,7 +104,7 @@ void pulse_channel::envelope_click() noexcept
 void pulse_channel::restart() noexcept
 {
     scheduler_->remove_event(timer_event_id);
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), pulse_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate(), MAKE_HW_EVENT(pulse_channel::generate_output_sample));
 
     enabled = true;
     length_counter = 64_u32 - wav_data.sound_length;
@@ -192,6 +194,36 @@ void pulse_channel::write(const register_index index, const u8 data)
             }
             break;
     }
+}
+
+void pulse_channel::serialize(archive& archive) const noexcept
+{
+    archive.serialize(swp);
+    archive.serialize(wav_data);
+    archive.serialize(env);
+    archive.serialize(freq_data);
+    archive.serialize(length_counter);
+    archive.serialize(waveform_duty_index);
+    archive.serialize(waveform_phase);
+    archive.serialize(volume);
+    archive.serialize(output);
+    archive.serialize(enabled);
+    archive.serialize(dac_enabled);
+}
+
+void pulse_channel::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(swp);
+    archive.deserialize(wav_data);
+    archive.deserialize(env);
+    archive.deserialize(freq_data);
+    archive.deserialize(length_counter);
+    archive.deserialize(waveform_duty_index);
+    archive.deserialize(waveform_phase);
+    archive.deserialize(volume);
+    archive.deserialize(output);
+    archive.deserialize(enabled);
+    archive.deserialize(dac_enabled);
 }
 
 } // namespace gba::apu

@@ -72,6 +72,8 @@ private:
     void on_vblank() noexcept;
     void on_audio_buffer_full(vector<apu::stereo_sample<float>> buffer) noexcept;
     void on_eeprom_bus_width_detected() noexcept;
+
+    void reset_core() noexcept;
 };
 
 } // namespace gba::debugger

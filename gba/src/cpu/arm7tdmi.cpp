@@ -29,6 +29,8 @@ arm7tdmi::arm7tdmi(bus_interface* bus, scheduler* scheduler) noexcept
       0xF000'0000_u32
     }
 {
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(arm7tdmi::update_irq_signal), "arm::update_irq");
+
     cpsr().mode = privilege_mode::svc;
     switch_mode(cpsr().mode);
     cpsr().i = true;
@@ -77,7 +79,7 @@ void arm7tdmi::schedule_update_irq_signal() noexcept
 
     if(scheduled_irq_signal_ != irq_signal_) {
         scheduler_->remove_event(irq_signal_delay_handle_);
-        irq_signal_delay_handle_ = scheduler_->ADD_HW_EVENT(1_u32, arm7tdmi::update_irq_signal);
+        irq_signal_delay_handle_ = scheduler_->add_hw_event(1_u32, MAKE_HW_EVENT(arm7tdmi::update_irq_signal));
     }
 }
 

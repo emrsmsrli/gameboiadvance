@@ -53,6 +53,11 @@ struct color {
 
     FORCEINLINE static constexpr color white() noexcept { return color{0x7FFF_u16}; }
     FORCEINLINE static constexpr color transparent() noexcept { return color{0x8000_u16}; }
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept { archive.serialize(val); }
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept { archive.deserialize(val); }
 };
 
 FORCEINLINE constexpr color_unpacked unpack(const color packed) noexcept
@@ -80,6 +85,47 @@ struct dispcnt {
     bool win0_enabled = false;
     bool win1_enabled = false;
     bool win_obj_enabled = false;
+
+    [[nodiscard]] FORCEINLINE u8 read_lower() const noexcept
+    {
+        return bit::from_bool<u8>(forced_blank) << 7_u8
+          | bit::from_bool<u8>(obj_mapping_1d) << 6_u8
+          | bit::from_bool<u8>(hblank_interval_free) << 5_u8
+          | frame_select << 4_u8
+          | bg_mode;
+    }
+
+    [[nodiscard]] FORCEINLINE u8 read_upper() const noexcept
+    {
+        return bit::from_bool<u8>(bg_enabled[0_usize])
+          | bit::from_bool<u8>(bg_enabled[1_usize]) << 1_u8
+          | bit::from_bool<u8>(bg_enabled[2_usize]) << 2_u8
+          | bit::from_bool<u8>(bg_enabled[3_usize]) << 3_u8
+          | bit::from_bool<u8>(obj_enabled) << 4_u8
+          | bit::from_bool<u8>(win0_enabled) << 5_u8
+          | bit::from_bool<u8>(win1_enabled) << 6_u8
+          | bit::from_bool<u8>(win_obj_enabled) << 7_u8;
+    }
+
+    FORCEINLINE void write_lower(const u8 data) noexcept
+    {
+        bg_mode = data & 0b111_u8;
+        frame_select = bit::extract(data, 4_u8);
+        hblank_interval_free = bit::test(data, 5_u8);
+        obj_mapping_1d = bit::test(data, 6_u8);
+        forced_blank = bit::test(data, 7_u8);
+    }
+
+    FORCEINLINE void write_upper(const u8 data) noexcept
+    {
+        obj_enabled = bit::test(data, 4_u8);
+        win0_enabled = bit::test(data, 5_u8);
+        win1_enabled = bit::test(data, 6_u8);
+        win_obj_enabled = bit::test(data, 7_u8);
+        for(u8 bg = 0_u8; bg < bg_enabled.size(); ++bg) {
+            bg_enabled[bg] = bit::test(data, bg);
+        }
+    }
 };
 
 struct dispstat {
@@ -90,6 +136,30 @@ struct dispstat {
     bool hblank_irq_enabled = false;
     bool vcounter_irq_enabled = false;
     u8 vcount_setting;
+
+    [[nodiscard]] FORCEINLINE u8 read_lower() const noexcept
+    {
+        return bit::from_bool<u8>(vblank)
+          | bit::from_bool<u8>(hblank) << 1_u8
+          | bit::from_bool<u8>(vcounter) << 2_u8
+          | bit::from_bool<u8>(vblank_irq_enabled) << 3_u8
+          | bit::from_bool<u8>(hblank_irq_enabled) << 4_u8
+          | bit::from_bool<u8>(vcounter_irq_enabled) << 5_u8;
+    }
+
+    [[nodiscard]] FORCEINLINE u8 read_upper() const noexcept
+    {
+        return vcount_setting;
+    }
+
+    FORCEINLINE void write_lower(const u8 data) noexcept
+    {
+        vblank_irq_enabled = bit::test(data, 3_u8);
+        hblank_irq_enabled = bit::test(data, 4_u8);
+        vcounter_irq_enabled = bit::test(data, 5_u8);
+    }
+
+    FORCEINLINE void write_upper(const u8 data) noexcept { vcount_setting = data; }
 };
 
 /*****************/
@@ -150,7 +220,23 @@ struct bgcnt : T {
     u8 screen_entry_base_block;
     u8 screen_size;
 
-    void write_lower(const u8 data) noexcept
+    [[nodiscard]] FORCEINLINE u8 read_lower() const noexcept
+    {
+        return priority | char_base_block << 2_u8 | _unused_2 << 4_u8
+          | bit::from_bool<u8>(mosaic_enabled) << 6_u8
+          | bit::from_bool<u8>(color_depth_8bit) << 7_u8;
+    }
+
+    [[nodiscard]] FORCEINLINE u8 read_upper() const noexcept
+    {
+        u8 data = screen_entry_base_block | screen_size << 6_u8;
+        if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
+            data |= bit::from_bool<u8>(T::wraparound) << 5_u8;
+        }
+        return data;
+    }
+
+    FORCEINLINE void write_lower(const u8 data) noexcept
     {
         priority = data & 0b11_u8;
         char_base_block = (data >> 2_u8) & 0b11_u8;
@@ -159,31 +245,13 @@ struct bgcnt : T {
         color_depth_8bit = bit::test(data, 7_u8);
     }
 
-    void write_upper(const u8 data) noexcept
+    FORCEINLINE void write_upper(const u8 data) noexcept
     {
         screen_entry_base_block = data & 0x1F_u8;
         screen_size = data >> 6_u8;
         if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
             T::wraparound = bit::test(data, 5_u8);
         }
-    }
-
-    [[nodiscard]] u8 read_lower() const noexcept
-    {
-        return priority
-          | char_base_block << 2_u8
-          | _unused_2 << 4_u8
-          | bit::from_bool<u8>(mosaic_enabled) << 6_u8
-          | bit::from_bool<u8>(color_depth_8bit) << 7_u8;
-    }
-
-    [[nodiscard]] u8 read_upper() const noexcept
-    {
-        u8 data = screen_entry_base_block | screen_size << 6_u8;
-        if constexpr(std::is_same_v<T, ppu::bgcnt_affine_base>) {
-            data |= bit::from_bool<u8>(T::wraparound) << 5_u8;
-        }
-        return data;
     }
 };
 
@@ -216,6 +284,26 @@ struct win_enable_bits {
     array<bool, 4> bg_enabled{false, false, false, false};
     bool obj_enabled = false;
     bool blend_enabled = false;
+
+    [[nodiscard]] FORCEINLINE u8 read() const noexcept
+    {
+        return bit::from_bool<u8>(bg_enabled[0_usize])
+          | bit::from_bool<u8>(bg_enabled[1_usize]) << 1_u8
+          | bit::from_bool<u8>(bg_enabled[2_usize]) << 2_u8
+          | bit::from_bool<u8>(bg_enabled[3_usize]) << 3_u8
+          | bit::from_bool<u8>(obj_enabled) << 4_u8
+          | bit::from_bool<u8>(blend_enabled) << 5_u8;
+    }
+
+    FORCEINLINE void write(const u8 data) noexcept
+    {
+        bg_enabled[0_usize] = bit::test(data, 0_u8);
+        bg_enabled[1_usize] = bit::test(data, 1_u8);
+        bg_enabled[2_usize] = bit::test(data, 2_u8);
+        bg_enabled[3_usize] = bit::test(data, 3_u8);
+        obj_enabled = bit::test(data, 4_u8);
+        blend_enabled = bit::test(data, 5_u8);
+    }
 };
 
 struct win_in {
@@ -253,6 +341,26 @@ struct bldcnt {
         array<bool, 4> bg{false, false, false, false};
         bool obj = false;
         bool backdrop = false;
+
+        [[nodiscard]] FORCEINLINE u8 read() const noexcept
+        {
+            return bit::from_bool<u8>(bg[0_usize])
+              | bit::from_bool<u8>(bg[1_usize]) << 1_u8
+              | bit::from_bool<u8>(bg[2_usize]) << 2_u8
+              | bit::from_bool<u8>(bg[3_usize]) << 3_u8
+              | bit::from_bool<u8>(obj) << 4_u8
+              | bit::from_bool<u8>(backdrop) << 5_u8;
+        }
+
+        FORCEINLINE void write(const u8 data) noexcept
+        {
+            bg[0_usize] = bit::test(data, 0_u8);
+            bg[1_usize] = bit::test(data, 1_u8);
+            bg[2_usize] = bit::test(data, 2_u8);
+            bg[3_usize] = bit::test(data, 3_u8);
+            obj = bit::test(data, 4_u8);
+            backdrop = bit::test(data, 5_u8);
+        }
     };
 
     target first;
@@ -360,6 +468,22 @@ struct obj_buffer_entry {
     u32 priority = 4_u32;
     color dot = color::transparent();
     bool is_alpha_blending = false;
+
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(priority);
+        archive.serialize(dot);
+        archive.serialize(is_alpha_blending);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(priority);
+        archive.deserialize(dot);
+        archive.deserialize(is_alpha_blending);
+    }
 };
 
 } // namespace gba::ppu

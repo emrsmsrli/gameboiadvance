@@ -12,6 +12,7 @@
 
 namespace gba {
 
+class archive;
 class core;
 class scheduler;
 

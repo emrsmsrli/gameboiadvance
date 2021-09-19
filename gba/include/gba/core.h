@@ -8,14 +8,18 @@
 #ifndef GAMEBOIADVANCE_CORE_H
 #define GAMEBOIADVANCE_CORE_H
 
+#include <gba/archive.h>
 #include <gba/apu/apu.h>
 #include <gba/cartridge/gamepak.h>
 #include <gba/core/scheduler.h>
 #include <gba/cpu/cpu.h>
+#include <gba/helper/gzip.h>
 #include <gba/keypad.h>
 #include <gba/ppu/ppu.h>
 
 namespace gba {
+
+enum class state_slot : u32::type { slot1 = 1, slot2, slot3, slot4, slot5, max };
 
 class core : public cpu::bus_interface {
     scheduler scheduler_;
@@ -24,6 +28,9 @@ class core : public cpu::bus_interface {
     ppu::engine ppu_engine_;
     apu::engine apu_engine_;
     keypad::keypad keypad_;
+
+    archive default_state_;
+    fs::path states_path_;
 
 public:
 #if WITH_DEBUGGER
@@ -75,13 +82,107 @@ public:
     {
         gamepak_.load(path);
         gamepak_.set_scheduler(&scheduler_);
+
+        states_path_ = path.parent_path() / "states" / path.filename();
+        states_path_.replace_extension();
+
+        if(!fs::exists(states_path_) && !fs::create_directories(states_path_)) {
+            LOG_WARN(core, "states path could not be created {}", states_path_.string());
+        }
+
+        save_default_state();
     }
 
     void skip_bios() noexcept { cpu_.skip_bios(); }
 
+    void reset(const bool should_skip_bios = false) noexcept
+    {
+        if(!default_state_.empty()) {
+            default_state_.seek_to_start();
+            deserialize(default_state_);
+            if(should_skip_bios) {
+                skip_bios();
+            }
+        }
+    }
+
+    void save_state(const state_slot slot) const noexcept
+    {
+        if(!fs::exists(states_path_)) {
+            return;
+        }
+
+        ASSERT(slot < state_slot::max);
+        archive archive;
+        serialize(archive);
+
+        const fs::path slot_path = get_slot_path(slot);
+        const std::optional<vector<u8>> compressed_archive = gzip::compress(archive.data());
+        if(compressed_archive.has_value()) {
+            fs::write_file(slot_path, compressed_archive.value());
+            LOG_INFO(core, "state saved to slot {}", from_enum<u32>(slot));
+        } else {
+            LOG_WARN(core, "error compressing archive");
+        }
+    }
+
+    void load_state(const state_slot slot) noexcept
+    {
+        if(!fs::exists(states_path_)) {
+            return;
+        }
+
+        ASSERT(slot < state_slot::max);
+        const fs::path slot_path = get_slot_path(slot);
+
+        if(!fs::exists(slot_path)) {
+            LOG_WARN(core, "no saved state found in slot {}", from_enum<u32>(slot));
+            return;
+        }
+
+        const std::optional<vector<u8>> decompressed_archive = gzip::decompress(fs::read_file(slot_path));
+        if(decompressed_archive.has_value()) {
+            const archive archive{decompressed_archive.value()};
+            deserialize(archive);
+            LOG_INFO(core, "state loaded from slot {}", from_enum<u32>(slot));
+        } else {
+            LOG_WARN(core, "error decompressing archive");
+        }
+    }
+
 private:
-    // todo = now - start - cycles_per_frame
-    u64 frame_cycle_overshoot;
+    [[nodiscard]] fs::path get_slot_path(const state_slot slot) const noexcept
+    {
+        return states_path_ / fmt::format("slot{}.bin", from_enum<u32>(slot));
+    }
+
+    void save_default_state() noexcept
+    {
+        default_state_.clear();
+        serialize(default_state_);
+    }
+
+    void serialize(archive& archive) const noexcept
+    {
+        scheduler_.serialize(archive);
+        gamepak_.serialize(archive);
+        cpu_.serialize(archive);
+        ppu_engine_.serialize(archive);
+        apu_engine_.serialize(archive);
+        // sio_engine_.serialize(archive);
+        keypad_.serialize(archive);
+    }
+
+    void deserialize(const archive& archive) noexcept
+    {
+        scheduler_.deserialize(archive);
+        gamepak_.deserialize(archive);
+        cpu_.deserialize(archive);
+        ppu_engine_.deserialize(archive);
+        apu_engine_.deserialize(archive);
+        // sio_engine_.deserialize(archive);
+        keypad_.deserialize(archive);
+    }
 
     [[nodiscard]] u32 read_32(u32 addr, cpu::mem_access access) noexcept final { return read<u32>(addr, access); }
     void write_32(u32 addr, u32 data, cpu::mem_access access) noexcept final { write<u32>(addr, data, access); }

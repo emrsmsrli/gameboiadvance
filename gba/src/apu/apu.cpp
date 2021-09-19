@@ -7,6 +7,7 @@
 
 #include <gba/apu/apu.h>
 
+#include <gba/archive.h>
 #include <gba/core/scheduler.h>
 #include <gba/cpu/timer.h>
 
@@ -32,8 +33,15 @@ engine::engine(timer::timer* timer1, timer::timer* timer2, scheduler* scheduler)
     fifo_b_{&control_.fifo_b, dma::occasion::fifo_b},
     resampler_{buffer_}
 {
-    scheduler_->ADD_HW_EVENT(frame_sequencer_cycles, apu::engine::tick_sequencer);
-    scheduler_->ADD_HW_EVENT(soundbias_.sample_interval(), apu::engine::tick_mixer);
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(apu::engine::tick_sequencer), "apu::sequencer");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT(apu::engine::tick_mixer), "apu::mixer");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(apu::pulse_channel::generate_output_sample, &channel_1_), "apu::pulse1::output");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(apu::pulse_channel::generate_output_sample, &channel_2_), "apu::pulse2::output");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(apu::wave_channel::generate_output_sample, &channel_3_), "apu::wave::output");
+    hw_event_registry::get().register_entry(MAKE_HW_EVENT_V(apu::noise_channel::generate_output_sample, &channel_4_), "apu::noise::output");
+
+    scheduler_->add_hw_event(frame_sequencer_cycles, MAKE_HW_EVENT(apu::engine::tick_sequencer));
+    scheduler_->add_hw_event(soundbias_.sample_interval(), MAKE_HW_EVENT(apu::engine::tick_mixer));
 
     timer1->on_overflow.add_delegate({connect_arg<&engine::on_timer_overflow>, this});
     timer2->on_overflow.add_delegate({connect_arg<&engine::on_timer_overflow>, this});
@@ -43,7 +51,7 @@ engine::engine(timer::timer* timer1, timer::timer* timer2, scheduler* scheduler)
 
 void engine::tick_sequencer(const u32 late_cycles) noexcept
 {
-    scheduler_->ADD_HW_EVENT(frame_sequencer_cycles - late_cycles, apu::engine::tick_sequencer);
+    scheduler_->add_hw_event(frame_sequencer_cycles - late_cycles, MAKE_HW_EVENT(apu::engine::tick_sequencer));
 
     switch(frame_sequencer_.get()) {
         case 0:
@@ -80,7 +88,7 @@ void engine::tick_mixer(const u32 late_cycles) noexcept
       static_cast<float>(generate_sample(terminal::right).get()) / static_cast<float>(0x200)
     });
 
-    scheduler_->ADD_HW_EVENT(soundbias_.sample_interval() - late_cycles, apu::engine::tick_mixer);
+    scheduler_->add_hw_event(soundbias_.sample_interval() - late_cycles, MAKE_HW_EVENT(apu::engine::tick_mixer));
 }
 
 i16 engine::generate_sample(const u32 terminal) noexcept
@@ -113,6 +121,52 @@ void engine::on_timer_overflow(timer::timer* timer) noexcept
 
     fifo_a_.on_timer_overflow(timer->id(), dma_);
     fifo_b_.on_timer_overflow(timer->id(), dma_);
+}
+
+void engine::serialize(archive& archive) const noexcept
+{
+    archive.serialize(power_on_);
+    archive.serialize(control_.read<0>());
+    archive.serialize(control_.read<1>());
+    archive.serialize(control_.read<2>());
+    archive.serialize(control_.read<3>());
+    archive.serialize(soundbias_.bias);
+    archive.serialize(soundbias_.resolution);
+
+    archive.serialize(channel_1_);
+    archive.serialize(channel_2_);
+    archive.serialize(channel_3_);
+    archive.serialize(channel_4_);
+    archive.serialize(fifo_a_);
+    archive.serialize(fifo_b_);
+
+    archive.serialize(frame_sequencer_);
+    archive.serialize(buffer_);
+    archive.serialize(resampler_);
+}
+
+void engine::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(power_on_);
+    control_.write<0>(archive.deserialize<u8>());
+    control_.write<1>(archive.deserialize<u8>());
+    control_.write<2>(archive.deserialize<u8>());
+    control_.write<3>(archive.deserialize<u8>());
+    archive.deserialize(soundbias_.bias);
+    archive.deserialize(soundbias_.resolution);
+
+    archive.deserialize(channel_1_);
+    archive.deserialize(channel_2_);
+    archive.deserialize(channel_3_);
+    archive.deserialize(channel_4_);
+    archive.deserialize(fifo_a_);
+    archive.deserialize(fifo_b_);
+
+    archive.deserialize(frame_sequencer_);
+    archive.deserialize(buffer_);
+    archive.deserialize(resampler_);
+
+    resampler_.set_src_sample_rate(soundbias_.sample_rate());
 }
 
 } // namespace gba::apu

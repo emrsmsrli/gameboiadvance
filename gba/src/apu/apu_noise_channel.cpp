@@ -7,17 +7,19 @@
 
 #include <gba/apu/apu_types.h>
 
+#include <gba/archive.h>
+
 namespace gba::apu {
 
 noise_channel::noise_channel(scheduler* scheduler) noexcept
   : scheduler_{scheduler}
 {
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), noise_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate(), MAKE_HW_EVENT(noise_channel::generate_output_sample));
 }
 
 void noise_channel::generate_output_sample(const u32 late_cycles) noexcept
 {
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate() - late_cycles, noise_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate() - late_cycles, MAKE_HW_EVENT(noise_channel::generate_output_sample));
 
     const u16 first_bit_reverse = bit::extract(~lfsr, 0_u8);
     const u16 result = bit::extract(lfsr, 0_u8) ^ bit::extract(lfsr, 1_u8);
@@ -74,7 +76,7 @@ void noise_channel::envelope_click() noexcept
 void noise_channel::restart() noexcept
 {
     scheduler_->remove_event(timer_event_id);
-    timer_event_id = scheduler_->ADD_HW_EVENT(calculate_sample_rate(), noise_channel::generate_output_sample);
+    timer_event_id = scheduler_->add_hw_event(calculate_sample_rate(), MAKE_HW_EVENT(noise_channel::generate_output_sample));
 
     enabled = true;
     length_counter = sound_length;
@@ -119,6 +121,34 @@ void noise_channel::write(const register_index index, const u8 data) noexcept
             }
             break;
     }
+}
+
+void noise_channel::serialize(archive& archive) const noexcept
+{
+    archive.serialize(sound_length);
+    archive.serialize(env);
+    archive.serialize(polynomial_cnt);
+    archive.serialize(freq_control);
+    archive.serialize(length_counter);
+    archive.serialize(lfsr);
+    archive.serialize(volume);
+    archive.serialize(output);
+    archive.serialize(enabled);
+    archive.serialize(dac_enabled);
+}
+
+void noise_channel::deserialize(const archive& archive) noexcept
+{
+    archive.deserialize(sound_length);
+    archive.deserialize(env);
+    archive.deserialize(polynomial_cnt);
+    archive.deserialize(freq_control);
+    archive.deserialize(length_counter);
+    archive.deserialize(lfsr);
+    archive.deserialize(volume);
+    archive.deserialize(output);
+    archive.deserialize(enabled);
+    archive.deserialize(dac_enabled);
 }
 
 } // namespace gba::apu

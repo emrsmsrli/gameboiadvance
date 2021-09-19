@@ -41,13 +41,13 @@ public:
 
         std::error_code err;
         if(fs::exists(path_)) {
-            mmap_ = fs::mmap{path_,err};
+            mmap_ = fs::mmap{path_, err};
         } else {
             fs::create_directories(path_.parent_path());
 
-            vector<u8> dummy(size_, 0xFF_u8);
+            const vector<u8> dummy(size_, 0xFF_u8);
             fs::write_file(path_, dummy);
-            mmap_ = fs::mmap{path_,err};
+            mmap_ = fs::mmap{path_, err};
         }
 
         if(err) {
@@ -66,6 +66,9 @@ public:
 
     virtual void set_size(usize size) noexcept;
     void set_scheduler(scheduler* s) noexcept { scheduler_ = s; }
+
+    virtual void serialize(archive& archive) const noexcept;
+    virtual void deserialize(const archive& archive) noexcept;
 };
 
 class backup_eeprom : public backup {
@@ -94,13 +97,20 @@ public:
     using cmd_debugger = cmd;
 #endif // WITH_DEBUGGER
 
-    // intentionally not initialize the size
+    // intentionally not initialize the size,
     // so we can figure it out on the first write
     explicit backup_eeprom(const fs::path& pak_path)
-      : backup(pak_path, 8_kb) {}
+      : backup(pak_path, 8_kb)
+    {
+        register_settle_event();
+    }
+
     backup_eeprom(const fs::path& pak_path, const usize size)
       : backup(pak_path, size),
-        bus_width_{size == 8_kb ? 14_u8 : 6_u8} {}
+        bus_width_{size == 8_kb ? 14_u8 : 6_u8}
+    {
+        register_settle_event();
+    }
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
@@ -109,9 +119,14 @@ public:
 
     [[nodiscard]] u32 get_addr() const noexcept { return address_; }
 
+    void serialize(archive& archive) const noexcept final;
+    void deserialize(const archive& archive) noexcept final;
+
 private:
+    void register_settle_event() noexcept;
+
     void reset_buffer() const noexcept { buffer_ = 0_u64; transmission_count_ = 0_u8; }
-    void on_settle(u64 /*late_cycles*/) noexcept
+    void on_settle(u32 /*late_cycles*/) noexcept
     {
         settled_response_ = 1_u8;
 
@@ -171,6 +186,9 @@ public:
 
     void write(u32 address, u8 value) noexcept final;
     [[nodiscard]] u8 read(u32 address) const noexcept final;
+
+    void serialize(archive& archive) const noexcept final;
+    void deserialize(const archive& archive) noexcept final;
 
 private:
     [[nodiscard]] usize physical_addr(const u32 addr) const noexcept { return current_bank_ * 64_kb + addr; }

@@ -44,6 +44,21 @@ public:
         notify_on_overflow();
     }
 
+    template<typename Ar>
+    void serialize(Ar& archive) const noexcept
+    {
+        archive.serialize(write_idx_);
+        archive.serialize(buffer_);
+    }
+
+    template<typename Ar>
+    void deserialize(const Ar& archive) noexcept
+    {
+        archive.deserialize(write_idx_);
+        archive.deserialize(buffer_);
+        set_capacity(capacity_);
+    }
+
 private:
     FORCEINLINE void notify_on_overflow() noexcept
     {

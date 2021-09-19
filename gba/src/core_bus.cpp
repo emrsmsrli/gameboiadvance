@@ -14,15 +14,6 @@ u8 core::read_io(const u32 addr) noexcept
     auto& timer_controller = cpu_.timer_controller_;
     auto& dma_controller = cpu_.dma_controller_;
 
-    const auto win_enable_read = [](ppu::win_enable_bits& area) {
-        return bit::from_bool<u8>(area.bg_enabled[0_usize])
-          | bit::from_bool<u8>(area.bg_enabled[1_usize]) << 1_u8
-          | bit::from_bool<u8>(area.bg_enabled[2_usize]) << 2_u8
-          | bit::from_bool<u8>(area.bg_enabled[3_usize]) << 3_u8
-          | bit::from_bool<u8>(area.obj_enabled) << 4_u8
-          | bit::from_bool<u8>(area.blend_enabled) << 5_u8;
-    };
-
     switch(addr.get()) {
         case keypad::addr_state:     return narrow<u8>(keypad_.keyinput_);
         case keypad::addr_state + 1: return narrow<u8>(keypad_.keyinput_ >> 8_u16);
@@ -32,31 +23,12 @@ u8 core::read_io(const u32 addr) noexcept
               | bit::from_bool(keypad_.keycnt_.enabled) << 6_u32
               | from_enum<u32>(keypad_.keycnt_.cond_strategy) << 7_u32);
 
-        case ppu::addr_dispcnt:
-            return bit::from_bool<u8>(ppu_engine_.dispcnt_.forced_blank) << 7_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.obj_mapping_1d) << 6_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.hblank_interval_free) << 5_u8
-              | ppu_engine_.dispcnt_.frame_select << 4_u8
-              | ppu_engine_.dispcnt_.bg_mode;
-        case ppu::addr_dispcnt + 1:
-            return bit::from_bool<u8>(ppu_engine_.dispcnt_.bg_enabled[0_usize])
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.bg_enabled[1_usize]) << 1_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.bg_enabled[2_usize]) << 2_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.bg_enabled[3_usize]) << 3_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.obj_enabled) << 4_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.win0_enabled) << 5_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.win1_enabled) << 6_u8
-              | bit::from_bool<u8>(ppu_engine_.dispcnt_.win_obj_enabled) << 7_u8;
+        case ppu::addr_dispcnt:      return ppu_engine_.dispcnt_.read_lower();
+        case ppu::addr_dispcnt + 1:  return ppu_engine_.dispcnt_.read_upper();
         case ppu::addr_greenswap:     return bit::from_bool<u8>(ppu_engine_.green_swap_);
         case ppu::addr_greenswap + 1: return 0_u8;
-        case ppu::addr_dispstat:
-            return bit::from_bool<u8>(ppu_engine_.dispstat_.vblank)
-              | bit::from_bool<u8>(ppu_engine_.dispstat_.hblank) << 1_u8
-              | bit::from_bool<u8>(ppu_engine_.dispstat_.vcounter) << 2_u8
-              | bit::from_bool<u8>(ppu_engine_.dispstat_.vblank_irq_enabled) << 3_u8
-              | bit::from_bool<u8>(ppu_engine_.dispstat_.hblank_irq_enabled) << 4_u8
-              | bit::from_bool<u8>(ppu_engine_.dispstat_.vcounter_irq_enabled) << 5_u8;
-        case ppu::addr_dispstat + 1: return ppu_engine_.dispstat_.vcount_setting;
+        case ppu::addr_dispstat:     return ppu_engine_.dispstat_.read_lower();
+        case ppu::addr_dispstat + 1: return ppu_engine_.dispstat_.read_upper();
         case ppu::addr_vcount:       return ppu_engine_.vcount_;
         case ppu::addr_vcount + 1:   return 0_u8;
         case ppu::addr_bg0cnt:       return ppu_engine_.bg0_.cnt.read_lower();
@@ -67,25 +39,12 @@ u8 core::read_io(const u32 addr) noexcept
         case ppu::addr_bg2cnt + 1:   return ppu_engine_.bg2_.cnt.read_upper();
         case ppu::addr_bg3cnt:       return ppu_engine_.bg3_.cnt.read_lower();
         case ppu::addr_bg3cnt + 1:   return ppu_engine_.bg3_.cnt.read_upper();
-        case ppu::addr_winin:        return win_enable_read(ppu_engine_.win_in_.win0);
-        case ppu::addr_winin + 1:    return win_enable_read(ppu_engine_.win_in_.win1);
-        case ppu::addr_winout:       return win_enable_read(ppu_engine_.win_out_.outside);
-        case ppu::addr_winout + 1:   return win_enable_read(ppu_engine_.win_out_.obj);
-        case ppu::addr_bldcnt:
-            return bit::from_bool<u8>(ppu_engine_.bldcnt_.first.bg[0_usize])
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.first.bg[1_usize]) << 1_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.first.bg[2_usize]) << 2_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.first.bg[3_usize]) << 3_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.first.obj) << 4_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.first.backdrop) << 5_u8
-              | from_enum<u8>(ppu_engine_.bldcnt_.type) << 6_u8;
-        case ppu::addr_bldcnt + 1:
-            return bit::from_bool<u8>(ppu_engine_.bldcnt_.second.bg[0_usize])
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.bg[1_usize]) << 1_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.bg[2_usize]) << 2_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.bg[3_usize]) << 3_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.obj) << 4_u8
-              | bit::from_bool<u8>(ppu_engine_.bldcnt_.second.backdrop) << 5_u8;
+        case ppu::addr_winin:        return ppu_engine_.win_in_.win0.read();
+        case ppu::addr_winin + 1:    return ppu_engine_.win_in_.win1.read();
+        case ppu::addr_winout:       return ppu_engine_.win_out_.outside.read();
+        case ppu::addr_winout + 1:   return ppu_engine_.win_out_.obj.read();
+        case ppu::addr_bldcnt:       return ppu_engine_.bldcnt_.first.read() | from_enum<u8>(ppu_engine_.bldcnt_.type) << 6_u8;
+        case ppu::addr_bldcnt + 1:   return ppu_engine_.bldcnt_.second.read();
         case ppu::addr_bldalpha:     return ppu_engine_.blend_settings_.eva;
         case ppu::addr_bldalpha + 1: return ppu_engine_.blend_settings_.evb;
 
@@ -241,15 +200,6 @@ void core::write_io(const u32 addr, const u8 data) noexcept
     auto& timer_controller = cpu_.timer_controller_;
     auto& dma_controller = cpu_.dma_controller_;
 
-    const auto win_enable_write = [](ppu::win_enable_bits& area, const u8 data) {
-        area.bg_enabled[0_usize] = bit::test(data, 0_u8);
-        area.bg_enabled[1_usize] = bit::test(data, 1_u8);
-        area.bg_enabled[2_usize] = bit::test(data, 2_u8);
-        area.bg_enabled[3_usize] = bit::test(data, 3_u8);
-        area.obj_enabled = bit::test(data, 4_u8);
-        area.blend_enabled = bit::test(data, 5_u8);
-    };
-
     switch(addr.get()) {
         case keypad::addr_control:
             keypad_.keycnt_.select = bit::set_byte(keypad_.keycnt_.select, 0_u8, data);
@@ -267,30 +217,18 @@ void core::write_io(const u32 addr, const u8 data) noexcept
             break;
 
         case ppu::addr_dispcnt:
-            ppu_engine_.dispcnt_.bg_mode = data & 0b111_u8;
-            ppu_engine_.dispcnt_.frame_select = bit::extract(data, 4_u8);
-            ppu_engine_.dispcnt_.hblank_interval_free = bit::test(data, 5_u8);
-            ppu_engine_.dispcnt_.obj_mapping_1d = bit::test(data, 6_u8);
-            ppu_engine_.dispcnt_.forced_blank = bit::test(data, 7_u8);
+            ppu_engine_.dispcnt_.write_lower(data);
             break;
         case ppu::addr_dispcnt + 1:
-            ppu_engine_.dispcnt_.obj_enabled = bit::test(data, 4_u8);
-            ppu_engine_.dispcnt_.win0_enabled = bit::test(data, 5_u8);
-            ppu_engine_.dispcnt_.win1_enabled = bit::test(data, 6_u8);
-            ppu_engine_.dispcnt_.win_obj_enabled = bit::test(data, 7_u8);
-            for(u8 bg = 0_u8; bg < ppu_engine_.dispcnt_.bg_enabled.size(); ++bg) {
-                ppu_engine_.dispcnt_.bg_enabled[bg] = bit::test(data, bg);
-            }
+            ppu_engine_.dispcnt_.write_upper(data);
             break;
         case ppu::addr_greenswap: ppu_engine_.green_swap_ = bit::test(data, 0_u8); break;
         case ppu::addr_dispstat:
-            ppu_engine_.dispstat_.vblank_irq_enabled = bit::test(data, 3_u8);
-            ppu_engine_.dispstat_.hblank_irq_enabled = bit::test(data, 4_u8);
-            ppu_engine_.dispstat_.vcounter_irq_enabled = bit::test(data, 5_u8);
+            ppu_engine_.dispstat_.write_lower(data);
             ppu_engine_.check_vcounter_irq();
             break;
         case ppu::addr_dispstat + 1:
-            ppu_engine_.dispstat_.vcount_setting = data;
+            ppu_engine_.dispstat_.write_upper(data);
             ppu_engine_.check_vcounter_irq();
             break;
         case ppu::addr_bg0cnt:      ppu_engine_.bg0_.cnt.write_lower(data); break;
@@ -358,10 +296,10 @@ void core::write_io(const u32 addr, const u8 data) noexcept
         case ppu::addr_win0v + 1:   ppu_engine_.win0_.top_left.y = data; break;
         case ppu::addr_win1v:       ppu_engine_.win1_.bottom_right.y = data; break;
         case ppu::addr_win1v + 1:   ppu_engine_.win1_.top_left.y = data; break;
-        case ppu::addr_winin:       win_enable_write(ppu_engine_.win_in_.win0, data); break;
-        case ppu::addr_winin + 1:   win_enable_write(ppu_engine_.win_in_.win1, data); break;
-        case ppu::addr_winout:      win_enable_write(ppu_engine_.win_out_.outside, data); break;
-        case ppu::addr_winout + 1:  win_enable_write(ppu_engine_.win_out_.obj, data); break;
+        case ppu::addr_winin:       ppu_engine_.win_in_.win0.write(data); break;
+        case ppu::addr_winin + 1:   ppu_engine_.win_in_.win1.write(data); break;
+        case ppu::addr_winout:      ppu_engine_.win_out_.outside.write(data); break;
+        case ppu::addr_winout + 1:  ppu_engine_.win_out_.obj.write(data); break;
         case ppu::addr_mosaic:
             ppu_engine_.mosaic_bg_.h = (data & 0xF_u8) + 1_u8;
             ppu_engine_.mosaic_bg_.v = (data >> 4_u8) + 1_u8;
@@ -373,22 +311,10 @@ void core::write_io(const u32 addr, const u8 data) noexcept
             ppu_engine_.mosaic_obj_.internal.v = 0_u8;
             break;
         case ppu::addr_bldcnt:
-            ppu_engine_.bldcnt_.first.bg[0_usize] = bit::test(data, 0_u8);
-            ppu_engine_.bldcnt_.first.bg[1_usize] = bit::test(data, 1_u8);
-            ppu_engine_.bldcnt_.first.bg[2_usize] = bit::test(data, 2_u8);
-            ppu_engine_.bldcnt_.first.bg[3_usize] = bit::test(data, 3_u8);
-            ppu_engine_.bldcnt_.first.obj = bit::test(data, 4_u8);
-            ppu_engine_.bldcnt_.first.backdrop = bit::test(data, 5_u8);
+            ppu_engine_.bldcnt_.first.write(data);
             ppu_engine_.bldcnt_.type = to_enum<ppu::bldcnt::effect>(data >> 6_u8);
             break;
-        case ppu::addr_bldcnt + 1:
-            ppu_engine_.bldcnt_.second.bg[0_usize] = bit::test(data, 0_u8);
-            ppu_engine_.bldcnt_.second.bg[1_usize] = bit::test(data, 1_u8);
-            ppu_engine_.bldcnt_.second.bg[2_usize] = bit::test(data, 2_u8);
-            ppu_engine_.bldcnt_.second.bg[3_usize] = bit::test(data, 3_u8);
-            ppu_engine_.bldcnt_.second.obj = bit::test(data, 4_u8);
-            ppu_engine_.bldcnt_.second.backdrop = bit::test(data, 5_u8);
-            break;
+        case ppu::addr_bldcnt + 1:   ppu_engine_.bldcnt_.second.write(data); break;
         case ppu::addr_bldalpha:     ppu_engine_.blend_settings_.eva = data & 0x1F_u8; break;
         case ppu::addr_bldalpha + 1: ppu_engine_.blend_settings_.evb = data & 0x1F_u8; break;
         case ppu::addr_bldy:         ppu_engine_.blend_settings_.evy = data & 0x1F_u8; break;

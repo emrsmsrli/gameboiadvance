@@ -46,6 +46,9 @@ public:
     FORCEINLINE void set_buffer_capacity(const usize capacity) noexcept { buffer_.set_capacity(capacity); }
     FORCEINLINE event<vector<stereo_sample<float>>>& get_buffer_overflow_event() noexcept { return buffer_.on_overflow; }
 
+    void serialize(archive& archive) const noexcept;
+    void deserialize(const archive& archive) noexcept;
+
 private:
     template<u32::type ChannelIdx, typename RegisterEnum>
     void write(const RegisterEnum reg_idx, const u8 data) noexcept
