@@ -185,7 +185,7 @@ private:
     [[nodiscard]] u32 read_16_aligned(u32 addr, mem_access access) noexcept;
     [[nodiscard]] u32 read_8_signed(u32 addr, mem_access access) noexcept;
 
-    void update_irq_signal(u64 /*late_cycles*/) noexcept { irq_signal_ = scheduled_irq_signal_; }
+    void update_irq_signal(u32 /*late_cycles*/) noexcept { irq_signal_ = scheduled_irq_signal_; }
     void process_interrupts() noexcept;
 
     // ARM instructions
