@@ -35,6 +35,7 @@ public:
 
     template<typename T, typename... Args>
     void add_entry(Args&&... args) noexcept { entries_.push_back(T{std::forward<Args>(args)...}); }
+    void clear() noexcept { entries_.clear(); }
     void draw_with_mode(bool thumb_mode) noexcept;
 };
 
@@ -43,6 +44,7 @@ class memory_view {
 
 public:
     void add_entry(const memory_view_entry& entry) noexcept { entries_.push_back(entry); }
+    void clear() noexcept { entries_.clear(); }
     void draw() noexcept;
 };
 

@@ -14,6 +14,7 @@
 #include <access_private.h>
 #include <imgui-SFML.h>
 #include <imgui.h>
+#include <imgui_filebrowser/imfilebrowser.h>
 #include <imgui_internal.h>
 #include <implot.h>
 #include <SFML/OpenGL.hpp>
@@ -44,6 +45,8 @@ ACCESS_PRIVATE_FIELD(gba::scheduler, gba::vector<gba::scheduler::hw_event>, heap
 namespace gba::debugger {
 
 namespace {
+
+ImGui::FileBrowser rom_picker;
 
 std::string_view to_string_view(const cpu::debugger_access_width access_type) noexcept
 {
@@ -153,53 +156,7 @@ window::window(core* core) noexcept
     apu_debugger_{&access_private::apu_engine_(core), &prefs_},
     keypad_debugger_{&access_private::keypad_(core)}
 {
-    cartridge::gamepak& pak = access_private::gamepak_(core);
-    ppu::engine& ppu_engine = access_private::ppu_engine_(core);
-
-    using namespace std::string_view_literals;
-    disassembly_view_.add_entry<memory_view_entry>("ROM"sv, view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
-    disassembly_view_.add_entry<memory_view_entry>("EWRAM"sv, view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32);
-    disassembly_view_.add_entry<memory_view_entry>("IWRAM"sv, view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32);
-    disassembly_view_.add_entry<custom_disassembly_entry>();
-
-    memory_view_.add_entry(memory_view_entry{"ROM"sv, view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"EWRAM"sv, view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"IWRAM"sv, view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"PALETTE"sv, view<u8>{access_private::palette_ram_(ppu_engine)}, 0x0500'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"VRAM"sv, view<u8>{access_private::vram_(ppu_engine)}, 0x0600'0000_u32});
-    memory_view_.add_entry(memory_view_entry{"OAM"sv, view<u8>{access_private::oam_(ppu_engine)}, 0x0700'0000_u32});
-    switch(pak.backup_type()) {
-        case cartridge::backup::type::eeprom_undetected:
-            pak.on_eeprom_width_detected_event.add_delegate({connect_arg<&window::on_eeprom_bus_width_detected>, this});
-            break;
-        case cartridge::backup::type::eeprom_4:
-        case cartridge::backup::type::eeprom_64:
-            on_eeprom_bus_width_detected();
-            break;
-        case cartridge::backup::type::sram:
-            memory_view_.add_entry(memory_view_entry{
-              "SRAM"sv,
-              view<u8>{
-                access_private::backup_(pak)->data().data(),
-                access_private::backup_(pak)->data().size()
-              },
-              0x0E00'0000_u32
-            });
-            break;
-        case cartridge::backup::type::flash_64:
-        case cartridge::backup::type::flash_128:
-            memory_view_.add_entry(memory_view_entry{
-              "FLASH"sv,
-              view<u8>{
-                access_private::backup_(pak)->data().data(),
-                access_private::backup_(pak)->data().size()
-              },
-              0x0E00'0000_u32
-            });
-        case cartridge::backup::type::none:
-        case cartridge::backup::type::detect:
-            break;
-    }
+    generate_memory_debugger_entries();
 
     window_.resetGLStates();
     window_.setVerticalSyncEnabled(false);
@@ -218,6 +175,11 @@ window::window(core* core) noexcept
     ImGui::GetCurrentContext()->SettingsHandlers.push_back(debugger_settings_handler);
 
     audio_device_.resume();
+
+    const fs::path& gamepak_path = access_private::gamepak_(core).path();
+    rom_picker.SetPwd(fs::is_directory(gamepak_path) ? gamepak_path : gamepak_path.parent_path());
+    rom_picker.SetTypeFilters({".gba", ".gz"});
+    rom_picker.SetTitle("Pick ROM file");
 
     [[maybe_unused]] const sf::ContextSettings& settings = window_.getSettings();
     LOG_INFO(debugger, "OpenGL {}.{}, attr: 0x{:X}", settings.majorVersion, settings.minorVersion, settings.attributeFlags);
@@ -289,6 +251,8 @@ bool window::draw() noexcept
                 case sf::Keyboard::F3: save_load_state(state_slot::slot3); break;
                 case sf::Keyboard::F4: save_load_state(state_slot::slot4); break;
                 case sf::Keyboard::F5: save_load_state(state_slot::slot5); break;
+                case sf::Keyboard::Tab: if(window_event_.key.control) { rom_picker.Open(); } break;
+                case sf::Keyboard::Escape: if(rom_picker.IsOpened()) { rom_picker.Close(); } break;
                 default:
                     break;
             }
@@ -342,6 +306,13 @@ bool window::draw() noexcept
     if(ImGui::Begin("Debugger", nullptr, ImGuiWindowFlags_MenuBar)) {
         static int framerate_idx = 2;
         if(ImGui::BeginMenuBar()) {
+            if(ImGui::BeginMenu("File")) {
+                if(ImGui::MenuItem("Open", "CTRL+TAB")) {
+                    rom_picker.Open();
+                }
+                ImGui::EndMenu();
+            }
+
             if(ImGui::BeginMenu("Settings")) {
                 const auto draw_state_menu = [](const char* name, const char* shortcut, auto&& on_select) {
                     if (ImGui::BeginMenu(name)) {
@@ -421,6 +392,17 @@ bool window::draw() noexcept
     }
 
     ImGui::End();
+
+    rom_picker.Display();
+
+    if(rom_picker.HasSelected()) {
+        reset_core();
+        core_->load_pak(rom_picker.GetSelected());
+        generate_memory_debugger_entries();
+
+        rom_picker.ClearSelected();
+        rom_picker.Close();
+    }
 
     window_.clear(sf::Color::Black);
     ImGui::SFML::Render();
@@ -576,6 +558,59 @@ void window::reset_core() noexcept
     total_frames_ = 0_usize;
     total_frame_time_ = 0.f;
     last_executed_addr_ = 0_u32;
+}
+void window::generate_memory_debugger_entries() noexcept
+{
+    disassembly_view_.clear();
+    memory_view_.clear();
+
+    cartridge::gamepak& pak = access_private::gamepak_(core_);
+    ppu::engine& ppu_engine = access_private::ppu_engine_(core_);
+
+    disassembly_view_.add_entry<memory_view_entry>("ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
+    disassembly_view_.add_entry<memory_view_entry>("EWRAM", view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32);
+    disassembly_view_.add_entry<memory_view_entry>("IWRAM", view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32);
+    disassembly_view_.add_entry<custom_disassembly_entry>();
+
+    memory_view_.add_entry(memory_view_entry{"ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"EWRAM", view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"IWRAM", view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"PALETTE", view<u8>{access_private::palette_ram_(ppu_engine)}, 0x0500'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"VRAM", view<u8>{access_private::vram_(ppu_engine)}, 0x0600'0000_u32});
+    memory_view_.add_entry(memory_view_entry{"OAM", view<u8>{access_private::oam_(ppu_engine)}, 0x0700'0000_u32});
+
+    switch(pak.backup_type()) {
+        case cartridge::backup::type::eeprom_undetected:
+            pak.on_eeprom_width_detected_event.add_delegate({connect_arg<&window::on_eeprom_bus_width_detected>, this});
+            break;
+        case cartridge::backup::type::eeprom_4:
+        case cartridge::backup::type::eeprom_64:
+            on_eeprom_bus_width_detected();
+            break;
+        case cartridge::backup::type::sram:
+            memory_view_.add_entry(memory_view_entry{
+              "SRAM",
+              view<u8>{
+                access_private::backup_(pak)->data().data(),
+                access_private::backup_(pak)->data().size()
+              },
+              0x0E00'0000_u32
+            });
+            break;
+        case cartridge::backup::type::flash_64:
+        case cartridge::backup::type::flash_128:
+            memory_view_.add_entry(memory_view_entry{
+              "FLASH",
+              view<u8>{
+                access_private::backup_(pak)->data().data(),
+                access_private::backup_(pak)->data().size()
+              },
+              0x0E00'0000_u32
+            });
+        case cartridge::backup::type::none:
+        case cartridge::backup::type::detect:
+            break;
+    }
 }
 
 } // namespace gba::debugger
