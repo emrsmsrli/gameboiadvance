@@ -113,8 +113,6 @@ void gamepak::load(const fs::path& path)
     LOG_INFO(gamepak, "address mirroring: {}, mask: {:08X}", has_mirroring_, mirror_mask_);
 
     LOG_INFO(gamepak, "---------------------");
-
-    on_load(path);
 }
 
 void gamepak::detect_backup_type() noexcept

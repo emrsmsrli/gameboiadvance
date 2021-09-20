@@ -49,8 +49,6 @@ public:
 
     static constexpr u32 default_mirror_mask = 0x01FF'FFFF_u32;
 
-    event<const fs::path&> on_load;
-
     void load(const fs::path& path);
 
     void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
