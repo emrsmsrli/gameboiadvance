@@ -183,7 +183,12 @@ T core::read(u32 addr, cpu::mem_access access) noexcept
 
             return memcpy<T>(gamepak_.pak_data_, addr);
         case cpu::memory_page::pak_sram_1: case cpu::memory_page::pak_sram_2: {
-            cpu_.prefetch_buffer_.active = false;
+            if(cpu_.prefetch_buffer_.active) {
+                cpu_.prefetch_buffer_.active = false;
+                cpu_.prefetch_buffer_.size = 0_u32;
+                tick_components(1_u32);
+            }
+
             addr &= 0x0EFF'FFFF_u32;
             T data = 0xFF_u8;
             if(detail::is_sram_flash(gamepak_.backup_type())) {
