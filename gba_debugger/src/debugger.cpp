@@ -200,6 +200,10 @@ window::window(core* core) noexcept
 
 bool window::draw() noexcept
 {
+    if(!core_->pak_loaded() && !rom_picker.IsOpened()) {
+        rom_picker.Open();
+    }
+
     while(window_.pollEvent(window_event_)) {
         if(window_event_.type == sf::Event::Closed) {
             ImGui::SaveIniSettingsToDisk(ImGui::GetCurrentContext()->IO.IniFilename);
@@ -220,7 +224,7 @@ bool window::draw() noexcept
                 case sf::Keyboard::N: if(tick_allowed_) { core_->press_key(keypad::key::start); } break;
                 case sf::Keyboard::T: if(tick_allowed_) { core_->press_key(keypad::key::left_shoulder); } break;
                 case sf::Keyboard::U: if(tick_allowed_) { core_->press_key(keypad::key::right_shoulder); } break;
-                case sf::Keyboard::F7: cpu_->tick(); break;
+                case sf::Keyboard::F7: if(core_->pak_loaded()) { cpu_->tick(); } break;
                 default:
                     break;
             }
@@ -232,6 +236,8 @@ bool window::draw() noexcept
                     core_->save_state(slot);
                 }
             };
+
+            const auto try_close_rom_picker = [&]() { if(core_->pak_loaded()) { rom_picker.Close(); } };
 
             switch(window_event_.key.code) {
                 case sf::Keyboard::W: if(tick_allowed_) { core_->release_key(keypad::key::up); } break;
@@ -251,8 +257,16 @@ bool window::draw() noexcept
                 case sf::Keyboard::F3: save_load_state(state_slot::slot3); break;
                 case sf::Keyboard::F4: save_load_state(state_slot::slot4); break;
                 case sf::Keyboard::F5: save_load_state(state_slot::slot5); break;
-                case sf::Keyboard::Tab: if(window_event_.key.control) { rom_picker.Open(); } break;
-                case sf::Keyboard::Escape: if(rom_picker.IsOpened()) { rom_picker.Close(); } break;
+                case sf::Keyboard::Tab:
+                    if(window_event_.key.control) {
+                        if(rom_picker.IsOpened()) {
+                            try_close_rom_picker();
+                        } else {
+                            rom_picker.Open();
+                        }
+                    }
+                    break;
+                case sf::Keyboard::Escape: if(rom_picker.IsOpened()) { try_close_rom_picker(); } break;
                 default:
                     break;
             }
@@ -552,6 +566,10 @@ void window::on_eeprom_bus_width_detected() noexcept
 
 void window::reset_core() noexcept
 {
+    if(!core_->pak_loaded()) {
+        return;
+    }
+
     core_->reset(prefs_.debugger_bios_skip);
     std::fill(frame_time_history_.begin(),  frame_time_history_.end(), 0.f);
     total_instructions_ = 0_usize;
@@ -567,12 +585,15 @@ void window::generate_memory_debugger_entries() noexcept
     cartridge::gamepak& pak = access_private::gamepak_(core_);
     ppu::engine& ppu_engine = access_private::ppu_engine_(core_);
 
-    disassembly_view_.add_entry<memory_view_entry>("ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
+    if(pak.loaded()) {
+        disassembly_view_.add_entry<memory_view_entry>("ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32);
+        memory_view_.add_entry(memory_view_entry{"ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32});
+    }
+
     disassembly_view_.add_entry<memory_view_entry>("EWRAM", view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32);
     disassembly_view_.add_entry<memory_view_entry>("IWRAM", view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32);
     disassembly_view_.add_entry<custom_disassembly_entry>();
 
-    memory_view_.add_entry(memory_view_entry{"ROM", view<u8>{access_private::pak_data_(pak)}, 0x0800'0000_u32});
     memory_view_.add_entry(memory_view_entry{"EWRAM", view<u8>{access_private::wram_(cpu_)}, 0x0200'0000_u32});
     memory_view_.add_entry(memory_view_entry{"IWRAM", view<u8>{access_private::iwram_(cpu_)}, 0x0300'0000_u32});
     memory_view_.add_entry(memory_view_entry{"PALETTE", view<u8>{access_private::palette_ram_(ppu_engine)}, 0x0500'0000_u32});

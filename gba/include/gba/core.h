@@ -78,26 +78,30 @@ public:
         }
     }
 
+    [[nodiscard]] bool pak_loaded() const noexcept { return gamepak_.loaded(); }
     void load_pak(const fs::path& path)
     {
         gamepak_.load(path);
-        gamepak_.set_scheduler(&scheduler_);
 
-        states_path_ = path.parent_path() / "states" / path.filename();
-        states_path_.replace_extension();
+        if(pak_loaded()) {
+            gamepak_.set_scheduler(&scheduler_);
 
-        if(!fs::exists(states_path_) && !fs::create_directories(states_path_)) {
-            LOG_WARN(core, "states path could not be created {}", states_path_.string());
+            states_path_ = path.parent_path() / "states" / path.filename();
+            states_path_.replace_extension();
+
+            if(!fs::exists(states_path_) && !fs::create_directories(states_path_)) {
+                LOG_WARN(core, "states path could not be created {}", states_path_.string());
+            }
+
+            save_default_state();
         }
-
-        save_default_state();
     }
 
     void skip_bios() noexcept { cpu_.skip_bios(); }
 
     void reset(const bool should_skip_bios = false) noexcept
     {
-        if(!default_state_.empty()) {
+        if(pak_loaded() && !default_state_.empty()) {
             default_state_.seek_to_start();
             deserialize(default_state_);
             if(should_skip_bios) {
@@ -108,7 +112,7 @@ public:
 
     void save_state(const state_slot slot) const noexcept
     {
-        if(!fs::exists(states_path_)) {
+        if(!pak_loaded() || !fs::exists(states_path_)) {
             return;
         }
 
@@ -128,7 +132,7 @@ public:
 
     void load_state(const state_slot slot) noexcept
     {
-        if(!fs::exists(states_path_)) {
+        if(!pak_loaded() || !fs::exists(states_path_)) {
             return;
         }
 

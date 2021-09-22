@@ -56,6 +56,16 @@ std::unique_ptr<backup> make_backup_from_type(const backup::type type, const fs:
 
 void gamepak::load(const fs::path& path)
 {
+    path_ = path;
+
+    if(!fs::is_regular_file(path)) {
+        loaded_ = false;
+        pak_data_.clear();
+        backup_type_ = backup::type::none;
+        backup_ = nullptr;
+        return;
+    }
+
     pak_data_ = fs::read_file(path);
     if(path.extension() == ".gz") {
         std::optional<vector<u8>> decompressed = gzip::decompress(pak_data_);
@@ -67,7 +77,6 @@ void gamepak::load(const fs::path& path)
         }
     }
 
-    path_ = path;
     loaded_ = true;
 
     game_title_ = make_pak_str_zero_padded(pak_data_, 0xA0_usize, 12_usize);
