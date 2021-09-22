@@ -36,6 +36,7 @@ struct preferences {
 
     bool debugger_background_emulate = false;
     bool debugger_bios_skip = false;
+    int debugger_framerate = 0;
 };
 
 } // namespace gba::debugger

@@ -92,6 +92,7 @@ void debugger_settings_hander_read_line(ImGuiContext*, ImGuiSettingsHandler* han
 
     else if(sscanf(line, "debugger_background_emulate=%i", &dummy1) == 1) { prefs.debugger_background_emulate = dummy1 == 1; }
     else if(sscanf(line, "debugger_bios_skip=%i", &dummy1) == 1) { prefs.debugger_bios_skip = dummy1 == 1; }
+    else if(sscanf(line, "debugger_framerate=%i", &dummy1) == 1) { prefs.debugger_framerate = dummy1; }
 }
 
 void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* handler, ImGuiTextBuffer* out_buf)
@@ -129,6 +130,7 @@ void debugger_settings_hander_write_all(ImGuiContext*, ImGuiSettingsHandler* han
 
     out_buf->appendf("debugger_background_emulate=%i\n", prefs.debugger_background_emulate);
     out_buf->appendf("debugger_bios_skip=%i\n", prefs.debugger_bios_skip);
+    out_buf->appendf("debugger_framerate=%i\n", prefs.debugger_framerate);
 }
 
 void debugger_settings_hander_apply_all(ImGuiContext*, ImGuiSettingsHandler* handler)
@@ -159,8 +161,7 @@ window::window(core* core) noexcept
     generate_memory_debugger_entries();
 
     window_.resetGLStates();
-    window_.setVerticalSyncEnabled(false);
-    window_.setFramerateLimit(60);
+    set_framerate_limit(framerate_limit::vsync);
     ImGui::SFML::Init(window_, true);
 
     ImGuiSettingsHandler debugger_settings_handler;
@@ -251,7 +252,16 @@ bool window::draw() noexcept
                 case sf::Keyboard::T: if(tick_allowed_) { core_->release_key(keypad::key::left_shoulder); } break;
                 case sf::Keyboard::U: if(tick_allowed_) { core_->release_key(keypad::key::right_shoulder); } break;
                 case sf::Keyboard::R: reset_core(); break;
-                case sf::Keyboard::F9: tick_allowed_ = !tick_allowed_; break;
+                case sf::Keyboard::F9:
+                    if(core_->pak_loaded()) {
+                        tick_allowed_ = !tick_allowed_;
+                        if(!tick_allowed_) {
+                            set_framerate_limit(framerate_limit::vsync);
+                        } else {
+                            set_framerate_limit(static_cast<framerate_limit>(prefs_.debugger_framerate));
+                        }
+                    }
+                    break;
                 case sf::Keyboard::F1: save_load_state(state_slot::slot1); break;
                 case sf::Keyboard::F2: save_load_state(state_slot::slot2); break;
                 case sf::Keyboard::F3: save_load_state(state_slot::slot3); break;
@@ -273,7 +283,7 @@ bool window::draw() noexcept
         }
     }
 
-    if(!prefs_.debugger_background_emulate && !window_.hasFocus()) {
+    if((!tick_allowed_ || !prefs_.debugger_background_emulate) && !window_.hasFocus()) {
         using namespace std::chrono_literals;
         std::this_thread::sleep_for(10ms);
         return true;
@@ -318,7 +328,6 @@ bool window::draw() noexcept
     ImGui::End();
 
     if(ImGui::Begin("Debugger", nullptr, ImGuiWindowFlags_MenuBar)) {
-        static int framerate_idx = 2;
         if(ImGui::BeginMenuBar()) {
             if(ImGui::BeginMenu("File")) {
                 if(ImGui::MenuItem("Open", "CTRL+TAB")) {
@@ -358,11 +367,9 @@ bool window::draw() noexcept
                 ImGui::SliderFloat("Volume", &prefs_.apu_audio_volume, 0.f, 1.f, "%.1f");
                 ImGui::EndDisabled();
 
-                static array framerates{0, 30, 60, 120, 144, 0};
                 static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
-                if(ImGui::Combo("Framerate", &framerate_idx, framerate_names.data(), framerate_names.size().get())) {
-                    window_.setFramerateLimit(framerates[static_cast<u32::type>(framerate_idx)]);
-                    window_.setVerticalSyncEnabled(framerate_idx == 5);
+                if(ImGui::Combo("Framerate", &prefs_.debugger_framerate, framerate_names.data(), framerate_names.size().get())) {
+                    set_framerate_limit(static_cast<framerate_limit>(prefs_.debugger_framerate));
 
                     total_frames_ = 0_usize;
                     total_frame_time_ = 0.f;
@@ -632,6 +639,14 @@ void window::generate_memory_debugger_entries() noexcept
         case cartridge::backup::type::detect:
             break;
     }
+}
+
+void window::set_framerate_limit(const framerate_limit limit) noexcept
+{
+    static constexpr array framerates{0, 30, 60, 120, 144, 0};
+
+    window_.setFramerateLimit(framerates[from_enum<u32>(limit)]);
+    window_.setVerticalSyncEnabled(limit == framerate_limit::vsync);
 }
 
 } // namespace gba::debugger

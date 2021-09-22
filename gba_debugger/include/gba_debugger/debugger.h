@@ -75,6 +75,10 @@ private:
 
     void generate_memory_debugger_entries() noexcept;
     void reset_core() noexcept;
+
+    enum class framerate_limit { unlimited, _30, _60, _120, _144, vsync };
+
+    void set_framerate_limit(framerate_limit limit) noexcept;
 };
 
 } // namespace gba::debugger
