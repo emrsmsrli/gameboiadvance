@@ -54,7 +54,7 @@ public:
 
     [[nodiscard]] event<u8, const ppu::scanline_buffer&>& on_scanline_event() noexcept { return ppu_engine_.event_on_scanline; }
     [[nodiscard]] event<>& on_vblank_event() noexcept { return ppu_engine_.event_on_vblank; }
-    [[nodiscard]] event<vector<apu::stereo_sample<float>>>& sound_buffer_overflow_event() noexcept { return apu_engine_.get_buffer_overflow_event(); }
+    [[nodiscard]] event<const vector<apu::stereo_sample<float>>&>& sound_buffer_overflow_event() noexcept { return apu_engine_.get_buffer_overflow_event(); }
 
     FORCEINLINE void set_volume(const float volume) noexcept { apu_engine_.set_volume(volume); }
     FORCEINLINE void set_dst_sample_rate(const u32 sample_rate) noexcept { apu_engine_.set_dst_sample_rate(sample_rate); }
