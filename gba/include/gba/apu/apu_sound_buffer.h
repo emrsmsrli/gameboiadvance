@@ -24,7 +24,7 @@ public:
     event<usize> on_write;
 #endif // WITH_DEBUGGER
 
-    event<vector<Sample>> on_overflow;
+    event<const vector<Sample>&> on_overflow;
 
     FORCEINLINE void set_capacity(usize capacity) noexcept
     {

@@ -137,6 +137,8 @@ void debugger_settings_hander_apply_all(ImGuiContext*, ImGuiSettingsHandler* han
 {
     const auto* w = static_cast<window*>(handler->UserData);
     const preferences& prefs = access_private::prefs_(w);
+
+    access_private::core_(w)->set_volume(prefs.apu_audio_volume);
     if(prefs.debugger_bios_skip) {
         access_private::core_(w)->skip_bios();
     }
@@ -364,7 +366,9 @@ bool window::draw() noexcept
 
                 ImGui::Checkbox("Audio Enable", &prefs_.apu_audio_enabled);
                 ImGui::BeginDisabled(!prefs_.apu_audio_enabled);
-                ImGui::SliderFloat("Volume", &prefs_.apu_audio_volume, 0.f, 1.f, "%.1f");
+                if(ImGui::SliderFloat("Volume", &prefs_.apu_audio_volume, 0.f, 1.f, "%.1f")) {
+                    core_->set_volume(prefs_.apu_audio_volume);
+                }
                 ImGui::EndDisabled();
 
                 static array framerate_names{"unlimited", "30", "60", "120", "144", "vsync"};
@@ -540,15 +544,11 @@ void window::on_vblank() noexcept
     }
 }
 
-void window::on_audio_buffer_full(vector<apu::stereo_sample<float>> buffer) noexcept
+void window::on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept
 {
     if(!prefs_.apu_audio_enabled) {
         return;
     }
-
-    std::for_each(buffer.begin(), buffer.end(), [&](apu::stereo_sample<float>& sample) {
-        sample = sample * prefs_.apu_audio_volume;
-    });
 
     const usize buffer_size_in_bytes = sizeof(apu::stereo_sample<float>) * buffer.size();
     audio_device_.enqueue(reinterpret_cast<const void*>(buffer.data()), buffer_size_in_bytes.get()); // NOLINT

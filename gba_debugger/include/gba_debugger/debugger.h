@@ -70,7 +70,7 @@ private:
     void on_execution_requested(cpu_debugger::execution_request type) noexcept;
     void on_scanline(u8, const ppu::scanline_buffer&) noexcept;
     void on_vblank() noexcept;
-    void on_audio_buffer_full(vector<apu::stereo_sample<float>> buffer) noexcept;
+    void on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept;
     void on_eeprom_bus_width_detected() noexcept;
 
     void generate_memory_debugger_entries() noexcept;

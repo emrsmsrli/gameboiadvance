@@ -22,6 +22,7 @@ protected:
     u32 dst_sample_rate_ = 48'000_u32;
     float resample_phase_ = 0.f;
     float resample_phase_shift_ = 1.f;
+    float volume_ = 1.f;
 
 public:
     explicit resampler(sound_buffer<Sample>& buffer) noexcept
@@ -40,6 +41,12 @@ public:
     {
         dst_sample_rate_ = dst_sample_rate;
         calculate_resample_interval();
+    }
+
+    FORCEINLINE void set_volume(const float volume) noexcept
+    {
+        ASSERT(volume >= 0.f && volume <= 1.f);
+        volume_ = volume;
     }
 
 private:
@@ -69,10 +76,8 @@ public:
             const Sample a2 = previous_samples_[0_u32] - previous_samples_[2_u32];
             const Sample a3 = previous_samples_[1_u32];
 
-            this->buffer_.write(a0 * mu * mu_sq
-              + a1 * mu_sq
-              + a2 * mu
-              + a3);
+            const Sample sample_to_write = a0 * mu * mu_sq + a1 * mu_sq + a2 * mu + a3;
+            this->buffer_.write(sample_to_write * this->volume_);
 
             this->resample_phase_ += this->resample_phase_shift_;
         }

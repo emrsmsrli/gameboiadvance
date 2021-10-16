@@ -44,7 +44,8 @@ public:
     FORCEINLINE void set_dma_controller_handle(const dma::controller_handle dma) noexcept { dma_ = dma; }
     FORCEINLINE void set_dst_sample_rate(const u32 sample_rate) noexcept { resampler_.set_dst_sample_rate(sample_rate); }
     FORCEINLINE void set_buffer_capacity(const usize capacity) noexcept { buffer_.set_capacity(capacity); }
-    FORCEINLINE event<vector<stereo_sample<float>>>& get_buffer_overflow_event() noexcept { return buffer_.on_overflow; }
+    FORCEINLINE void set_volume(const float volume) noexcept { resampler_.set_volume(volume); }
+    FORCEINLINE event<const vector<stereo_sample<float>>&>& get_buffer_overflow_event() noexcept { return buffer_.on_overflow; }
 
     void serialize(archive& archive) const noexcept;
     void deserialize(const archive& archive) noexcept;
