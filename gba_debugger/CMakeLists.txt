@@ -22,7 +22,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         fmt::fmt-header-only
         imgui::sfml
         SDL2::CXX
-        json::json
         access_private::access_private
         sfml-system
         sfml-window
