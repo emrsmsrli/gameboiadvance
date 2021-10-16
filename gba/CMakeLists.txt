@@ -25,7 +25,7 @@ add_library(${PROJECT_NAME} STATIC
         src/cartridge/rtc.cpp
         src/cartridge/gamepak_db.cpp
         src/helper/filesystem.cpp
-        $<$<BOOL:${ENABLE_GZIP_SUPPORT}>:src/helper/gzip.cpp>)
+        src/helper/gzip.cpp)
 
 add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 
@@ -40,12 +40,9 @@ endif()
 target_link_libraries(${PROJECT_NAME} PUBLIC
         fmt::fmt-header-only
         spdlog::spdlog_header_only
-        $<$<BOOL:${ENABLE_GZIP_SUPPORT}>:ZLIB::ZLIB>
+        ZLIB::ZLIB
         project_warnings
         project_options)
-
-target_compile_definitions(${PROJECT_NAME}
-        PUBLIC WITH_GZIP=$<BOOL:${ENABLE_GZIP_SUPPORT}>)
 
 # allows static_for [0,2048) + some margin
 if(MSVC)
