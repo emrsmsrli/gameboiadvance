@@ -14,9 +14,9 @@ namespace gba {
 
 [[maybe_unused]] constexpr auto version_major = 0;
 [[maybe_unused]] constexpr auto version_minor = 9;
-[[maybe_unused]] constexpr auto version_patch = 5;
+[[maybe_unused]] constexpr auto version_patch = 6;
 
-[[maybe_unused]] constexpr std::string_view version = "0.9.5";
+[[maybe_unused]] constexpr std::string_view version = "0.9.6";
 
 } // namespace gba
 
