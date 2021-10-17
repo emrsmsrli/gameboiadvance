@@ -584,6 +584,7 @@ void window::reset_core() noexcept
     total_frame_time_ = 0.f;
     last_executed_addr_ = 0_u32;
 }
+
 void window::generate_memory_debugger_entries() noexcept
 {
     disassembly_view_.clear();

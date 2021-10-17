@@ -13,7 +13,7 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
-option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
+option(LIBRARY_ONLY "Enabled only the core library target" OFF)
 option(ENABLE_TESTING "Enable Tests" OFF)
 option(ENABLE_PCH "Enable Precompiled Headers" OFF)
 option(ENABLE_ASSERTIONS "Enable assertions" OFF)
@@ -62,26 +62,33 @@ if(ENABLE_PCH)
             <array> <vector> <string> <unordered_map> <utility>)
 endif()
 
-find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
+if(NOT LIBRARY_ONLY)
+    find_package(SFML COMPONENTS window graphics system CONFIG REQUIRED)
+    find_package(SDL2 CONFIG REQUIRED)
+endif()
 find_package(ZLIB REQUIRED)
 
 add_subdirectory(external)
 add_subdirectory(gba)
 
-if(ENABLE_DEBUGGER)
-    add_subdirectory(gba_debugger)
-endif()
+if(NOT LIBRARY_ONLY)
+    option(ENABLE_DEBUGGER "Enable GameboiAdvance Debugger" OFF)
+    if(ENABLE_DEBUGGER)
+        add_subdirectory(gba_debugger)
+    else()
+        add_subdirectory(gba_frontend)
+    endif()
 
-add_executable(gameboiadvance main.cpp)
-target_link_libraries(gameboiadvance PRIVATE
-        gba::gba
-        $<$<BOOL:${ENABLE_DEBUGGER}>:gba::debugger>
-        cxxopts::cxxopts
-        SDL2::CXX
-        imgui::sfml
-        project_warnings
-        project_options)
+    add_executable(gameboiadvance main.cpp)
+    target_link_libraries(gameboiadvance PRIVATE
+            gba::gba
+            $<IF:$<BOOL:${ENABLE_DEBUGGER}>,gba::debugger,gba::frontend>
+            cxxopts::cxxopts
+            SDL2::CXX
+            imgui::sfml
+            project_warnings
+            project_options)
+endif()
 
 if(ENABLE_TESTING)
     enable_testing()

@@ -5,6 +5,9 @@
  * Refer to the included LICENSE file.
  */
 
+#include <chrono>
+#include <thread>
+
 #include <cxxopts.hpp>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/daily_file_sink.h>
@@ -16,6 +19,8 @@
 
 #if WITH_DEBUGGER
   #include <gba_debugger/debugger.h>
+#else
+  #include <frontend/frontend.h>
 #endif // WITH_DEBUGGGER
 
 int main(int argc, char** argv)
@@ -77,20 +82,35 @@ int main(int argc, char** argv)
     gba::core core{gba::fs::read_file(bios_path)};
     core.load_pak(parsed["rom-path"].as<std::vector<std::string>>().front());
 
-    if(parsed["skip-bios"].as<bool>()) {
-        core.skip_bios();
-    }
+    const auto cleanup_and_exit = []() {
+        sdl::quit();
+        return EXIT_SUCCESS;
+    };
 
 #if WITH_DEBUGGER
     gba::debugger::window window(&core);
 
     while(true) {
         if(!window.draw()) {
-            break;
+            return cleanup_and_exit();
+        }
+    }
+#else
+    const auto scale = parsed["viewport-scale"].as<uint32_t>();
+    gba::frontend::window frontend_window{&core, scale, parsed["skip-bios"].as<bool>()};
+
+    while(true) {
+        const gba::frontend::tick_result result = frontend_window.tick();
+        switch(result) {
+            case gba::frontend::tick_result::exiting:
+                return cleanup_and_exit();
+            case gba::frontend::tick_result::sleeping:
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(10ms);
+                break;
+            case gba::frontend::tick_result::ticking:
+                break;
         }
     }
 #endif // WITH_DEBUGGGER
-
-    sdl::quit();
-    return EXIT_SUCCESS;
 }
