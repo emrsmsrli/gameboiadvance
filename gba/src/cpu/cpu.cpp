@@ -109,6 +109,13 @@ u32 cpu::read_unused(const u32 addr) noexcept
 
 void cpu::prefetch(const u32 addr, const u32 cycles) noexcept
 {
+    if(addr != pc()) {
+        prefetch_buffer_.active = true;
+        prefetch_buffer_.size = 0_u32;
+        bus_->tick_components(cycles);
+        return;
+    }
+
     if(!prefetch_buffer_.empty() && addr == prefetch_buffer_.begin) {
         prefetch_buffer_.begin += prefetch_buffer_.addr_increment;
         --prefetch_buffer_.size;
