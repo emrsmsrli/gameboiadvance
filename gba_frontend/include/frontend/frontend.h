@@ -47,6 +47,8 @@ private:
     void on_audio_buffer_full(const vector<apu::stereo_sample<float>>& buffer) noexcept;
 
     void modify_volume(const float delta) noexcept;
+    fs::path pick_rom(bool no_cancel) noexcept;
+    void load_rom(const fs::path& path) noexcept;
 };
 
 } // namespace gba::frontend

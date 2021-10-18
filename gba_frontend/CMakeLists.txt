@@ -15,5 +15,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
         sfml-system
         sfml-window
         sfml-graphics
+        portable_file_dialogs
         project_warnings
         project_options)

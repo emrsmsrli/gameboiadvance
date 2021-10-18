@@ -7,6 +7,8 @@
 
 #include <frontend/frontend.h>
 
+#include <portable-file-dialogs.h>
+
 namespace gba::frontend {
 
 window::window(core* core, const uint32_t window_scale, bool bios_skip)
@@ -34,6 +36,12 @@ window::window(core* core, const uint32_t window_scale, bool bios_skip)
 
     if(bios_skip) {
         core->skip_bios();
+    }
+
+    if(!core_->pak_loaded()) {
+        constexpr bool no_cancel = true;
+        const fs::path result = pick_rom(no_cancel);
+        load_rom(result);
     }
 }
 
@@ -103,6 +111,15 @@ tick_result window::tick() noexcept
                 case sf::Keyboard::F3: save_load_state(state_slot::slot3); break;
                 case sf::Keyboard::F4: save_load_state(state_slot::slot4); break;
                 case sf::Keyboard::F5: save_load_state(state_slot::slot5); break;
+                case sf::Keyboard::Tab: {
+                    if(window_event_.key.control) {
+                        constexpr bool no_cancel = false;
+                        const fs::path result = pick_rom(no_cancel);
+                        if(!result.empty()) {
+                            load_rom(result);
+                        }
+                    }
+                }
                 default:
                     break;
             }
@@ -139,6 +156,28 @@ void window::modify_volume(const float delta) noexcept
 {
     current_volume_ = std::clamp(current_volume_ + delta, 0.f, 1.f);
     core_->set_volume(current_volume_);
+}
+
+fs::path window::pick_rom(const bool no_cancel) noexcept
+{
+    fs::path rom_path;
+    do {
+        const auto result = pfd::open_file("Pick ROM",
+          core_->pak_path().string(),
+          {"GBA ROMs", "*.gba", "GZip GBA ROMs", "*.gz", "All GBA ROMs", "*.gba *.gz"},
+          pfd::opt::none).result();
+        if(!result.empty()) {
+            rom_path = result.front();
+        }
+    } while(no_cancel && rom_path.empty());
+    return rom_path;
+}
+
+void window::load_rom(const fs::path& path) noexcept
+{
+    core_->reset(bios_skip_);
+    core_->load_pak(path);
+    window_.setTitle(fmt::format("gameboiadvance - {}", core_->game_title()));
 }
 
 } // namespace gba::frontend

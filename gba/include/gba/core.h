@@ -79,6 +79,8 @@ public:
         }
     }
 
+    [[nodiscard]] std::string_view game_title() const noexcept { return gamepak_.game_title(); }
+    [[nodiscard]] const fs::path& pak_path() const noexcept { return gamepak_.path(); }
     [[nodiscard]] bool pak_loaded() const noexcept { return gamepak_.loaded(); }
     void load_pak(const fs::path& path)
     {

@@ -52,8 +52,9 @@ public:
     void load(const fs::path& path);
 
     void set_irq_controller_handle(const cpu::irq_controller_handle irq) noexcept { rtc_.set_irq_controller_handle(irq); }
-    void set_scheduler(scheduler* s) noexcept { backup_->set_scheduler(s); }
+    void set_scheduler(scheduler* s) noexcept { if(backup_) { backup_->set_scheduler(s); } }
 
+    [[nodiscard]] std::string_view game_title() const noexcept { return game_title_; }
     [[nodiscard]] bool loaded() const noexcept { return loaded_; }
     [[nodiscard]] backup::type backup_type() const noexcept { return backup_type_; }
     [[nodiscard]] const fs::path& path() const noexcept { return path_; }
