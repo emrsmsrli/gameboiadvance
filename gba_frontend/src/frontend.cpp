@@ -56,9 +56,11 @@ void window::on_vblank() noexcept
 {
     screen_texture_.update(screen_buffer_);
 
-    window_.clear(sf::Color::Black);
+    constexpr float frame_scale = 2.f;
     sf::Sprite frame{screen_texture_};
-    frame.setScale(window_scale_, window_scale_);
+    frame.setScale(frame_scale, frame_scale);
+
+    window_.clear(sf::Color::Black);
     window_.draw(frame);
     window_.display();
 }
@@ -124,13 +126,11 @@ tick_result window::tick() noexcept
                     break;
             }
         } else if(window_event_.type == sf::Event::Resized) {
-            if(window_event_.size.height >= gba::ppu::screen_height
-               && window_event_.size.width >= gba::ppu::screen_width) {
-                const auto height_scale = window_event_.size.height / gba::ppu::screen_height;
-                const auto width_scale = window_event_.size.width / gba::ppu::screen_width;
-                window_scale_ = std::max(height_scale, width_scale);
-                window_.setSize({window_scale_ * gba::ppu::screen_width, window_scale_ * gba::ppu::screen_height});
-            }
+            const auto height_scale = window_event_.size.height / gba::ppu::screen_height;
+            const auto width_scale = window_event_.size.width / gba::ppu::screen_width;
+            window_scale_ = std::max(std::max(height_scale, width_scale), 1_u32);
+            window_.setSize({window_scale_ * gba::ppu::screen_width, window_scale_ * gba::ppu::screen_height});
+            LOG_INFO(frontend, "window scale: {}", window_scale_);
         }
     }
 
