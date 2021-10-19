@@ -11,11 +11,12 @@
 
 namespace gba::frontend {
 
-window::window(core* core, const uint32_t window_scale, bool bios_skip)
+window::window(core* core, const uint32_t window_scale, const float initial_volume, bool bios_skip)
   : core_{core},
+    current_volume_{initial_volume},
     window_{
       sf::VideoMode{ppu::screen_width * window_scale, ppu::screen_height * window_scale},
-      "gameboiadvance",
+      make_window_title(),
       sf::Style::Close | sf::Style::Resize
     },
     window_scale_{window_scale},
@@ -164,6 +165,7 @@ void window::modify_volume(const float delta) noexcept
 {
     current_volume_ = std::clamp(current_volume_ + delta, 0.f, 1.f);
     core_->set_volume(current_volume_);
+    update_window_title();
 }
 
 fs::path window::pick_rom() noexcept
@@ -183,7 +185,7 @@ void window::load_rom(const fs::path& path) noexcept
 {
     core_->reset(bios_skip_);
     core_->load_pak(path);
-    window_.setTitle(fmt::format("gameboiadvance - {}", core_->game_title()));
+    update_window_title();
 }
 
 } // namespace gba::frontend

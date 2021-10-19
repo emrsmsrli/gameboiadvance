@@ -44,8 +44,11 @@ int main(int argc, char** argv)
         ("enable-file-log", "Enables file logging", cxxopts::value<bool>()->default_value("true"))
 #endif // SPDLOG_ACTIVE_LEVEL != SPDLOG_LEVEL_OFF
         ("fullscreen", "Enable fullscreen")
+#if !WITH_DEBUGGER
         ("S,viewport-scale", "Scale of the viewport (not used if fullscreen is set), (240x160)*S", cxxopts::value<uint32_t>()->default_value("2"))
+        ("V,initial-volume", "Initial volume of the frontend", cxxopts::value<float>()->default_value("0.7"))
         ("skip-bios", "Skips bios and starts the game directly")
+#endif // WITH_DEBUGGGER
         ("bios", "BIOS binary path (looks for bios.bin if not provided)", cxxopts::value<std::string>()->default_value("bios.bin"))
         ("rom-path", "Rom path or directory", cxxopts::value<std::vector<std::string>>());
 
@@ -96,8 +99,12 @@ int main(int argc, char** argv)
         }
     }
 #else
-    const auto scale = parsed["viewport-scale"].as<uint32_t>();
-    gba::frontend::window frontend_window{&core, scale, parsed["skip-bios"].as<bool>()};
+    gba::frontend::window frontend_window{
+        &core,
+        parsed["viewport-scale"].as<uint32_t>(),
+        parsed["initial-volume"].as<float>(),
+        parsed["skip-bios"].as<bool>()
+    };
 
     while(true) {
         const gba::frontend::tick_result result = frontend_window.tick();
