@@ -39,9 +39,15 @@ window::window(core* core, const uint32_t window_scale, bool bios_skip)
     }
 
     if(!core_->pak_loaded()) {
-        constexpr bool no_cancel = true;
-        const fs::path result = pick_rom(no_cancel);
-        load_rom(result);
+        if(const fs::path result = pick_rom(); result.empty()) {
+            static bool notify_shown = false;
+            if(!notify_shown) {
+                notify_shown = true;
+                pfd::notify("gameboiadvance", "You can press CTRL+TAB to pick a rom to emulate");
+            }
+        } else {
+            load_rom(result);
+        }
     }
 }
 
@@ -115,9 +121,7 @@ tick_result window::tick() noexcept
                 case sf::Keyboard::F5: save_load_state(state_slot::slot5); break;
                 case sf::Keyboard::Tab: {
                     if(window_event_.key.control) {
-                        constexpr bool no_cancel = false;
-                        const fs::path result = pick_rom(no_cancel);
-                        if(!result.empty()) {
+                        if(const fs::path result = pick_rom(); !result.empty()) {
                             load_rom(result);
                         }
                     }
@@ -158,19 +162,17 @@ void window::modify_volume(const float delta) noexcept
     core_->set_volume(current_volume_);
 }
 
-fs::path window::pick_rom(const bool no_cancel) noexcept
+fs::path window::pick_rom() noexcept
 {
-    fs::path rom_path;
-    do {
-        const auto result = pfd::open_file("Pick ROM",
-          core_->pak_path().string(),
-          {"GBA ROMs", "*.gba", "GZip GBA ROMs", "*.gz", "All GBA ROMs", "*.gba *.gz"},
-          pfd::opt::none).result();
-        if(!result.empty()) {
-            rom_path = result.front();
-        }
-    } while(no_cancel && rom_path.empty());
-    return rom_path;
+    const auto result = pfd::open_file("Pick ROM",
+      core_->pak_path().string(),
+      {"GBA (*.gba)", "*.gba", "GZipped GBA (*.gz)", "*.gz", "All (*.gba *.gz)", "*.gba *.gz"},
+      pfd::opt::force_path).result();
+    if(!result.empty()) {
+        return result.front();
+    }
+
+    return fs::path{};
 }
 
 void window::load_rom(const fs::path& path) noexcept
