@@ -113,10 +113,10 @@ public:
         }
     }
 
-    void save_state(const state_slot slot) const noexcept
+    bool save_state(const state_slot slot) const noexcept
     {
         if(!pak_loaded() || !fs::exists(states_path_)) {
-            return;
+            return false;
         }
 
         ASSERT(slot < state_slot::max);
@@ -128,15 +128,17 @@ public:
         if(compressed_archive.has_value()) {
             fs::write_file(slot_path, compressed_archive.value());
             LOG_INFO(core, "state saved to slot {}", from_enum<u32>(slot));
-        } else {
-            LOG_WARN(core, "error compressing archive");
+            return true;
         }
+
+        LOG_WARN(core, "error compressing archive");
+        return false;
     }
 
-    void load_state(const state_slot slot) noexcept
+    bool load_state(const state_slot slot) noexcept
     {
         if(!pak_loaded() || !fs::exists(states_path_)) {
-            return;
+            return false;
         }
 
         ASSERT(slot < state_slot::max);
@@ -144,7 +146,7 @@ public:
 
         if(!fs::exists(slot_path)) {
             LOG_WARN(core, "no saved state found in slot {}", from_enum<u32>(slot));
-            return;
+            return false;
         }
 
         const std::optional<vector<u8>> decompressed_archive = gzip::decompress(fs::read_file(slot_path));
@@ -152,9 +154,11 @@ public:
             const archive archive{decompressed_archive.value()};
             deserialize(archive);
             LOG_INFO(core, "state loaded from slot {}", from_enum<u32>(slot));
-        } else {
-            LOG_WARN(core, "error decompressing archive");
+            return true;
         }
+
+        LOG_WARN(core, "error decompressing archive");
+        return false;
     }
 
 private:

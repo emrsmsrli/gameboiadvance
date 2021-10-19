@@ -75,9 +75,13 @@ tick_result window::tick() noexcept
 {
     const auto save_load_state = [&](const state_slot slot) {
         if(window_event_.key.control) {
-            core_->load_state(slot);
+            if(core_->load_state(slot)) {
+                pfd::notify("gameboiadvance", fmt::format("State successfully loaded from slot {}", from_enum<u32>(slot)));
+            }
         } else {
-            core_->save_state(slot);
+            if(core_->save_state(slot)) {
+                pfd::notify("gameboiadvance", fmt::format("State successfully saved to slot {}", from_enum<u32>(slot)));
+            }
         }
     };
 
