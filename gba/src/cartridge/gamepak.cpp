@@ -58,7 +58,7 @@ void gamepak::load(const fs::path& path)
 {
     path_ = path;
 
-    if(!fs::is_regular_file(path)) {
+    if(!fs::exists(path) || !fs::is_regular_file(path)) {
         loaded_ = false;
         pak_data_.clear();
         backup_type_ = backup::type::none;
